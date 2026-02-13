@@ -2,12 +2,9 @@
 
 [![CI](https://github.com/davidbudnick/redis-tui/actions/workflows/ci.yml/badge.svg)](https://github.com/davidbudnick/redis-tui/actions/workflows/ci.yml)
 [![Release](https://github.com/davidbudnick/redis-tui/actions/workflows/release.yml/badge.svg)](https://github.com/davidbudnick/redis-tui/actions/workflows/release.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/davidbudnick/redis-tui?v=1)](https://goreportcard.com/report/github.com/davidbudnick/redis-tui)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A powerful terminal user interface (TUI) for managing Redis databases, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea).
-
-**Redis TUI** is a feature-rich Redis client for the terminal that lets you browse, edit, and manage your Redis keys with ease. Perfect for developers and DevOps engineers who prefer working in the command line.
+A feature-rich terminal UI for managing Redis databases, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea). Browse, edit, and monitor your Redis keys without leaving the terminal.
 
 ![Main Screenshot](docs/main.gif)
 
@@ -19,128 +16,32 @@ brew tap davidbudnick/homebrew-tap
 brew install --cask redis-tui
 ```
 
-## Why Redis TUI?
-
-- **No GUI Required** - Manage Redis directly from your terminal over SSH
-- **Fast and Lightweight** - Built in Go for speed and minimal resource usage
-- **Full Redis Support** - Works with all Redis data types: strings, lists, sets, sorted sets, hashes, and streams
-- **Secure Connections** - TLS/SSL and SSH tunnel support for secure access
-- **Multiple Connections** - Save and switch between multiple Redis instances easily
-
 ## Screenshots
 ### Key Browser with Preview
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│   Keys - Production [1234]                            │  Preview                                │
-├───────────────────────────────────────────────────────┼─────────────────────────────────────────┤
-│  Filter: user:*                                       │  ─────────────────────────────────────  │
-│                                                       │                                         │
-│   Key                            Type      TTL        │  Key: user:1001                         │
-│  ──────────────────────────────────────────────────   │                                         │
-│ ▶ user:1001                      string    ∞          │  Type: string                           │
-│   user:1002                      string    1h         │                                         │
-│   user:1003:profile              hash      ∞          │  TTL: No expiry                         │
-│   user:1004:sessions             list      2h         │                                         │
-│   user:1005:followers            set       ∞          │  ─────────────────────────────────────  │
-│   user:1006:scores               zset      ∞          │                                         │
-│   user:1007                      string    30m        │  Value                                  │
-│   user:1008:cart                 hash      15m        │                                         │
-│                                                       │  {                                      │
-│                                                       │    "id": 1001,                          │
-│  1-8 of 1234 • l:more                                 │    "name": "John Doe",                  │
-│                                                       │    "email": "john@example.com"          │
-│                                                       │  }                                      │
-│                                                       │                                         │
-│  j/k:nav  enter:view  a:add  d:del  /:filter  O:logs  i:info  q:back                            │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Hash Preview
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│   Keys - Production [1234]                            │  Preview                                │
-├───────────────────────────────────────────────────────┼─────────────────────────────────────────┤
-│  Filter: *                                            │  ─────────────────────────────────────  │
-│                                                       │                                         │
-│   Key                            Type      TTL        │  Key: user:1003:profile                 │
-│  ──────────────────────────────────────────────────   │                                         │
-│   user:1001                      string    ∞          │  Type: hash                             │
-│   user:1002                      string    1h         │                                         │
-│ ▶ user:1003:profile              hash      ∞          │  TTL: No expiry                         │
-│   user:1004:sessions             list      2h         │                                         │
-│   user:1005:followers            set       ∞          │  ─────────────────────────────────────  │
-│   user:1006:scores               zset      ∞          │                                         │
-│                                                       │  Value                                  │
-│                                                       │                                         │
-│                                                       │  Fields: 5                              │
-│                                                       │                                         │
-│                                                       │  age: 30                                │
-│                                                       │  city: New York                         │
-│                                                       │  email: john@example.com                │
-│                                                       │  name: John Doe                         │
-│                                                       │  status: active                         │
-│                                                       │                                         │
-│  j/k:nav  enter:view  a:add  d:del  /:filter  O:logs  i:info  q:back                            │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Key Detail View
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                           Key Detail                             │
-├──────────────────────────────────────────────────────────────────┤
-│  Key: user:1001                                                  │
-│  Type: string                                                    │
-│  TTL: No expiry  Memory: 128 B                                   │
-│                                                                  │
-│  Value:                                                          │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │ {                                                           │ │
-│  │   "id": 1001,                                               │ │
-│  │   "name": "John Doe",                                       │ │
-│  │   "email": "john@example.com",                              │ │
-│  │   "created_at": "2024-01-15T10:30:00Z"                      │ │
-│  │ }                                                           │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  t:TTL  d:del  r:refresh  R:rename  c:copy  e:edit  esc:back     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Server Info
-```
-┌────────────────────────────────────────┐
-│            Server Info                 │
-├────────────────────────────────────────┤
-│  Version:     7.2.4                    │
-│  Mode:        standalone               │
-│  OS:          Linux 5.15.0             │
-│  Memory:      1.2GB / 4GB              │
-│  Clients:     42                       │
-│  Keys:        125,432                  │
-│  Uptime:      45 days, 12:34:56        │
-│                                        │
-│  r:refresh  esc:back                   │
-└────────────────────────────────────────┘
-```
-
-### Tree View
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                           Tree View                              │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  v user: (1,234 keys)                                            │
-│    v sessions: (456 keys)                                        │
-│        session:abc123                                            │
-│        session:def456                                            │
-│    > profiles: (234 keys)                                        │
-│    > settings: (89 keys)                                         │
-│  > cache: (5,678 keys)                                           │
-│  > queue: (123 keys)                                             │
-│                                                                  │
-│  j/k:nav  enter:expand/select  esc:back                          │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────┬───────────────────────────────────────┐
+│ Keys - Production [1234]             │ Preview                               │
+├──────────────────────────────────────┼───────────────────────────────────────┤
+│ Filter: user:*                       │ ───────────────────────────────────── │
+│                                      │                                       │
+│  Key                Type     TTL     │ Key: user:1001                        │
+│ ────────────────────────────────── │                                       │
+│▶ user:1001          string   ∞       │ Type: string                          │
+│  user:1002          string   1h      │                                       │
+│  user:1003:profile  hash     ∞       │ TTL: No expiry                        │
+│  user:1004:sessions list     2h      │                                       │
+│  user:1005:followers set     ∞       │ ───────────────────────────────────── │
+│  user:1006:scores   zset     ∞       │                                       │
+│  user:1007          string   30m     │ Value                                 │
+│  user:1008:cart     hash     15m     │                                       │
+│                                      │ {                                     │
+│                                      │   "id": 1001,                         │
+│ 1-8 of 1234 • l:more                │   "name": "John Doe",                 │
+│                                      │   "email": "john@example.com"         │
+│                                      │ }                                     │
+│                                      │                                       │
+│ j/k:nav enter:view a:add d:del /:filter i:info q:back                       │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Live Metrics Dashboard
@@ -184,66 +85,45 @@ brew install --cask redis-tui
 
 ## Features
 
-### Core Features
-- 🔌 **Connection Management** - Save and manage multiple Redis connections
-- 🔑 **Key Browser** - Browse, search, and filter keys with pattern matching
-- 📊 **Type Support** - Full support for all Redis data types (String, List, Set, Sorted Set, Hash, Stream)
-- ✏️ **Edit Values** - Edit string values directly, add/remove items from collections
-- ⏱️ **TTL Management** - View and set TTL with live countdown
-- 📋 **Export/Import** - Export keys to JSON and import from files
-- 🔍 **Search** - Search keys by name pattern or value content
+### Browsing and Editing
+- **Key browser** with pattern filtering, regex, and fuzzy search
+- **All data types** — strings, lists, sets, sorted sets, hashes, and streams
+- **Inline editing** with VIM keybindings for strings and collections
+- **Tree view** for hierarchical key navigation
+- **Favorites and recent keys** for quick access
+- **Key templates** for creating keys from predefined structures
+- **Value history** — view and restore previous values
+- **JSON syntax highlighting** and JSON path queries
 
-### Advanced Features
-- ⭐ **Favorites** - Mark frequently used keys as favorites
-- 🕒 **Recent Keys** - Quick access to recently viewed keys
-- 🌳 **Tree View** - Browse keys in a hierarchical tree structure
-- 🔎 **Regex Search** - Search keys using regular expressions
-- 🔍 **Fuzzy Search** - Find keys with fuzzy matching
-- 👀 **Watch Mode** - Monitor key values for changes in real-time
-- 🗑️ **Bulk Delete** - Delete multiple keys matching a pattern
-- ⏲️ **Batch TTL** - Set TTL on multiple keys at once
-- ⚖️ **Compare Keys** - Compare values between two keys
-- 📝 **Key Templates** - Create new keys from predefined templates
-- 📈 **Live Metrics Dashboard** - Real-time ops/sec, memory, network I/O with ASCII charts
-- 🎨 **JSON Syntax Highlighting** - jq-style colorized JSON output
-- 🔒 **Binary Data Handling** - Safe display of binary/non-printable data
-- 📜 **Value History** - View and restore previous values
-- 📡 **Keyspace Events** - Subscribe to keyspace notifications
-- 👥 **Client List** - View connected Redis clients
-- 📊 **Memory Stats** - Detailed memory usage statistics
-- 🌐 **Cluster Support** - View cluster node information
-- ⌨️ **Customizable Keybindings** - Configure your own keyboard shortcuts
-- 📋 **Clipboard Support** - Copy values to clipboard
-- 🔐 **TLS Support** - Connect with TLS/SSL encryption
-- 🚇 **SSH Tunneling** - Connect through SSH tunnels
-- 📁 **Connection Groups** - Organize connections into groups
+### Connections and Security
+- **Connection manager** — save and switch between multiple Redis instances
+- **TLS/SSL** encryption support
+- **SSH tunneling** for secure remote access
+- **Connection groups** to organize instances
+- **Database switching** between Redis databases (0-15)
 
-### Other Features
-- 🔧 **Lua Scripts** - Execute Lua scripts directly
-- 📨 **Pub/Sub** - Publish messages to channels
-- 📈 **Slow Log** - View slow query log
-- ℹ️ **Server Info** - View Redis server information
-- 🗄️ **Database Switch** - Switch between Redis databases
-- 📝 **Application Logs** - View internal application logs
+### Monitoring and Operations
+- **Live metrics dashboard** — real-time ops/sec, memory, and network I/O with ASCII charts
+- **Server info, memory stats, slow log, and client list**
+- **Cluster support** — view cluster node information
+- **Watch mode** — monitor key values for changes in real-time
+- **Keyspace events** — subscribe to keyspace notifications
+- **Export/Import** — JSON-based key backup and restore
+- **Bulk operations** — pattern-based delete and batch TTL
+- **Pub/Sub and Lua scripting**
 
 ## Installation
 
-### Homebrew (macOS and Linux)
+### Homebrew
 
-```bash
-# Add the tap
-brew tap davidbudnick/homebrew-tap
-
-# Install redis-tui
-brew install --cask redis-tui
-```
+See [Quick Install](#quick-install) above.
 
 ### From Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/davidbudnick/redis-tui.git
-cd redis
+cd redis-tui
 
 # Build
 make build
@@ -265,14 +145,20 @@ Download the latest release from the [Releases](https://github.com/davidbudnick/
 ## Usage
 
 ```bash
-# Run the application
 redis-tui
-
-# Or if installed via go install
-redis
 ```
 
-## Keyboard Shortcuts
+Press `?` inside the app to view the full help screen. No CLI flags — all configuration is done through the [config file](#configuration) and the in-app connection manager.
+
+### Uninstall
+
+```bash
+# Homebrew
+brew uninstall --cask redis-tui
+```
+
+<details>
+<summary>Keyboard Shortcuts</summary>
 
 ### Global
 
@@ -354,6 +240,8 @@ redis
 | `j/k` | Navigate collection items |
 | `esc/backspace` | Go back to keys list |
 
+</details>
+
 ## Configuration
 
 Configuration is stored in `~/.config/redis-tui/config.json`.
@@ -371,33 +259,8 @@ Configuration is stored in `~/.config/redis-tui/config.json`.
       "password": "",
       "db": 0,
       "use_tls": false
-    },
-    {
-      "id": 2,
-      "name": "Production",
-      "host": "redis.example.com",
-      "port": 6379,
-      "password": "your-password",
-      "db": 0,
-      "use_tls": true
     }
   ],
-  "key_bindings": {
-    "up": "k",
-    "down": "j",
-    "select": "enter",
-    "back": "esc",
-    "quit": "q",
-    "help": "?",
-    "refresh": "r",
-    "delete": "d",
-    "add": "a",
-    "edit": "e",
-    "filter": "/",
-    "server_info": "i",
-    "export": "E",
-    "import": "I"
-  },
   "tree_separator": ":",
   "max_recent_keys": 20,
   "max_value_history": 50,
