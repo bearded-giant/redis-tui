@@ -1,6 +1,6 @@
 module github.com/davidbudnick/redis-tui
 
-go 1.25
+go 1.26
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
