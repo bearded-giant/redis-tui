@@ -14,6 +14,9 @@ A feature-rich terminal UI for managing Redis databases, built with Go and [Bubb
 # Homebrew (macOS and Linux)
 brew tap davidbudnick/homebrew-tap
 brew install --cask redis-tui
+
+# Go
+go install github.com/davidbudnick/redis-tui@latest
 ```
 
 ## Screenshots
@@ -155,6 +158,9 @@ Press `?` inside the app to view the full help screen. No CLI flags — all conf
 ```bash
 # Homebrew
 brew uninstall --cask redis-tui
+
+# Go
+rm -f $(go env GOPATH)/bin/redis-tui
 ```
 
 <details>
