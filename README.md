@@ -36,11 +36,11 @@ brew install --cask redis-tui
 │  user:1008:cart     hash     15m     │                                       │
 │                                      │ {                                     │
 │                                      │   "id": 1001,                         │
-│ 1-8 of 1234 • l:more                │   "name": "John Doe",                 │
+│ 1-8 of 1234 • l:more                 │   "name": "John Doe",                 │
 │                                      │   "email": "john@example.com"         │
 │                                      │ }                                     │
 │                                      │                                       │
-│ j/k:nav enter:view a:add d:del /:filter i:info q:back                       │
+│ j/k:nav enter:view a:add d:del /:filter i:info q:back                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
