@@ -103,6 +103,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleLuaScriptResultMsg(msg)
 	case types.PublishResultMsg:
 		return m.handlePublishResultMsg(msg)
+	case types.PubSubChannelsLoadedMsg:
+		return m.handlePubSubChannelsLoadedMsg(msg)
 	case types.KeyspaceEventMsg:
 		return m.handleKeyspaceEventMsg(msg)
 
@@ -335,6 +337,8 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleExpiringKeysScreen(msg)
 	case types.ScreenLiveMetrics:
 		return m.handleLiveMetricsScreen(msg)
+	case types.ScreenPubSubChannels:
+		return m.handlePubSubChannelsScreen(msg)
 	}
 	return m, nil
 }

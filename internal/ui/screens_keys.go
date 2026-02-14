@@ -162,8 +162,8 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenImport
 		m.ImportInput.Focus()
 	case "p":
-		m.Screen = types.ScreenPubSub
-		m.resetPubSubInputs()
+		m.Loading = true
+		return m, cmd.GetPubSubChannelsCmd("*")
 	case "L":
 		m.Loading = true
 		return m, cmd.GetSlowLogCmd(20)

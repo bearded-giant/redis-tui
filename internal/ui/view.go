@@ -52,6 +52,7 @@ func (m Model) getScreenView() string {
 		types.ScreenJSONPath:             m.viewJSONPath,
 		types.ScreenExpiringKeys:         m.viewExpiringKeys,
 		types.ScreenLiveMetrics:          m.viewLiveMetrics,
+		types.ScreenPubSubChannels:       m.viewPubSubChannels,
 	}
 
 	if viewFunc, ok := viewMap[m.Screen]; ok {

@@ -87,6 +87,39 @@ func (m Model) viewServerInfo() string {
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, modalStyle.Render(b.String()))
 }
 
+func (m Model) viewPubSubChannels() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Pub/Sub Channels"))
+	b.WriteString("\n\n")
+
+	if len(m.PubSubChannels) == 0 {
+		b.WriteString(dimStyle.Render("No active channels found."))
+	} else {
+		for i, ch := range m.PubSubChannels {
+			cursor := "  "
+			if i == m.SelectedChannelIdx {
+				cursor = "> "
+			}
+			line := fmt.Sprintf("%s%s", cursor, ch.Name)
+			if ch.Subscribers > 0 {
+				line += fmt.Sprintf(" (%d subscribers)", ch.Subscribers)
+			}
+			if i == m.SelectedChannelIdx {
+				b.WriteString(selectedStyle.Render(line))
+			} else {
+				b.WriteString(normalStyle.Render(line))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("r:refresh  p:publish  esc:back"))
+
+	return m.renderModal(b.String())
+}
+
 func (m Model) viewPubSub() string {
 	var b strings.Builder
 

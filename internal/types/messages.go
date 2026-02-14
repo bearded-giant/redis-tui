@@ -145,6 +145,11 @@ type PublishResultMsg struct {
 	Err       error
 }
 
+type PubSubChannelsLoadedMsg struct {
+	Channels []PubSubChannel
+	Err      error
+}
+
 type TickMsg struct{}
 
 type WatchTickMsg struct{}

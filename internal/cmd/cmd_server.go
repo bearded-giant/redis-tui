@@ -69,17 +69,17 @@ func PublishMessageCmd(channel, message string) tea.Cmd {
 func GetPubSubChannelsCmd(pattern string) tea.Cmd {
 	return func() tea.Msg {
 		if RedisClient == nil {
-			return types.ServerInfoLoadedMsg{Err: nil}
+			return types.PubSubChannelsLoadedMsg{Err: nil}
 		}
-		channels, _ := RedisClient.PubSubChannels(pattern)
-		info := types.ServerInfo{}
-		for _, ch := range channels {
-			if info.ClusterInfo != "" {
-				info.ClusterInfo += ", "
-			}
-			info.ClusterInfo += ch
+		names, err := RedisClient.PubSubChannels(pattern)
+		if err != nil {
+			return types.PubSubChannelsLoadedMsg{Err: err}
 		}
-		return types.ServerInfoLoadedMsg{Info: info, Err: nil}
+		channels := make([]types.PubSubChannel, len(names))
+		for i, name := range names {
+			channels[i] = types.PubSubChannel{Name: name}
+		}
+		return types.PubSubChannelsLoadedMsg{Channels: channels}
 	}
 }
 

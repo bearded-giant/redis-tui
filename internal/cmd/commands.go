@@ -570,17 +570,17 @@ func (c *Commands) PublishMessage(channel, message string) tea.Cmd {
 func (c *Commands) GetPubSubChannels(pattern string) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {
-			return types.ServerInfoLoadedMsg{Err: nil}
+			return types.PubSubChannelsLoadedMsg{Err: nil}
 		}
-		channels, _ := c.redis.PubSubChannels(pattern)
-		info := types.ServerInfo{}
-		for _, ch := range channels {
-			if info.ClusterInfo != "" {
-				info.ClusterInfo += ", "
-			}
-			info.ClusterInfo += ch
+		names, err := c.redis.PubSubChannels(pattern)
+		if err != nil {
+			return types.PubSubChannelsLoadedMsg{Err: err}
 		}
-		return types.ServerInfoLoadedMsg{Info: info, Err: nil}
+		channels := make([]types.PubSubChannel, len(names))
+		for i, name := range names {
+			channels[i] = types.PubSubChannel{Name: name}
+		}
+		return types.PubSubChannelsLoadedMsg{Channels: channels}
 	}
 }
 

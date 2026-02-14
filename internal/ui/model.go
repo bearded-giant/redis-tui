@@ -60,6 +60,8 @@ type Model struct {
 	PubSubInput        []textinput.Model
 	PubSubFocusIdx     int
 	PubSubMessages     []types.PubSubMessage
+	PubSubChannels     []types.PubSubChannel
+	SelectedChannelIdx int
 	SlowLogEntries     []types.SlowLogEntry
 	MemoryUsage        int64
 	SelectedItemIdx    int

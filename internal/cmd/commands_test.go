@@ -1124,6 +1124,46 @@ func TestPublishMessage(t *testing.T) {
 	})
 }
 
+func TestGetPubSubChannels(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.PubSubChannelsResult = []string{"chan1", "chan2"}
+		msg := cmds.GetPubSubChannels("*")()
+		result := msg.(types.PubSubChannelsLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if len(result.Channels) != 2 {
+			t.Errorf("expected 2 channels, got %d", len(result.Channels))
+		}
+		if result.Channels[0].Name != "chan1" {
+			t.Errorf("Channels[0].Name = %q, want %q", result.Channels[0].Name, "chan1")
+		}
+		if result.Channels[1].Name != "chan2" {
+			t.Errorf("Channels[1].Name = %q, want %q", result.Channels[1].Name, "chan2")
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.PubSubChannelsError = errors.New("pubsub error")
+		msg := cmds.GetPubSubChannels("*")()
+		result := msg.(types.PubSubChannelsLoadedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.GetPubSubChannels("*")()
+		result := msg.(types.PubSubChannelsLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
 func TestTestConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()

@@ -101,6 +101,18 @@ func (m Model) handleMemoryUsageMsg(msg types.MemoryUsageMsg) (tea.Model, tea.Cm
 	return m, nil
 }
 
+func (m Model) handlePubSubChannelsLoadedMsg(msg types.PubSubChannelsLoadedMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	if msg.Err != nil {
+		m.StatusMsg = "Error: " + msg.Err.Error()
+		return m, nil
+	}
+	m.PubSubChannels = msg.Channels
+	m.SelectedChannelIdx = 0
+	m.Screen = types.ScreenPubSubChannels
+	return m, nil
+}
+
 // Script and Pub/Sub handlers
 
 func (m Model) handleLuaScriptResultMsg(msg types.LuaScriptResultMsg) (tea.Model, tea.Cmd) {
@@ -128,6 +140,7 @@ func (m Model) handlePublishResultMsg(msg types.PublishResultMsg) (tea.Model, te
 		m.StatusMsg = "Publish failed: " + msg.Err.Error()
 	} else {
 		m.StatusMsg = "Message sent to " + strconv.FormatInt(msg.Receivers, 10) + " subscribers"
+		m.Screen = types.ScreenPubSubChannels
 	}
 	return m, nil
 }

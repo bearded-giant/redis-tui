@@ -44,7 +44,7 @@ func (m Model) handlePubSubScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, cmd.PublishMessageCmd(m.PubSubInput[0].Value(), m.PubSubInput[1].Value())
 		}
 	case "esc":
-		m.Screen = types.ScreenKeys
+		m.Screen = types.ScreenPubSubChannels
 		m.resetPubSubInputs()
 	default:
 		var cmds []tea.Cmd
@@ -234,6 +234,28 @@ func (m Model) handleClusterInfoScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		m.Loading = true
 		return m, cmd.GetClusterInfoCmd()
+	case "esc":
+		m.Screen = types.ScreenKeys
+	}
+	return m, nil
+}
+
+func (m Model) handlePubSubChannelsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.SelectedChannelIdx > 0 {
+			m.SelectedChannelIdx--
+		}
+	case "down", "j":
+		if m.SelectedChannelIdx < len(m.PubSubChannels)-1 {
+			m.SelectedChannelIdx++
+		}
+	case "r":
+		m.Loading = true
+		return m, cmd.GetPubSubChannelsCmd("*")
+	case "p":
+		m.Screen = types.ScreenPubSub
+		m.resetPubSubInputs()
 	case "esc":
 		m.Screen = types.ScreenKeys
 	}
