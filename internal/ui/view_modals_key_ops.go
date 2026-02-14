@@ -72,7 +72,7 @@ func (m Model) viewAddToCollection() string {
 		b.WriteString(keyStyle.Render("Key: "))
 		b.WriteString(normalStyle.Render(m.CurrentKey.Key))
 		b.WriteString(" (")
-		b.WriteString(lipgloss.NewStyle().Foreground(getTypeColor(m.CurrentKey.Type)).Render(string(m.CurrentKey.Type)))
+		b.WriteString(getTypeStyle(m.CurrentKey.Type).Render(string(m.CurrentKey.Type)))
 		b.WriteString(")")
 		b.WriteString("\n\n")
 

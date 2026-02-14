@@ -56,7 +56,7 @@ func (c *Client) pipeline() redis.Pipeliner {
 func (c *Client) scanAll(pattern string, batchSize int64) ([]string, error) {
 	if c.isCluster {
 		var mu sync.Mutex
-		var allKeys []string
+		allKeys := make([]string, 0, 1024)
 		err := c.cluster.ForEachMaster(c.ctx, func(ctx context.Context, client *redis.Client) error {
 			var cursor uint64
 			for {
@@ -93,6 +93,73 @@ func (c *Client) scanAll(pattern string, batchSize int64) ([]string, error) {
 		}
 	}
 	return allKeys, nil
+}
+
+// scanEach scans keys matching pattern in batches and calls fn for each batch.
+// Scanning stops when all keys are scanned or fn returns false.
+func (c *Client) scanEach(pattern string, batchSize int64, fn func(keys []string) bool) error {
+	if c.isCluster {
+		var mu sync.Mutex
+		stopped := false
+		return c.cluster.ForEachMaster(c.ctx, func(ctx context.Context, client *redis.Client) error {
+			var cursor uint64
+			for {
+				mu.Lock()
+				s := stopped
+				mu.Unlock()
+				if s {
+					return nil
+				}
+				keys, nextCursor, err := client.Scan(ctx, cursor, pattern, batchSize).Result()
+				if err != nil {
+					return err
+				}
+				if len(keys) > 0 {
+					mu.Lock()
+					if !stopped {
+						if !fn(keys) {
+							stopped = true
+						}
+					}
+					mu.Unlock()
+				}
+				cursor = nextCursor
+				if cursor == 0 {
+					break
+				}
+			}
+			return nil
+		})
+	}
+
+	var cursor uint64
+	for {
+		keys, nextCursor, err := c.cmdable().Scan(c.ctx, cursor, pattern, batchSize).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 && !fn(keys) {
+			return nil
+		}
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
+}
+
+// scanLimited scans up to maxKeys keys matching pattern.
+func (c *Client) scanLimited(pattern string, batchSize int64, maxKeys int) ([]string, error) {
+	var result []string
+	err := c.scanEach(pattern, batchSize, func(keys []string) bool {
+		result = append(result, keys...)
+		return len(result) < maxKeys
+	})
+	if len(result) > maxKeys {
+		result = result[:maxKeys]
+	}
+	return result, err
 }
 
 // NewClient creates a new Redis client wrapper

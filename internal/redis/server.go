@@ -110,15 +110,10 @@ func (c *Client) getTopKeysByMemory(limit int) []types.KeyMemory {
 		memory int64
 	}
 
-	scannedKeys, err := c.scanAll("*", 100)
+	maxSamples := limit * 5
+	scannedKeys, err := c.scanLimited("*", 100, maxSamples)
 	if err != nil || len(scannedKeys) == 0 {
 		return nil
-	}
-
-	// Limit samples to avoid excessive pipeline calls
-	maxSamples := limit * 5
-	if len(scannedKeys) > maxSamples {
-		scannedKeys = scannedKeys[:maxSamples]
 	}
 
 	// Use pipeline to batch MemoryUsage and Type calls

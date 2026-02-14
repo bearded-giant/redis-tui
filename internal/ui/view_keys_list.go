@@ -137,9 +137,9 @@ func (m Model) viewKeysListOnly() string {
 				seconds := int(key.TTL.Seconds() + 0.5)
 				ttlStr = fmt.Sprintf("%ds", seconds)
 				if seconds <= 10 {
-					ttlStyleLocal = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+					ttlStyleLocal = ttlCriticalStyle
 				} else if seconds <= 60 {
-					ttlStyleLocal = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+					ttlStyleLocal = ttlWarningStyle
 				} else {
 					ttlStyleLocal = normalStyle
 				}
@@ -150,8 +150,7 @@ func (m Model) viewKeysListOnly() string {
 				ttlStyleLocal = dimStyle
 			}
 
-			typeColor := getTypeColor(key.Type)
-			typePart := lipgloss.NewStyle().Foreground(typeColor).Render(fmt.Sprintf("%-10s", key.Type))
+			typePart := getTypeStyle(key.Type).Render(fmt.Sprintf("%-10s", key.Type))
 			ttlPart := ttlStyleLocal.Render(fmt.Sprintf("%-15s", ttlStr))
 
 			line := fmt.Sprintf("%-40s %s %s", keyName, typePart, ttlPart)
@@ -290,8 +289,7 @@ func (m Model) buildKeysListPanel(width int) string {
 
 		if i == selectedIdx {
 			// Selected row - highlight entire row
-			typeColor := getTypeColor(key.Type)
-			typeStyled := lipgloss.NewStyle().Foreground(typeColor).Bold(true).Render(fmt.Sprintf("%-*s", typeWidth, key.Type))
+			typeStyled := getTypeStyleBold(key.Type).Render(fmt.Sprintf("%-*s", typeWidth, key.Type))
 
 			cursor := selectedStyle.Render("▶ ")
 			keyPart := selectedStyle.Render(fmt.Sprintf("%-*s", keyWidth, keyName))
@@ -304,8 +302,7 @@ func (m Model) buildKeysListPanel(width int) string {
 			b.WriteString(normalStyle.Render(ttlStr))
 		} else {
 			// Normal row
-			typeColor := getTypeColor(key.Type)
-			typeStyled := lipgloss.NewStyle().Foreground(typeColor).Render(fmt.Sprintf("%-*s", typeWidth, key.Type))
+			typeStyled := getTypeStyle(key.Type).Render(fmt.Sprintf("%-*s", typeWidth, key.Type))
 
 			b.WriteString("  ")
 			b.WriteString(normalStyle.Render(fmt.Sprintf("%-*s", keyWidth, keyName)))

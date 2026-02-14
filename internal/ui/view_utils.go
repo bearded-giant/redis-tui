@@ -22,25 +22,48 @@ var (
 	successStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	helpStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+
+	// Pre-allocated type-color styles to avoid per-frame allocations
+	typeStyleMap = map[types.KeyType]lipgloss.Style{
+		types.KeyTypeString: lipgloss.NewStyle().Foreground(lipgloss.Color("2")),
+		types.KeyTypeList:   lipgloss.NewStyle().Foreground(lipgloss.Color("3")),
+		types.KeyTypeSet:    lipgloss.NewStyle().Foreground(lipgloss.Color("4")),
+		types.KeyTypeZSet:   lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
+		types.KeyTypeHash:   lipgloss.NewStyle().Foreground(lipgloss.Color("6")),
+		types.KeyTypeStream: lipgloss.NewStyle().Foreground(lipgloss.Color("13")),
+	}
+	typeStyleBoldMap = map[types.KeyType]lipgloss.Style{
+		types.KeyTypeString: lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true),
+		types.KeyTypeList:   lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true),
+		types.KeyTypeSet:    lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Bold(true),
+		types.KeyTypeZSet:   lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Bold(true),
+		types.KeyTypeHash:   lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true),
+		types.KeyTypeStream: lipgloss.NewStyle().Foreground(lipgloss.Color("13")).Bold(true),
+	}
+	defaultTypeStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	defaultTypeStyleBold = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true)
+
+	// Pre-allocated TTL warning styles
+	ttlCriticalStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+	ttlWarningStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	ttlGreenStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+
+	// Pre-allocated hash field name style (for preview panel)
+	hashFieldStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 )
 
-func getTypeColor(keyType types.KeyType) lipgloss.Color {
-	switch keyType {
-	case types.KeyTypeString:
-		return lipgloss.Color("2") // Green
-	case types.KeyTypeList:
-		return lipgloss.Color("3") // Yellow
-	case types.KeyTypeSet:
-		return lipgloss.Color("4") // Blue
-	case types.KeyTypeZSet:
-		return lipgloss.Color("5") // Magenta
-	case types.KeyTypeHash:
-		return lipgloss.Color("6") // Cyan
-	case types.KeyTypeStream:
-		return lipgloss.Color("13") // Bright Magenta
-	default:
-		return lipgloss.Color("15") // White
+func getTypeStyle(keyType types.KeyType) lipgloss.Style {
+	if s, ok := typeStyleMap[keyType]; ok {
+		return s
 	}
+	return defaultTypeStyle
+}
+
+func getTypeStyleBold(keyType types.KeyType) lipgloss.Style {
+	if s, ok := typeStyleBoldMap[keyType]; ok {
+		return s
+	}
+	return defaultTypeStyleBold
 }
 
 func formatBytes(bytes int64) string {

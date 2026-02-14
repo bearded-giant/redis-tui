@@ -167,11 +167,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// Tick handler
+// Tick handler — single pass to update TTLs and filter expired keys.
 func (m Model) handleTickMsg() (tea.Model, tea.Cmd) {
 	now := time.Now()
 	if !m.LastTickTime.IsZero() {
 		elapsed := now.Sub(m.LastTickTime)
+
+		if m.CurrentKey != nil && m.CurrentKey.TTL > 0 {
+			m.CurrentKey.TTL -= elapsed
+			if m.CurrentKey.TTL < 0 {
+				m.CurrentKey.TTL = 0
+			}
+		}
+
+		// Single pass: update TTLs and compact expired keys in place
+		n := 0
 		for i := range m.Keys {
 			if m.Keys[i].TTL > 0 {
 				m.Keys[i].TTL -= elapsed
@@ -179,41 +189,25 @@ func (m Model) handleTickMsg() (tea.Model, tea.Cmd) {
 					m.Keys[i].TTL = 0
 				}
 			}
+			if m.Keys[i].TTL != 0 {
+				m.Keys[n] = m.Keys[i]
+				n++
+			}
 		}
-		if m.CurrentKey != nil && m.CurrentKey.TTL > 0 {
-			m.CurrentKey.TTL -= elapsed
-			if m.CurrentKey.TTL < 0 {
-				m.CurrentKey.TTL = 0
+
+		if n < len(m.Keys) {
+			m.Keys = m.Keys[:n]
+			if m.SelectedKeyIdx >= len(m.Keys) && m.SelectedKeyIdx > 0 {
+				m.SelectedKeyIdx = len(m.Keys) - 1
+			}
+			if m.CurrentKey != nil && m.CurrentKey.TTL == 0 {
+				m.CurrentKey = nil
+				m.Screen = types.ScreenKeys
+				m.StatusMsg = "Key expired"
 			}
 		}
 	}
 	m.LastTickTime = now
-
-	// Count expired keys first to avoid unnecessary allocations
-	expiredCount := 0
-	for _, k := range m.Keys {
-		if k.TTL == 0 {
-			expiredCount++
-		}
-	}
-
-	if expiredCount > 0 {
-		activeKeys := make([]types.RedisKey, 0, len(m.Keys)-expiredCount)
-		for _, k := range m.Keys {
-			if k.TTL != 0 {
-				activeKeys = append(activeKeys, k)
-			}
-		}
-		m.Keys = activeKeys
-		if m.SelectedKeyIdx >= len(m.Keys) && m.SelectedKeyIdx > 0 {
-			m.SelectedKeyIdx = len(m.Keys) - 1
-		}
-		if m.CurrentKey != nil && m.CurrentKey.TTL == 0 {
-			m.CurrentKey = nil
-			m.Screen = types.ScreenKeys
-			m.StatusMsg = "Key expired"
-		}
-	}
 
 	var cmds []tea.Cmd
 	cmds = append(cmds, tickCmd())

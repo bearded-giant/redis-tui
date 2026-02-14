@@ -113,8 +113,7 @@ func (m Model) viewTemplates() string {
 		b.WriteString(dimStyle.Render("No templates configured."))
 	} else {
 		for i, tmpl := range m.Templates {
-			typeColor := getTypeColor(tmpl.KeyType)
-			typePart := lipgloss.NewStyle().Foreground(typeColor).Render(string(tmpl.KeyType))
+			typePart := getTypeStyle(tmpl.KeyType).Render(string(tmpl.KeyType))
 
 			if i == m.SelectedTemplateIdx {
 				b.WriteString(selectedStyle.Render(fmt.Sprintf("▶ %-25s %-10s", tmpl.Name, tmpl.KeyType)))

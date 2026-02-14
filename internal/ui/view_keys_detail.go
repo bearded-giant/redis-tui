@@ -25,8 +25,7 @@ func (m Model) viewKeyDetail() string {
 	b.WriteString("\n")
 
 	b.WriteString(keyStyle.Render("Type: "))
-	typeColor := getTypeColor(m.CurrentKey.Type)
-	b.WriteString(lipgloss.NewStyle().Foreground(typeColor).Bold(true).Render(string(m.CurrentKey.Type)))
+	b.WriteString(getTypeStyleBold(m.CurrentKey.Type).Render(string(m.CurrentKey.Type)))
 	b.WriteString("\n")
 
 	b.WriteString(keyStyle.Render("TTL: "))
@@ -36,10 +35,10 @@ func (m Model) viewKeyDetail() string {
 		seconds := int(m.CurrentKey.TTL.Seconds() + 0.5) // round to nearest second
 		ttlStr = fmt.Sprintf("%ds", seconds)
 		if seconds <= 10 {
-			ttlDetailStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true) // Red - critical
+			ttlDetailStyle = ttlCriticalStyle
 			ttlStr = "⚠ " + ttlStr
 		} else if seconds <= 60 {
-			ttlDetailStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3")) // Yellow - warning
+			ttlDetailStyle = ttlWarningStyle
 			ttlStr = "⏱ " + ttlStr
 		} else {
 			ttlDetailStyle = normalStyle
@@ -66,37 +65,39 @@ func (m Model) viewKeyDetail() string {
 		Padding(1, 2).
 		Width(70)
 
-	var valueContent string
+	var vc strings.Builder
 	switch m.CurrentValue.Type {
 	case types.KeyTypeString:
-		valueContent = formatPossibleJSON(m.CurrentValue.StringValue)
+		vc.WriteString(formatPossibleJSON(m.CurrentValue.StringValue))
 	case types.KeyTypeList:
 		if len(m.CurrentValue.ListValue) == 0 {
-			valueContent = "(empty list)"
+			vc.WriteString("(empty list)")
 		} else {
 			for i, v := range m.CurrentValue.ListValue {
-				valueContent += fmt.Sprintf("%d. %s\n", i, formatPossibleJSON(v))
+				fmt.Fprintf(&vc, "%d. %s\n", i, formatPossibleJSON(v))
 			}
 		}
 	case types.KeyTypeSet:
 		if len(m.CurrentValue.SetValue) == 0 {
-			valueContent = "(empty set)"
+			vc.WriteString("(empty set)")
 		} else {
 			for _, v := range m.CurrentValue.SetValue {
-				valueContent += "• " + formatPossibleJSON(v) + "\n"
+				vc.WriteString("• ")
+				vc.WriteString(formatPossibleJSON(v))
+				vc.WriteString("\n")
 			}
 		}
 	case types.KeyTypeZSet:
 		if len(m.CurrentValue.ZSetValue) == 0 {
-			valueContent = "(empty sorted set)"
+			vc.WriteString("(empty sorted set)")
 		} else {
 			for _, v := range m.CurrentValue.ZSetValue {
-				valueContent += fmt.Sprintf("%.2f: %s\n", v.Score, formatPossibleJSON(v.Member))
+				fmt.Fprintf(&vc, "%.2f: %s\n", v.Score, formatPossibleJSON(v.Member))
 			}
 		}
 	case types.KeyTypeHash:
 		if len(m.CurrentValue.HashValue) == 0 {
-			valueContent = "(empty hash)"
+			vc.WriteString("(empty hash)")
 		} else {
 			// Sort hash keys for consistent display
 			hashKeys := make([]string, 0, len(m.CurrentValue.HashValue))
@@ -109,33 +110,33 @@ func (m Model) viewKeyDetail() string {
 				formattedValue := formatPossibleJSON(v)
 				// Check if value is multi-line JSON
 				if strings.Contains(formattedValue, "\n") {
-					valueContent += fmt.Sprintf("◆ %s:\n%s\n", k, formattedValue)
+					fmt.Fprintf(&vc, "◆ %s:\n%s\n", k, formattedValue)
 				} else {
-					valueContent += fmt.Sprintf("◆ %s: %s\n", k, formattedValue)
+					fmt.Fprintf(&vc, "◆ %s: %s\n", k, formattedValue)
 				}
 			}
 		}
 	case types.KeyTypeStream:
 		if len(m.CurrentValue.StreamValue) == 0 {
-			valueContent = "(empty stream)"
+			vc.WriteString("(empty stream)")
 		} else {
 			for _, entry := range m.CurrentValue.StreamValue {
 				// Try to format stream fields as JSON
 				jsonBytes, err := json.MarshalIndent(entry.Fields, "", "  ")
 				if err == nil {
-					valueContent += fmt.Sprintf("%s:\n%s\n", entry.ID, string(jsonBytes))
+					fmt.Fprintf(&vc, "%s:\n%s\n", entry.ID, string(jsonBytes))
 				} else {
 					fields := []string{}
 					for k, v := range entry.Fields {
 						fields = append(fields, fmt.Sprintf("%s=%v", k, v))
 					}
-					valueContent += fmt.Sprintf("%s: %s\n", entry.ID, strings.Join(fields, ", "))
+					fmt.Fprintf(&vc, "%s: %s\n", entry.ID, strings.Join(fields, ", "))
 				}
 			}
 		}
 	}
 
-	b.WriteString(valueBox.Render(strings.TrimSpace(valueContent)))
+	b.WriteString(valueBox.Render(strings.TrimSpace(vc.String())))
 	b.WriteString("\n\n")
 
 	helpText := "t:TTL  d:del  r:refresh  R:rename  c:copy"
@@ -157,8 +158,7 @@ func (m Model) viewAddKey() string {
 	b.WriteString("\n\n")
 
 	b.WriteString(keyStyle.Render("Type: "))
-	typeColor := getTypeColor(m.AddKeyType)
-	b.WriteString(lipgloss.NewStyle().Foreground(typeColor).Bold(true).Render(string(m.AddKeyType)))
+	b.WriteString(getTypeStyleBold(m.AddKeyType).Render(string(m.AddKeyType)))
 	b.WriteString(dimStyle.Render(" (Ctrl+T to change)"))
 	b.WriteString("\n\n")
 

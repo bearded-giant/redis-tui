@@ -82,27 +82,28 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 	return result, nextCursor, nil
 }
 
-// ScanKeysWithRegex scans keys using regex pattern
+// ScanKeysWithRegex scans keys using regex pattern with early termination.
+// Uses incremental SCAN to avoid loading the full keyspace into memory.
 func (c *Client) ScanKeysWithRegex(regexPattern string, maxKeys int) ([]types.RedisKey, error) {
 	re, err := regexp.Compile(regexPattern)
 	if err != nil {
 		return nil, errInvalidRegex(err)
 	}
 
-	allKeys, err := c.scanAll("*", 100)
-	if err != nil {
-		return nil, err
-	}
-
-	// Filter by regex
 	matchingKeys := make([]string, 0, maxKeys)
-	for _, key := range allKeys {
-		if re.MatchString(key) {
-			matchingKeys = append(matchingKeys, key)
-			if len(matchingKeys) >= maxKeys {
-				break
+	scanErr := c.scanEach("*", 100, func(keys []string) bool {
+		for _, key := range keys {
+			if re.MatchString(key) {
+				matchingKeys = append(matchingKeys, key)
+				if len(matchingKeys) >= maxKeys {
+					return false
+				}
 			}
 		}
+		return true
+	})
+	if scanErr != nil {
+		return nil, scanErr
 	}
 
 	if len(matchingKeys) == 0 {
@@ -135,27 +136,29 @@ func (c *Client) ScanKeysWithRegex(regexPattern string, maxKeys int) ([]types.Re
 	return result, nil
 }
 
-// FuzzySearchKeys performs fuzzy matching on key names
+// FuzzySearchKeys performs fuzzy matching on key names.
+// Scans incrementally to avoid holding the full keyspace in memory.
 func (c *Client) FuzzySearchKeys(searchTerm string, maxKeys int) ([]types.RedisKey, error) {
 	searchLower := strings.ToLower(searchTerm)
-
-	allKeys, err := c.scanAll("*", 100)
-	if err != nil {
-		return nil, err
-	}
 
 	type scoredKey struct {
 		key   string
 		score int
 	}
-	scoredKeys := make([]scoredKey, 0, maxKeys*2)
+	var scoredKeys []scoredKey
 
-	for _, key := range allKeys {
-		keyLower := strings.ToLower(key)
-		score := fuzzyScore(keyLower, searchLower)
-		if score > 0 {
-			scoredKeys = append(scoredKeys, scoredKey{key: key, score: score})
+	err := c.scanEach("*", 100, func(keys []string) bool {
+		for _, key := range keys {
+			keyLower := strings.ToLower(key)
+			score := fuzzyScore(keyLower, searchLower)
+			if score > 0 {
+				scoredKeys = append(scoredKeys, scoredKey{key: key, score: score})
+			}
 		}
+		return true // must scan all keys for global top-N
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Sort by score descending
@@ -221,22 +224,27 @@ func fuzzyScore(str, pattern string) int {
 	return 0
 }
 
-// SearchByValue searches for keys containing a value
+// SearchByValue searches for keys containing a value.
+// Uses 2 pipelines per chunk (TYPE + values) and defers TTL to a single final pipeline.
 func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) ([]types.RedisKey, error) {
 	allKeys, err := c.scanAll(pattern, 100)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]types.RedisKey, 0, maxKeys)
+	type match struct {
+		key     string
+		keyType string
+	}
+	matches := make([]match, 0, maxKeys)
 
 	// Process in chunks to keep pipeline sizes reasonable
 	chunkSize := 100
-	for i := 0; i < len(allKeys) && len(result) < maxKeys; i += chunkSize {
+	for i := 0; i < len(allKeys) && len(matches) < maxKeys; i += chunkSize {
 		end := min(i+chunkSize, len(allKeys))
 		keys := allKeys[i:end]
 
-		// First pipeline: get types for all keys
+		// Pipeline 1: get types for all keys
 		typePipe := c.pipeline()
 		typeCmds := make([]*redis.StatusCmd, len(keys))
 		for j, key := range keys {
@@ -249,7 +257,7 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 			keyTypes[j], _ = typeCmds[j].Result()
 		}
 
-		// Second pipeline: get values based on type
+		// Pipeline 2: get values based on type
 		valuePipe := c.pipeline()
 		type valueCmd struct {
 			idx     int
@@ -281,7 +289,6 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 		_, _ = valuePipe.Exec(c.ctx)
 
 		// Find matching keys
-		matchingIndices := make([]int, 0)
 		for _, vc := range valueCmds {
 			found := false
 			switch vc.keyType {
@@ -314,49 +321,56 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 				}
 			}
 			if found {
-				matchingIndices = append(matchingIndices, vc.idx)
-			}
-		}
-
-		if len(matchingIndices) > 0 {
-			ttlPipe := c.pipeline()
-			ttlCmds := make([]*redis.DurationCmd, len(matchingIndices))
-			for j, idx := range matchingIndices {
-				ttlCmds[j] = ttlPipe.TTL(c.ctx, keys[idx])
-			}
-			_, _ = ttlPipe.Exec(c.ctx)
-
-			for j, idx := range matchingIndices {
-				if len(result) >= maxKeys {
+				matches = append(matches, match{key: keys[vc.idx], keyType: keyTypes[vc.idx]})
+				if len(matches) >= maxKeys {
 					break
 				}
-				ttl, _ := ttlCmds[j].Result()
-				result = append(result, types.RedisKey{
-					Key:  keys[idx],
-					Type: types.KeyType(keyTypes[idx]),
-					TTL:  ttl,
-				})
 			}
+		}
+	}
+
+	if len(matches) == 0 {
+		return []types.RedisKey{}, nil
+	}
+
+	// Single final pipeline for TTL of all matches
+	ttlPipe := c.pipeline()
+	ttlCmds := make([]*redis.DurationCmd, len(matches))
+	for j, m := range matches {
+		ttlCmds[j] = ttlPipe.TTL(c.ctx, m.key)
+	}
+	_, _ = ttlPipe.Exec(c.ctx)
+
+	result := make([]types.RedisKey, len(matches))
+	for j, m := range matches {
+		ttl, _ := ttlCmds[j].Result()
+		result[j] = types.RedisKey{
+			Key:  m.key,
+			Type: types.KeyType(m.keyType),
+			TTL:  ttl,
 		}
 	}
 
 	return result, nil
 }
 
-// GetKeyPrefixes returns all unique key prefixes (for tree view)
+// GetKeyPrefixes returns all unique key prefixes (for tree view).
+// Builds the prefix set incrementally to avoid holding all keys in memory.
 func (c *Client) GetKeyPrefixes(separator string, maxDepth int) ([]string, error) {
-	allKeys, err := c.scanAll("*", 500)
+	prefixes := make(map[string]bool)
+
+	err := c.scanEach("*", 500, func(keys []string) bool {
+		for _, key := range keys {
+			parts := strings.Split(key, separator)
+			for i := 1; i <= len(parts) && i <= maxDepth; i++ {
+				prefix := strings.Join(parts[:i], separator)
+				prefixes[prefix] = true
+			}
+		}
+		return true
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	prefixes := make(map[string]bool)
-	for _, key := range allKeys {
-		parts := strings.Split(key, separator)
-		for i := 1; i <= len(parts) && i <= maxDepth; i++ {
-			prefix := strings.Join(parts[:i], separator)
-			prefixes[prefix] = true
-		}
 	}
 
 	result := make([]string, 0, len(prefixes))

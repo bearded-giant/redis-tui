@@ -36,8 +36,7 @@ func (m Model) buildPreviewPanel(width int) string {
 
 	// Type with color
 	b.WriteString(keyStyle.Render("Type: "))
-	typeColor := getTypeColor(selectedKey.Type)
-	b.WriteString(lipgloss.NewStyle().Foreground(typeColor).Bold(true).Render(string(selectedKey.Type)))
+	b.WriteString(getTypeStyleBold(selectedKey.Type).Render(string(selectedKey.Type)))
 	b.WriteString("\n\n")
 
 	// TTL with visual indicator
@@ -45,7 +44,7 @@ func (m Model) buildPreviewPanel(width int) string {
 	if selectedKey.TTL > 0 {
 		seconds := int(selectedKey.TTL.Seconds() + 0.5)
 		var ttlStr string
-		var ttlColor lipgloss.Color
+		var ttlStyle lipgloss.Style
 
 		if seconds < 60 {
 			ttlStr = fmt.Sprintf("%d seconds", seconds)
@@ -58,14 +57,14 @@ func (m Model) buildPreviewPanel(width int) string {
 		}
 
 		if seconds <= 10 {
-			ttlColor = lipgloss.Color("1") // Red
+			ttlStyle = errorStyle // Red
 			ttlStr = "⚠ " + ttlStr
 		} else if seconds <= 60 {
-			ttlColor = lipgloss.Color("3") // Yellow
+			ttlStyle = ttlWarningStyle // Yellow
 		} else {
-			ttlColor = lipgloss.Color("2") // Green
+			ttlStyle = ttlGreenStyle // Green
 		}
-		b.WriteString(lipgloss.NewStyle().Foreground(ttlColor).Render(ttlStr))
+		b.WriteString(ttlStyle.Render(ttlStr))
 	} else {
 		b.WriteString(dimStyle.Render("No expiry"))
 	}
@@ -137,7 +136,7 @@ func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
 			if len(val) > maxWidth-8 {
 				val = val[:maxWidth-11] + "..."
 			}
-			idx := lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(fmt.Sprintf("[%d]", i))
+			idx := dimStyle.Render(fmt.Sprintf("[%d]", i))
 			lines = append(lines, fmt.Sprintf("%s %s", idx, normalStyle.Render(val)))
 		}
 
@@ -217,7 +216,7 @@ func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
 				displayVal = displayVal[:maxValLen-3] + "..."
 			}
 
-			fieldName := lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Render(displayKey)
+			fieldName := hashFieldStyle.Render(displayKey)
 			lines = append(lines, fmt.Sprintf("%s: %s", fieldName, normalStyle.Render(displayVal)))
 		}
 
