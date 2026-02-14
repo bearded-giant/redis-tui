@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/davidbudnick/redis-tui/internal/redis"
@@ -22,12 +23,12 @@ func LoadConnectionsCmd() tea.Cmd {
 	}
 }
 
-func AddConnectionCmd(name, host string, port int, password string, dbNum int) tea.Cmd {
+func AddConnectionCmd(name, host string, port int, password string, dbNum int, useCluster bool) tea.Cmd {
 	return func() tea.Msg {
 		if Config == nil {
 			return types.ConnectionAddedMsg{Err: nil}
 		}
-		conn, err := Config.AddConnection(name, host, port, password, dbNum)
+		conn, err := Config.AddConnection(name, host, port, password, dbNum, useCluster)
 		if err != nil {
 			slog.Error("Failed to add connection", "error", err)
 		}
@@ -35,12 +36,12 @@ func AddConnectionCmd(name, host string, port int, password string, dbNum int) t
 	}
 }
 
-func UpdateConnectionCmd(id int64, name, host string, port int, password string, dbNum int) tea.Cmd {
+func UpdateConnectionCmd(id int64, name, host string, port int, password string, dbNum int, useCluster bool) tea.Cmd {
 	return func() tea.Msg {
 		if Config == nil {
 			return types.ConnectionUpdatedMsg{Err: nil}
 		}
-		conn, err := Config.UpdateConnection(id, name, host, port, password, dbNum)
+		conn, err := Config.UpdateConnection(id, name, host, port, password, dbNum, useCluster)
 		if err != nil {
 			slog.Error("Failed to update connection", "error", err)
 		}
@@ -58,12 +59,17 @@ func DeleteConnectionCmd(id int64) tea.Cmd {
 	}
 }
 
-func ConnectCmd(host string, port int, password string, dbNum int) tea.Cmd {
+func ConnectCmd(host string, port int, password string, dbNum int, useCluster bool) tea.Cmd {
 	return func() tea.Msg {
 		if RedisClient == nil {
 			RedisClient = redis.NewClient()
 		}
-		err := RedisClient.Connect(host, port, password, dbNum)
+		var err error
+		if useCluster {
+			err = RedisClient.ConnectCluster([]string{fmt.Sprintf("%s:%d", host, port)}, password)
+		} else {
+			err = RedisClient.Connect(host, port, password, dbNum)
+		}
 		if err != nil {
 			slog.Error("Failed to connect", "error", err)
 		}

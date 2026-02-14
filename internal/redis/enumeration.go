@@ -11,7 +11,7 @@ import (
 
 // GetTotalKeys returns the total number of keys in the current database
 func (c *Client) GetTotalKeys() int64 {
-	count, err := c.client.DBSize(c.ctx).Result()
+	count, err := c.cmdable().DBSize(c.ctx).Result()
 	if err != nil {
 		return 0
 	}
@@ -24,7 +24,17 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 		pattern = "*"
 	}
 
-	keys, nextCursor, err := c.client.Scan(c.ctx, cursor, pattern, count).Result()
+	var keys []string
+	var nextCursor uint64
+	var err error
+
+	if c.isCluster {
+		// In cluster mode, scan all masters to get keys from every shard
+		keys, err = c.scanAll(pattern, count)
+		nextCursor = 0
+	} else {
+		keys, nextCursor, err = c.client.Scan(c.ctx, cursor, pattern, count).Result()
+	}
 	if err != nil {
 		return nil, 0, err
 	}
@@ -34,7 +44,7 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 	}
 
 	// Use pipeline to batch Type and TTL calls (fixes N+1 query pattern)
-	pipe := c.client.Pipeline()
+	pipe := c.pipeline()
 	typeCmds := make([]*redis.StatusCmd, len(keys))
 	ttlCmds := make([]*redis.DurationCmd, len(keys))
 
@@ -69,56 +79,46 @@ func (c *Client) ScanKeysWithRegex(regexPattern string, maxKeys int) ([]types.Re
 		return nil, errInvalidRegex(err)
 	}
 
-	result := make([]types.RedisKey, 0, maxKeys)
-	var cursor uint64
+	allKeys, err := c.scanAll("*", 100)
+	if err != nil {
+		return nil, err
+	}
 
-	for len(result) < maxKeys {
-		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, "*", 100).Result()
-		if err != nil {
-			return result, err
-		}
-
-		// Filter matching keys first
-		matchingKeys := make([]string, 0, len(keys))
-		for _, key := range keys {
-			if re.MatchString(key) {
-				matchingKeys = append(matchingKeys, key)
-				if len(result)+len(matchingKeys) >= maxKeys {
-					break
-				}
+	// Filter by regex
+	matchingKeys := make([]string, 0, maxKeys)
+	for _, key := range allKeys {
+		if re.MatchString(key) {
+			matchingKeys = append(matchingKeys, key)
+			if len(matchingKeys) >= maxKeys {
+				break
 			}
 		}
+	}
 
-		if len(matchingKeys) > 0 {
-			// Use pipeline to batch Type and TTL calls
-			pipe := c.client.Pipeline()
-			typeCmds := make([]*redis.StatusCmd, len(matchingKeys))
-			ttlCmds := make([]*redis.DurationCmd, len(matchingKeys))
+	if len(matchingKeys) == 0 {
+		return []types.RedisKey{}, nil
+	}
 
-			for i, key := range matchingKeys {
-				typeCmds[i] = pipe.Type(c.ctx, key)
-				ttlCmds[i] = pipe.TTL(c.ctx, key)
-			}
+	// Use pipeline to batch Type and TTL calls
+	pipe := c.pipeline()
+	typeCmds := make([]*redis.StatusCmd, len(matchingKeys))
+	ttlCmds := make([]*redis.DurationCmd, len(matchingKeys))
 
-			_, _ = pipe.Exec(c.ctx)
+	for i, key := range matchingKeys {
+		typeCmds[i] = pipe.Type(c.ctx, key)
+		ttlCmds[i] = pipe.TTL(c.ctx, key)
+	}
 
-			for i, key := range matchingKeys {
-				if len(result) >= maxKeys {
-					break
-				}
-				keyType, _ := typeCmds[i].Result()
-				ttl, _ := ttlCmds[i].Result()
-				result = append(result, types.RedisKey{
-					Key:  key,
-					Type: types.KeyType(keyType),
-					TTL:  ttl,
-				})
-			}
-		}
+	_, _ = pipe.Exec(c.ctx)
 
-		cursor = nextCursor
-		if cursor == 0 {
-			break
+	result := make([]types.RedisKey, len(matchingKeys))
+	for i, key := range matchingKeys {
+		keyType, _ := typeCmds[i].Result()
+		ttl, _ := ttlCmds[i].Result()
+		result[i] = types.RedisKey{
+			Key:  key,
+			Type: types.KeyType(keyType),
+			TTL:  ttl,
 		}
 	}
 
@@ -129,33 +129,22 @@ func (c *Client) ScanKeysWithRegex(regexPattern string, maxKeys int) ([]types.Re
 func (c *Client) FuzzySearchKeys(searchTerm string, maxKeys int) ([]types.RedisKey, error) {
 	searchLower := strings.ToLower(searchTerm)
 
+	allKeys, err := c.scanAll("*", 100)
+	if err != nil {
+		return nil, err
+	}
+
 	type scoredKey struct {
 		key   string
 		score int
 	}
 	scoredKeys := make([]scoredKey, 0, maxKeys*2)
-	var cursor uint64
-	count := 0
 
-	// First pass: find all matching keys with scores (no Redis calls for type/ttl)
-	for count < maxKeys*10 {
-		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, "*", 100).Result()
-		if err != nil {
-			break
-		}
-
-		for _, key := range keys {
-			keyLower := strings.ToLower(key)
-			score := fuzzyScore(keyLower, searchLower)
-			if score > 0 {
-				scoredKeys = append(scoredKeys, scoredKey{key: key, score: score})
-			}
-			count++
-		}
-
-		cursor = nextCursor
-		if cursor == 0 {
-			break
+	for _, key := range allKeys {
+		keyLower := strings.ToLower(key)
+		score := fuzzyScore(keyLower, searchLower)
+		if score > 0 {
+			scoredKeys = append(scoredKeys, scoredKey{key: key, score: score})
 		}
 	}
 
@@ -165,10 +154,7 @@ func (c *Client) FuzzySearchKeys(searchTerm string, maxKeys int) ([]types.RedisK
 	})
 
 	// Limit to maxKeys
-	limit := maxKeys
-	if len(scoredKeys) < limit {
-		limit = len(scoredKeys)
-	}
+	limit := min(maxKeys, len(scoredKeys))
 	scoredKeys = scoredKeys[:limit]
 
 	if len(scoredKeys) == 0 {
@@ -176,7 +162,7 @@ func (c *Client) FuzzySearchKeys(searchTerm string, maxKeys int) ([]types.RedisK
 	}
 
 	// Use pipeline to batch Type and TTL calls for top results only
-	pipe := c.client.Pipeline()
+	pipe := c.pipeline()
 	typeCmds := make([]*redis.StatusCmd, len(scoredKeys))
 	ttlCmds := make([]*redis.DurationCmd, len(scoredKeys))
 
@@ -227,39 +213,34 @@ func fuzzyScore(str, pattern string) int {
 
 // SearchByValue searches for keys containing a value
 func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) ([]types.RedisKey, error) {
+	allKeys, err := c.scanAll(pattern, 100)
+	if err != nil {
+		return nil, err
+	}
+
 	result := make([]types.RedisKey, 0, maxKeys)
-	var cursor uint64
 
-	for len(result) < maxKeys {
-		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, pattern, 100).Result()
-		if err != nil {
-			return result, err
-		}
-
-		if len(keys) == 0 {
-			cursor = nextCursor
-			if cursor == 0 {
-				break
-			}
-			continue
-		}
+	// Process in chunks to keep pipeline sizes reasonable
+	chunkSize := 100
+	for i := 0; i < len(allKeys) && len(result) < maxKeys; i += chunkSize {
+		end := min(i+chunkSize, len(allKeys))
+		keys := allKeys[i:end]
 
 		// First pipeline: get types for all keys
-		typePipe := c.client.Pipeline()
+		typePipe := c.pipeline()
 		typeCmds := make([]*redis.StatusCmd, len(keys))
-		for i, key := range keys {
-			typeCmds[i] = typePipe.Type(c.ctx, key)
+		for j, key := range keys {
+			typeCmds[j] = typePipe.Type(c.ctx, key)
 		}
 		_, _ = typePipe.Exec(c.ctx)
 
-		// Build type map and group keys by type for value fetching
 		keyTypes := make([]string, len(keys))
-		for i := range keys {
-			keyTypes[i], _ = typeCmds[i].Result()
+		for j := range keys {
+			keyTypes[j], _ = typeCmds[j].Result()
 		}
 
 		// Second pipeline: get values based on type
-		valuePipe := c.client.Pipeline()
+		valuePipe := c.pipeline()
 		type valueCmd struct {
 			idx     int
 			keyType string
@@ -270,9 +251,9 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 		}
 		valueCmds := make([]valueCmd, 0, len(keys))
 
-		for i, key := range keys {
-			kt := keyTypes[i]
-			vc := valueCmd{idx: i, keyType: kt}
+		for j, key := range keys {
+			kt := keyTypes[j]
+			vc := valueCmd{idx: j, keyType: kt}
 			switch kt {
 			case "string":
 				vc.strCmd = valuePipe.Get(c.ctx, key)
@@ -289,7 +270,7 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 		}
 		_, _ = valuePipe.Exec(c.ctx)
 
-		// Third pipeline: get TTL only for matching keys
+		// Find matching keys
 		matchingIndices := make([]int, 0)
 		for _, vc := range valueCmds {
 			found := false
@@ -328,29 +309,24 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 		}
 
 		if len(matchingIndices) > 0 {
-			ttlPipe := c.client.Pipeline()
+			ttlPipe := c.pipeline()
 			ttlCmds := make([]*redis.DurationCmd, len(matchingIndices))
-			for i, idx := range matchingIndices {
-				ttlCmds[i] = ttlPipe.TTL(c.ctx, keys[idx])
+			for j, idx := range matchingIndices {
+				ttlCmds[j] = ttlPipe.TTL(c.ctx, keys[idx])
 			}
 			_, _ = ttlPipe.Exec(c.ctx)
 
-			for i, idx := range matchingIndices {
+			for j, idx := range matchingIndices {
 				if len(result) >= maxKeys {
 					break
 				}
-				ttl, _ := ttlCmds[i].Result()
+				ttl, _ := ttlCmds[j].Result()
 				result = append(result, types.RedisKey{
 					Key:  keys[idx],
 					Type: types.KeyType(keyTypes[idx]),
 					TTL:  ttl,
 				})
 			}
-		}
-
-		cursor = nextCursor
-		if cursor == 0 {
-			break
 		}
 	}
 
@@ -359,26 +335,17 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 
 // GetKeyPrefixes returns all unique key prefixes (for tree view)
 func (c *Client) GetKeyPrefixes(separator string, maxDepth int) ([]string, error) {
+	allKeys, err := c.scanAll("*", 500)
+	if err != nil {
+		return nil, err
+	}
+
 	prefixes := make(map[string]bool)
-	var cursor uint64
-
-	for {
-		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, "*", 500).Result()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, key := range keys {
-			parts := strings.Split(key, separator)
-			for i := 1; i <= len(parts) && i <= maxDepth; i++ {
-				prefix := strings.Join(parts[:i], separator)
-				prefixes[prefix] = true
-			}
-		}
-
-		cursor = nextCursor
-		if cursor == 0 {
-			break
+	for _, key := range allKeys {
+		parts := strings.Split(key, separator)
+		for i := 1; i <= len(parts) && i <= maxDepth; i++ {
+			prefix := strings.Join(parts[:i], separator)
+			prefixes[prefix] = true
 		}
 	}
 

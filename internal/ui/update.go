@@ -91,6 +91,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleMemoryStatsLoadedMsg(msg)
 	case types.ClusterInfoLoadedMsg:
 		return m.handleClusterInfoLoadedMsg(msg)
+	case types.ClusterNodesLoadedMsg:
+		return m.handleClusterNodesLoadedMsg(msg)
 	case types.MemoryUsageMsg:
 		return m.handleMemoryUsageMsg(msg)
 

@@ -114,6 +114,16 @@ func GetClusterInfoCmd() tea.Cmd {
 	}
 }
 
+func FetchClusterNodesCmd() tea.Cmd {
+	return func() tea.Msg {
+		if RedisClient == nil {
+			return types.ClusterNodesLoadedMsg{Err: nil}
+		}
+		nodes, err := RedisClient.ClusterNodes()
+		return types.ClusterNodesLoadedMsg{Nodes: nodes, Err: err}
+	}
+}
+
 func LoadLiveMetricsCmd() tea.Cmd {
 	return func() tea.Msg {
 		if RedisClient == nil {

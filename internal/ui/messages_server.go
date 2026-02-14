@@ -85,6 +85,14 @@ func (m Model) handleClusterInfoLoadedMsg(msg types.ClusterInfoLoadedMsg) (tea.M
 	return m, nil
 }
 
+func (m Model) handleClusterNodesLoadedMsg(msg types.ClusterNodesLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.Err == nil {
+		m.ClusterNodes = msg.Nodes
+		m.ClusterEnabled = len(msg.Nodes) > 0
+	}
+	return m, nil
+}
+
 func (m Model) handleMemoryUsageMsg(msg types.MemoryUsageMsg) (tea.Model, tea.Cmd) {
 	m.Loading = false
 	if msg.Err == nil {

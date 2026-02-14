@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -54,12 +55,12 @@ func (c *Commands) LoadConnections() tea.Cmd {
 	}
 }
 
-func (c *Commands) AddConnection(name, host string, port int, password string, dbNum int) tea.Cmd {
+func (c *Commands) AddConnection(name, host string, port int, password string, dbNum int, useCluster bool) tea.Cmd {
 	return func() tea.Msg {
 		if c.config == nil {
 			return types.ConnectionAddedMsg{Err: nil}
 		}
-		conn, err := c.config.AddConnection(name, host, port, password, dbNum)
+		conn, err := c.config.AddConnection(name, host, port, password, dbNum, useCluster)
 		if err != nil {
 			slog.Error("Failed to add connection", "error", err)
 		}
@@ -67,12 +68,12 @@ func (c *Commands) AddConnection(name, host string, port int, password string, d
 	}
 }
 
-func (c *Commands) UpdateConnection(id int64, name, host string, port int, password string, dbNum int) tea.Cmd {
+func (c *Commands) UpdateConnection(id int64, name, host string, port int, password string, dbNum int, useCluster bool) tea.Cmd {
 	return func() tea.Msg {
 		if c.config == nil {
 			return types.ConnectionUpdatedMsg{Err: nil}
 		}
-		conn, err := c.config.UpdateConnection(id, name, host, port, password, dbNum)
+		conn, err := c.config.UpdateConnection(id, name, host, port, password, dbNum, useCluster)
 		if err != nil {
 			slog.Error("Failed to update connection", "error", err)
 		}
@@ -90,12 +91,17 @@ func (c *Commands) DeleteConnection(id int64) tea.Cmd {
 	}
 }
 
-func (c *Commands) Connect(host string, port int, password string, dbNum int) tea.Cmd {
+func (c *Commands) Connect(host string, port int, password string, dbNum int, useCluster bool) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {
 			return types.ConnectedMsg{Err: nil}
 		}
-		err := c.redis.Connect(host, port, password, dbNum)
+		var err error
+		if useCluster {
+			err = c.redis.ConnectCluster([]string{fmt.Sprintf("%s:%d", host, port)}, password)
+		} else {
+			err = c.redis.Connect(host, port, password, dbNum)
+		}
 		if err != nil {
 			slog.Error("Failed to connect", "error", err)
 		}
@@ -165,11 +171,15 @@ func (c *Commands) SetTTL(key string, ttl time.Duration) tea.Cmd {
 	}
 }
 
-func (c *Commands) CreateKey(key string, keyType types.KeyType, value string, ttl time.Duration) tea.Cmd {
+func (c *Commands) CreateKey(key string, keyType types.KeyType, value string, extra string, ttl time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {
 			return types.KeySetMsg{Key: key, Err: nil}
 		}
+
+		// Delete existing key to prevent WRONGTYPE errors
+		_ = c.redis.DeleteKey(key)
+
 		var err error
 		switch keyType {
 		case types.KeyTypeString:
@@ -180,15 +190,22 @@ func (c *Commands) CreateKey(key string, keyType types.KeyType, value string, tt
 			err = c.redis.SAdd(key, value)
 		case types.KeyTypeZSet:
 			score := 0.0
-			if s, parseErr := strconv.ParseFloat(value, 64); parseErr == nil {
-				score = s
-				value = "member"
+			if extra != "" {
+				score, _ = strconv.ParseFloat(extra, 64)
 			}
 			err = c.redis.ZAdd(key, score, value)
 		case types.KeyTypeHash:
-			err = c.redis.HSet(key, "field", value)
+			field := extra
+			if field == "" {
+				field = "field"
+			}
+			err = c.redis.HSet(key, field, value)
 		case types.KeyTypeStream:
-			fields := map[string]interface{}{"data": value}
+			field := extra
+			if field == "" {
+				field = "data"
+			}
+			fields := map[string]interface{}{field: value}
 			_, err = c.redis.XAdd(key, fields)
 		}
 		return types.KeySetMsg{Key: key, Err: err}

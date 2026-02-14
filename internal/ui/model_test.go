@@ -19,8 +19,8 @@ func TestNewModel(t *testing.T) {
 		t.Errorf("ConnInputs length = %d, want 5", len(m.ConnInputs))
 	}
 
-	if len(m.AddKeyInputs) != 2 {
-		t.Errorf("AddKeyInputs length = %d, want 2", len(m.AddKeyInputs))
+	if len(m.AddKeyInputs) != 3 {
+		t.Errorf("AddKeyInputs length = %d, want 3", len(m.AddKeyInputs))
 	}
 
 	if len(m.AddCollectionInput) != 2 {
@@ -158,7 +158,8 @@ func TestModel_ResetAddKeyInputs(t *testing.T) {
 	// Set some values
 	m.AddKeyInputs[0].SetValue("user:123")
 	m.AddKeyInputs[1].SetValue("some value")
-	m.AddKeyFocusIdx = 1
+	m.AddKeyInputs[2].SetValue("extra")
+	m.AddKeyFocusIdx = 2
 	m.AddKeyType = types.KeyTypeHash
 
 	// Reset
@@ -170,6 +171,9 @@ func TestModel_ResetAddKeyInputs(t *testing.T) {
 	}
 	if m.AddKeyInputs[1].Value() != "" {
 		t.Errorf("Value should be empty, got %q", m.AddKeyInputs[1].Value())
+	}
+	if m.AddKeyInputs[2].Value() != "" {
+		t.Errorf("Extra should be empty, got %q", m.AddKeyInputs[2].Value())
 	}
 	if m.AddKeyFocusIdx != 0 {
 		t.Errorf("AddKeyFocusIdx = %d, want 0", m.AddKeyFocusIdx)

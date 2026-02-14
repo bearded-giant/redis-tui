@@ -26,7 +26,7 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Loading = true
 			m.StatusMsg = "Connecting..."
 			m.ConnectionError = "" // Clear any previous connection error
-			return m, cmd.ConnectCmd(conn.Host, conn.Port, conn.Password, conn.DB)
+			return m, cmd.ConnectCmd(conn.Host, conn.Port, conn.Password, conn.DB, conn.UseCluster)
 		}
 	case "a", "n":
 		m.Screen = types.ScreenAddConnection
@@ -52,19 +52,35 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	fieldCount := m.connFieldCount()
+
 	switch msg.String() {
 	case "tab", "down":
-		m.ConnInputs[m.ConnFocusIdx].Blur()
-		m.ConnFocusIdx = (m.ConnFocusIdx + 1) % len(m.ConnInputs)
-		m.ConnInputs[m.ConnFocusIdx].Focus()
+		m.blurConnField()
+		m.ConnFocusIdx = (m.ConnFocusIdx + 1) % fieldCount
+		m.focusConnField()
 	case "shift+tab", "up":
-		m.ConnInputs[m.ConnFocusIdx].Blur()
+		m.blurConnField()
 		m.ConnFocusIdx--
 		if m.ConnFocusIdx < 0 {
-			m.ConnFocusIdx = len(m.ConnInputs) - 1
+			m.ConnFocusIdx = fieldCount - 1
 		}
-		m.ConnInputs[m.ConnFocusIdx].Focus()
+		m.focusConnField()
+	case " ":
+		if m.ConnFocusIdx == 4 {
+			m.ConnClusterMode = !m.ConnClusterMode
+			// If cluster mode just turned on and we're past the DB field, adjust
+			if m.ConnClusterMode && m.ConnFocusIdx >= m.connFieldCount() {
+				m.ConnFocusIdx = m.connFieldCount() - 1
+			}
+			return m, nil
+		}
+		return m.updateConnInputs(msg)
 	case "enter":
+		if m.ConnFocusIdx == 4 {
+			m.ConnClusterMode = !m.ConnClusterMode
+			return m, nil
+		}
 		if m.ConnInputs[0].Value() != "" && m.ConnInputs[1].Value() != "" {
 			m.Loading = true
 			return m, cmd.AddConnectionCmd(
@@ -73,6 +89,7 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.getPort(),
 				m.ConnInputs[3].Value(),
 				m.getDB(),
+				m.ConnClusterMode,
 			)
 		}
 	case "ctrl+t":
@@ -88,31 +105,78 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenConnections
 		m.resetConnInputs()
 	default:
-		var cmds []tea.Cmd
-		for i := range m.ConnInputs {
-			var inputCmd tea.Cmd
-			m.ConnInputs[i], inputCmd = m.ConnInputs[i].Update(msg)
-			cmds = append(cmds, inputCmd)
-		}
-		return m, tea.Batch(cmds...)
+		return m.updateConnInputs(msg)
+	}
+	return m, nil
+}
+
+// connInputIndex maps a ConnFocusIdx to the actual ConnInputs array index.
+// Indices 0-3 map directly to ConnInputs[0-3], index 4 is the cluster toggle (no input),
+// and index 5 maps to ConnInputs[4] (Database).
+func connInputIndex(focusIdx int) int {
+	if focusIdx <= 3 {
+		return focusIdx
+	}
+	if focusIdx == 5 {
+		return 4 // Database input
+	}
+	return -1 // cluster toggle, no text input
+}
+
+func (m *Model) blurConnField() {
+	idx := connInputIndex(m.ConnFocusIdx)
+	if idx >= 0 && idx < len(m.ConnInputs) {
+		m.ConnInputs[idx].Blur()
+	}
+}
+
+func (m *Model) focusConnField() {
+	idx := connInputIndex(m.ConnFocusIdx)
+	if idx >= 0 && idx < len(m.ConnInputs) {
+		m.ConnInputs[idx].Focus()
+	}
+}
+
+func (m Model) updateConnInputs(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Only update the focused text input, not the cluster toggle
+	idx := connInputIndex(m.ConnFocusIdx)
+	if idx >= 0 && idx < len(m.ConnInputs) {
+		var inputCmd tea.Cmd
+		m.ConnInputs[idx], inputCmd = m.ConnInputs[idx].Update(msg)
+		return m, inputCmd
 	}
 	return m, nil
 }
 
 func (m Model) handleEditConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	fieldCount := m.connFieldCount()
+
 	switch msg.String() {
 	case "tab", "down":
-		m.ConnInputs[m.ConnFocusIdx].Blur()
-		m.ConnFocusIdx = (m.ConnFocusIdx + 1) % len(m.ConnInputs)
-		m.ConnInputs[m.ConnFocusIdx].Focus()
+		m.blurConnField()
+		m.ConnFocusIdx = (m.ConnFocusIdx + 1) % fieldCount
+		m.focusConnField()
 	case "shift+tab", "up":
-		m.ConnInputs[m.ConnFocusIdx].Blur()
+		m.blurConnField()
 		m.ConnFocusIdx--
 		if m.ConnFocusIdx < 0 {
-			m.ConnFocusIdx = len(m.ConnInputs) - 1
+			m.ConnFocusIdx = fieldCount - 1
 		}
-		m.ConnInputs[m.ConnFocusIdx].Focus()
+		m.focusConnField()
+	case " ":
+		if m.ConnFocusIdx == 4 {
+			m.ConnClusterMode = !m.ConnClusterMode
+			if m.ConnClusterMode && m.ConnFocusIdx >= m.connFieldCount() {
+				m.ConnFocusIdx = m.connFieldCount() - 1
+			}
+			return m, nil
+		}
+		return m.updateConnInputs(msg)
 	case "enter":
+		if m.ConnFocusIdx == 4 {
+			m.ConnClusterMode = !m.ConnClusterMode
+			return m, nil
+		}
 		if m.EditingConnection != nil && m.ConnInputs[0].Value() != "" && m.ConnInputs[1].Value() != "" {
 			m.Loading = true
 			return m, cmd.UpdateConnectionCmd(
@@ -122,6 +186,7 @@ func (m Model) handleEditConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.getPort(),
 				m.ConnInputs[3].Value(),
 				m.getDB(),
+				m.ConnClusterMode,
 			)
 		}
 	case "esc":
@@ -129,13 +194,7 @@ func (m Model) handleEditConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.EditingConnection = nil
 		m.resetConnInputs()
 	default:
-		var cmds []tea.Cmd
-		for i := range m.ConnInputs {
-			var inputCmd tea.Cmd
-			m.ConnInputs[i], inputCmd = m.ConnInputs[i].Update(msg)
-			cmds = append(cmds, inputCmd)
-		}
-		return m, tea.Batch(cmds...)
+		return m.updateConnInputs(msg)
 	}
 	return m, nil
 }

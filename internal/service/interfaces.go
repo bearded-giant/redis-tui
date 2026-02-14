@@ -13,8 +13,8 @@ import (
 type ConfigService interface {
 	// Connection management
 	ListConnections() ([]types.Connection, error)
-	AddConnection(name, host string, port int, password string, db int) (types.Connection, error)
-	UpdateConnection(id int64, name, host string, port int, password string, db int) (types.Connection, error)
+	AddConnection(name, host string, port int, password string, db int, useCluster bool) (types.Connection, error)
+	UpdateConnection(id int64, name, host string, port int, password string, db int, useCluster bool) (types.Connection, error)
 	DeleteConnection(id int64) error
 
 	// Favorites management

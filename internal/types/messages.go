@@ -193,6 +193,12 @@ type ClusterInfoLoadedMsg struct {
 	Err   error
 }
 
+// ClusterNodesLoadedMsg is dispatched after connect to populate node count (without navigating to cluster screen).
+type ClusterNodesLoadedMsg struct {
+	Nodes []ClusterNode
+	Err   error
+}
+
 type BatchTTLSetMsg struct {
 	Pattern string
 	Count   int

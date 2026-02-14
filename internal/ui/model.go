@@ -114,6 +114,7 @@ type Model struct {
 	ClusterNodes    []types.ClusterNode
 	ClusterEnabled  bool
 	SelectedNodeIdx int
+	ConnClusterMode bool
 
 	// Compare keys
 	CompareKey1Input textinput.Model
@@ -332,6 +333,7 @@ func (m *Model) resetConnInputs() {
 	m.ConnInputs[4].SetValue("0")
 	m.ConnInputs[0].Focus()
 	m.ConnFocusIdx = 0
+	m.ConnClusterMode = false
 }
 
 func (m *Model) resetAddKeyInputs() {
@@ -352,6 +354,17 @@ func (m *Model) populateConnInputs(conn types.Connection) {
 	m.ConnInputs[2].SetValue(strconv.Itoa(conn.Port))
 	m.ConnInputs[3].SetValue(conn.Password)
 	m.ConnInputs[4].SetValue(strconv.Itoa(conn.DB))
+	m.ConnClusterMode = conn.UseCluster
+}
+
+// connFieldCount returns the number of focusable fields in the connection form.
+// When cluster mode is on, the DB field is skipped (5 fields: name, host, port, password, cluster toggle).
+// Otherwise there are 6 fields: name, host, port, password, cluster toggle, database.
+func (m Model) connFieldCount() int {
+	if m.ConnClusterMode {
+		return 5
+	}
+	return 6
 }
 
 func (m *Model) resetAddCollectionInputs() {

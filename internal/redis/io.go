@@ -9,57 +9,48 @@ import (
 
 // ExportKeys exports keys matching a pattern to a map
 func (c *Client) ExportKeys(pattern string) (map[string]interface{}, error) {
+	allKeys, err := c.scanAll(pattern, 100)
+	if err != nil {
+		return nil, err
+	}
+
 	export := make(map[string]interface{})
-	var cursor uint64
-
-	for {
-		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, pattern, 100).Result()
+	for _, key := range allKeys {
+		value, err := c.GetValue(key)
 		if err != nil {
-			return export, err
+			continue
+		}
+		ttl, _ := c.cmdable().TTL(c.ctx, key).Result()
+
+		keyData := map[string]interface{}{
+			"type": string(value.Type),
+			"ttl":  ttl.Seconds(),
 		}
 
-		for _, key := range keys {
-			value, err := c.GetValue(key)
-			if err != nil {
-				continue
+		switch value.Type {
+		case types.KeyTypeString:
+			keyData["value"] = value.StringValue
+		case types.KeyTypeList:
+			keyData["value"] = value.ListValue
+		case types.KeyTypeSet:
+			keyData["value"] = value.SetValue
+		case types.KeyTypeZSet:
+			members := make([]map[string]interface{}, len(value.ZSetValue))
+			for i, m := range value.ZSetValue {
+				members[i] = map[string]interface{}{"member": m.Member, "score": m.Score}
 			}
-			ttl, _ := c.client.TTL(c.ctx, key).Result()
-
-			keyData := map[string]interface{}{
-				"type": string(value.Type),
-				"ttl":  ttl.Seconds(),
+			keyData["value"] = members
+		case types.KeyTypeHash:
+			keyData["value"] = value.HashValue
+		case types.KeyTypeStream:
+			entries := make([]map[string]interface{}, len(value.StreamValue))
+			for i, e := range value.StreamValue {
+				entries[i] = map[string]interface{}{"id": e.ID, "fields": e.Fields}
 			}
-
-			switch value.Type {
-			case types.KeyTypeString:
-				keyData["value"] = value.StringValue
-			case types.KeyTypeList:
-				keyData["value"] = value.ListValue
-			case types.KeyTypeSet:
-				keyData["value"] = value.SetValue
-			case types.KeyTypeZSet:
-				members := make([]map[string]interface{}, len(value.ZSetValue))
-				for i, m := range value.ZSetValue {
-					members[i] = map[string]interface{}{"member": m.Member, "score": m.Score}
-				}
-				keyData["value"] = members
-			case types.KeyTypeHash:
-				keyData["value"] = value.HashValue
-			case types.KeyTypeStream:
-				entries := make([]map[string]interface{}, len(value.StreamValue))
-				for i, e := range value.StreamValue {
-					entries[i] = map[string]interface{}{"id": e.ID, "fields": e.Fields}
-				}
-				keyData["value"] = entries
-			}
-
-			export[key] = keyData
+			keyData["value"] = entries
 		}
 
-		cursor = nextCursor
-		if cursor == 0 {
-			break
-		}
+		export[key] = keyData
 	}
 
 	return export, nil

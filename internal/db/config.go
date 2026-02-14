@@ -170,20 +170,21 @@ func (c *Config) ListConnections() ([]types.Connection, error) {
 	return result, nil
 }
 
-func (c *Config) AddConnection(name, host string, port int, password string, db int) (types.Connection, error) {
+func (c *Config) AddConnection(name, host string, port int, password string, db int, useCluster bool) (types.Connection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	now := time.Now()
 	conn := types.Connection{
-		ID:       c.nextID,
-		Name:     name,
-		Host:     host,
-		Port:     port,
-		Password: password,
-		DB:       db,
-		Created:  now,
-		Updated:  now,
+		ID:         c.nextID,
+		Name:       name,
+		Host:       host,
+		Port:       port,
+		Password:   password,
+		DB:         db,
+		UseCluster: useCluster,
+		Created:    now,
+		Updated:    now,
 	}
 	c.nextID++
 
@@ -198,7 +199,7 @@ func (c *Config) AddConnection(name, host string, port int, password string, db 
 	return conn, nil
 }
 
-func (c *Config) UpdateConnection(id int64, name, host string, port int, password string, db int) (types.Connection, error) {
+func (c *Config) UpdateConnection(id int64, name, host string, port int, password string, db int, useCluster bool) (types.Connection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -206,20 +207,21 @@ func (c *Config) UpdateConnection(id int64, name, host string, port int, passwor
 		if conn.ID == id {
 			now := time.Now()
 			updatedConn := types.Connection{
-				ID:        id,
-				Name:      name,
-				Host:      host,
-				Port:      port,
-				Password:  password,
-				DB:        db,
-				Group:     conn.Group,
-				Color:     conn.Color,
-				UseSSH:    conn.UseSSH,
-				SSHConfig: conn.SSHConfig,
-				UseTLS:    conn.UseTLS,
-				TLSConfig: conn.TLSConfig,
-				Created:   conn.Created,
-				Updated:   now,
+				ID:         id,
+				Name:       name,
+				Host:       host,
+				Port:       port,
+				Password:   password,
+				DB:         db,
+				Group:      conn.Group,
+				Color:      conn.Color,
+				UseSSH:     conn.UseSSH,
+				SSHConfig:  conn.SSHConfig,
+				UseTLS:     conn.UseTLS,
+				TLSConfig:  conn.TLSConfig,
+				UseCluster: useCluster,
+				Created:    conn.Created,
+				Updated:    now,
 			}
 
 			c.Connections[i] = updatedConn

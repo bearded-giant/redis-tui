@@ -144,14 +144,16 @@ func (m Model) viewConnections() string {
 			hostPort := fmt.Sprintf("   %s:%d", conn.Host, conn.Port)
 			card.WriteString(dimStyle.Render(hostPort))
 
-			// Database badge
-			dbBadge := lipgloss.NewStyle().
-				Background(lipgloss.Color("236")).
-				Foreground(lipgloss.Color("245")).
-				Padding(0, 1).
-				Render(fmt.Sprintf("db%d", conn.DB))
-			card.WriteString("  ")
-			card.WriteString(dbBadge)
+			// Database badge (hide in cluster mode — clusters don't use databases)
+			if !conn.UseCluster {
+				dbBadge := lipgloss.NewStyle().
+					Background(lipgloss.Color("236")).
+					Foreground(lipgloss.Color("245")).
+					Padding(0, 1).
+					Render(fmt.Sprintf("db%d", conn.DB))
+				card.WriteString("  ")
+				card.WriteString(dbBadge)
+			}
 
 			// TLS indicator
 			if conn.UseTLS {
@@ -162,6 +164,17 @@ func (m Model) viewConnections() string {
 					Render("TLS")
 				card.WriteString(" ")
 				card.WriteString(tlsBadge)
+			}
+
+			// Cluster indicator
+			if conn.UseCluster {
+				clusterBadge := lipgloss.NewStyle().
+					Background(lipgloss.Color("53")).
+					Foreground(lipgloss.Color("213")).
+					Padding(0, 1).
+					Render("CLUSTER")
+				card.WriteString(" ")
+				card.WriteString(clusterBadge)
 			}
 
 			// Render the card with appropriate style
@@ -256,18 +269,7 @@ func (m Model) viewAddConnection() string {
 	b.WriteString(titleStyle.Render("Add Connection"))
 	b.WriteString("\n\n")
 
-	labels := []string{"Name", "Host", "Port", "Password", "Database"}
-
-	for i, input := range m.ConnInputs {
-		labelStyle := keyStyle
-		if m.ConnFocusIdx == i {
-			labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
-		}
-		b.WriteString(labelStyle.Render(labels[i] + ":"))
-		b.WriteString("\n")
-		b.WriteString(input.View())
-		b.WriteString("\n\n")
-	}
+	b.WriteString(m.renderConnForm())
 
 	// Action buttons hint
 	actions := lipgloss.NewStyle().
@@ -278,7 +280,7 @@ func (m Model) viewAddConnection() string {
 	b.WriteString(actions)
 	b.WriteString("\n\n")
 
-	b.WriteString(helpStyle.Render("tab:next  enter:save  esc:cancel"))
+	b.WriteString(helpStyle.Render("tab:next  space:toggle  enter:save  esc:cancel"))
 
 	modalWidth := 55
 	if m.Width-10 < 55 {
@@ -299,20 +301,9 @@ func (m Model) viewEditConnection() string {
 	b.WriteString(titleStyle.Render("Edit Connection"))
 	b.WriteString("\n\n")
 
-	labels := []string{"Name", "Host", "Port", "Password", "Database"}
+	b.WriteString(m.renderConnForm())
 
-	for i, input := range m.ConnInputs {
-		labelStyle := keyStyle
-		if m.ConnFocusIdx == i {
-			labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
-		}
-		b.WriteString(labelStyle.Render(labels[i] + ":"))
-		b.WriteString("\n")
-		b.WriteString(input.View())
-		b.WriteString("\n\n")
-	}
-
-	b.WriteString(helpStyle.Render("tab:next  enter:save  esc:cancel"))
+	b.WriteString(helpStyle.Render("tab:next  space:toggle  enter:save  esc:cancel"))
 
 	modalWidth := 55
 	if m.Width-10 < 55 {
@@ -325,4 +316,54 @@ func (m Model) viewEditConnection() string {
 		Width(modalWidth)
 
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, modalStyle.Render(b.String()))
+}
+
+// renderConnForm renders the shared connection form fields (name, host, port, password, cluster toggle, database).
+func (m Model) renderConnForm() string {
+	var b strings.Builder
+
+	// Fields 0-3: Name, Host, Port, Password (text inputs)
+	textLabels := []string{"Name", "Host", "Port", "Password"}
+	for i := 0; i < 4; i++ {
+		labelStyle := keyStyle
+		if m.ConnFocusIdx == i {
+			labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
+		}
+		b.WriteString(labelStyle.Render(textLabels[i] + ":"))
+		b.WriteString("\n")
+		b.WriteString(m.ConnInputs[i].View())
+		b.WriteString("\n\n")
+	}
+
+	// Field 4: Cluster toggle
+	clusterLabelStyle := keyStyle
+	if m.ConnFocusIdx == 4 {
+		clusterLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
+	}
+	b.WriteString(clusterLabelStyle.Render("Cluster:"))
+	b.WriteString("\n")
+	checkbox := "[ ] Cluster Mode"
+	if m.ConnClusterMode {
+		checkbox = "[x] Cluster Mode"
+	}
+	checkboxStyle := normalStyle
+	if m.ConnFocusIdx == 4 {
+		checkboxStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+	}
+	b.WriteString(checkboxStyle.Render(checkbox))
+	b.WriteString("\n\n")
+
+	// Field 5: Database (only when not in cluster mode)
+	if !m.ConnClusterMode {
+		dbLabelStyle := keyStyle
+		if m.ConnFocusIdx == 5 {
+			dbLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
+		}
+		b.WriteString(dbLabelStyle.Render("Database:"))
+		b.WriteString("\n")
+		b.WriteString(m.ConnInputs[4].View())
+		b.WriteString("\n\n")
+	}
+
+	return b.String()
 }

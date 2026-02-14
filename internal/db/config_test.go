@@ -55,7 +55,7 @@ func TestNewConfig_CreatesDirectory(t *testing.T) {
 func TestConfig_AddConnection(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "secret", 0)
+	conn, err := cfg.AddConnection("test", "localhost", 6379, "secret", 0, false)
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -86,9 +86,9 @@ func TestConfig_AddConnection(t *testing.T) {
 func TestConfig_AddConnection_IncrementingIDs(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn1, _ := cfg.AddConnection("test1", "localhost", 6379, "", 0)
-	conn2, _ := cfg.AddConnection("test2", "localhost", 6380, "", 0)
-	conn3, _ := cfg.AddConnection("test3", "localhost", 6381, "", 0)
+	conn1, _ := cfg.AddConnection("test1", "localhost", 6379, "", 0, false)
+	conn2, _ := cfg.AddConnection("test2", "localhost", 6380, "", 0, false)
+	conn3, _ := cfg.AddConnection("test3", "localhost", 6381, "", 0, false)
 
 	if conn2.ID <= conn1.ID {
 		t.Errorf("conn2.ID (%d) should be greater than conn1.ID (%d)", conn2.ID, conn1.ID)
@@ -102,9 +102,9 @@ func TestConfig_ListConnections(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	// Add connections in non-alphabetical order
-	cfg.AddConnection("zebra", "localhost", 6379, "", 0)
-	cfg.AddConnection("alpha", "localhost", 6380, "", 0)
-	cfg.AddConnection("beta", "localhost", 6381, "", 0)
+	cfg.AddConnection("zebra", "localhost", 6379, "", 0, false)
+	cfg.AddConnection("alpha", "localhost", 6380, "", 0, false)
+	cfg.AddConnection("beta", "localhost", 6381, "", 0, false)
 
 	connections, err := cfg.ListConnections()
 	if err != nil {
@@ -130,10 +130,10 @@ func TestConfig_ListConnections(t *testing.T) {
 func TestConfig_UpdateConnection(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, _ := cfg.AddConnection("original", "localhost", 6379, "old", 0)
+	conn, _ := cfg.AddConnection("original", "localhost", 6379, "old", 0, false)
 	originalCreated := conn.Created
 
-	updated, err := cfg.UpdateConnection(conn.ID, "updated", "newhost", 6380, "new", 1)
+	updated, err := cfg.UpdateConnection(conn.ID, "updated", "newhost", 6380, "new", 1, false)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestConfig_UpdateConnection(t *testing.T) {
 func TestConfig_UpdateConnection_NotFound(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	_, err := cfg.UpdateConnection(999, "test", "localhost", 6379, "", 0)
+	_, err := cfg.UpdateConnection(999, "test", "localhost", 6379, "", 0, false)
 	if !os.IsNotExist(err) {
 		t.Errorf("Expected os.ErrNotExist, got %v", err)
 	}
@@ -173,7 +173,7 @@ func TestConfig_UpdateConnection_NotFound(t *testing.T) {
 func TestConfig_DeleteConnection(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, _ := cfg.AddConnection("test", "localhost", 6379, "", 0)
+	conn, _ := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
 
 	err := cfg.DeleteConnection(conn.ID)
 	if err != nil {
@@ -376,7 +376,7 @@ func TestConfig_Persistence(t *testing.T) {
 
 	// Create config and add data
 	cfg1, _ := NewConfig(path)
-	cfg1.AddConnection("test", "localhost", 6379, "pass", 0)
+	cfg1.AddConnection("test", "localhost", 6379, "pass", 0, false)
 	cfg1.AddFavorite(1, "key1", "label")
 
 	// Create new config from same file
@@ -473,7 +473,7 @@ func TestConfig_Groups(t *testing.T) {
 	}
 
 	// Add connection to group
-	conn, _ := cfg.AddConnection("test", "localhost", 6379, "", 0)
+	conn, _ := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
 	err = cfg.AddConnectionToGroup("Production", conn.ID)
 	if err != nil {
 		t.Fatalf("AddConnectionToGroup failed: %v", err)

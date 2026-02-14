@@ -55,7 +55,13 @@ func (m Model) viewKeysListOnly() string {
 
 	connInfo := ""
 	if m.CurrentConn != nil {
-		connInfo = fmt.Sprintf(" - %s (%s:%d/db%d)", m.CurrentConn.Name, m.CurrentConn.Host, m.CurrentConn.Port, m.CurrentConn.DB)
+		if m.CurrentConn.UseCluster {
+			nodeCount := len(m.ClusterNodes)
+			connInfo = fmt.Sprintf(" - %s (%s:%d) cluster (%d nodes)",
+				m.CurrentConn.Name, m.CurrentConn.Host, m.CurrentConn.Port, nodeCount)
+		} else {
+			connInfo = fmt.Sprintf(" - %s (%s:%d/db%d)", m.CurrentConn.Name, m.CurrentConn.Host, m.CurrentConn.Port, m.CurrentConn.DB)
+		}
 	}
 
 	titleText := "Keys" + connInfo
@@ -177,7 +183,12 @@ func (m Model) buildKeysListPanel(width int) string {
 	// Title with connection info
 	connInfo := ""
 	if m.CurrentConn != nil {
-		connInfo = fmt.Sprintf(" - %s", m.CurrentConn.Name)
+		if m.CurrentConn.UseCluster {
+			nodeCount := len(m.ClusterNodes)
+			connInfo = fmt.Sprintf(" - %s cluster (%d nodes)", m.CurrentConn.Name, nodeCount)
+		} else {
+			connInfo = fmt.Sprintf(" - %s", m.CurrentConn.Name)
+		}
 	}
 	titleText := "Keys" + connInfo
 	if m.TotalKeys > 0 {

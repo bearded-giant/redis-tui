@@ -12,7 +12,7 @@ import (
 
 // GetServerInfo returns server information
 func (c *Client) GetServerInfo() (types.ServerInfo, error) {
-	info, err := c.client.Info(c.ctx).Result()
+	info, err := c.cmdable().Info(c.ctx).Result()
 	if err != nil {
 		return types.ServerInfo{}, err
 	}
@@ -60,7 +60,7 @@ func (c *Client) GetServerInfo() (types.ServerInfo, error) {
 		}
 	}
 
-	dbInfo, err := c.client.DBSize(c.ctx).Result()
+	dbInfo, err := c.cmdable().DBSize(c.ctx).Result()
 	if err == nil {
 		serverInfo.TotalKeys = strconv.FormatInt(dbInfo, 10)
 	}
@@ -73,7 +73,7 @@ func (c *Client) GetMemoryStats() (types.MemoryStats, error) {
 	var stats types.MemoryStats
 	stats.ByType = make(map[types.KeyType]int64)
 
-	info, err := c.client.Info(c.ctx, "memory").Result()
+	info, err := c.cmdable().Info(c.ctx, "memory").Result()
 	if err != nil {
 		return stats, err
 	}
@@ -110,57 +110,46 @@ func (c *Client) getTopKeysByMemory(limit int) []types.KeyMemory {
 		memory int64
 	}
 
-	// Pre-allocate with reasonable capacity to reduce allocations
+	scannedKeys, err := c.scanAll("*", 100)
+	if err != nil || len(scannedKeys) == 0 {
+		return nil
+	}
+
+	// Limit samples to avoid excessive pipeline calls
 	maxSamples := limit * 5
-	allKeys := make([]keyMem, 0, maxSamples)
-	var cursor uint64
+	if len(scannedKeys) > maxSamples {
+		scannedKeys = scannedKeys[:maxSamples]
+	}
 
-	for {
-		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, "*", 100).Result()
-		if err != nil {
-			break
-		}
+	// Use pipeline to batch MemoryUsage and Type calls
+	allKeys := make([]keyMem, 0, len(scannedKeys))
+	chunkSize := 100
+	for i := 0; i < len(scannedKeys); i += chunkSize {
+		end := min(i+chunkSize, len(scannedKeys))
+		keys := scannedKeys[i:end]
 
-		if len(keys) == 0 {
-			cursor = nextCursor
-			if cursor == 0 {
-				break
-			}
-			continue
-		}
-
-		// Use pipeline to batch MemoryUsage and Type calls
-		pipe := c.client.Pipeline()
+		pipe := c.pipeline()
 		memCmds := make([]*redis.IntCmd, len(keys))
 		typeCmds := make([]*redis.StatusCmd, len(keys))
 
-		for i, key := range keys {
-			memCmds[i] = pipe.MemoryUsage(c.ctx, key)
-			typeCmds[i] = pipe.Type(c.ctx, key)
+		for j, key := range keys {
+			memCmds[j] = pipe.MemoryUsage(c.ctx, key)
+			typeCmds[j] = pipe.Type(c.ctx, key)
 		}
 
 		_, _ = pipe.Exec(c.ctx)
 
-		for i, key := range keys {
-			mem, err := memCmds[i].Result()
-			if err != nil {
+		for j, key := range keys {
+			mem, memErr := memCmds[j].Result()
+			if memErr != nil {
 				continue
 			}
-			keyType, _ := typeCmds[i].Result()
+			keyType, _ := typeCmds[j].Result()
 			allKeys = append(allKeys, keyMem{
 				key:    key,
 				typ:    types.KeyType(keyType),
 				memory: mem,
 			})
-			// Break early if we have enough samples
-			if len(allKeys) >= maxSamples {
-				break
-			}
-		}
-
-		cursor = nextCursor
-		if cursor == 0 || len(allKeys) >= maxSamples {
-			break
 		}
 	}
 
@@ -182,12 +171,12 @@ func (c *Client) getTopKeysByMemory(limit int) []types.KeyMemory {
 
 // FlushDB flushes the current database
 func (c *Client) FlushDB() error {
-	return c.client.FlushDB(c.ctx).Err()
+	return c.cmdable().FlushDB(c.ctx).Err()
 }
 
 // SlowLogGet returns slow log entries
 func (c *Client) SlowLogGet(count int64) ([]types.SlowLogEntry, error) {
-	result, err := c.client.SlowLogGet(c.ctx, count).Result()
+	result, err := c.cmdable().SlowLogGet(c.ctx, count).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -209,12 +198,12 @@ func (c *Client) SlowLogGet(count int64) ([]types.SlowLogEntry, error) {
 
 // Eval executes a Lua script
 func (c *Client) Eval(script string, keys []string, args ...interface{}) (interface{}, error) {
-	return c.client.Eval(c.ctx, script, keys, args...).Result()
+	return c.cmdable().Eval(c.ctx, script, keys, args...).Result()
 }
 
 // ClientList returns connected clients
 func (c *Client) ClientList() ([]types.ClientInfo, error) {
-	result, err := c.client.ClientList(c.ctx).Result()
+	result, err := c.cmdable().ClientList(c.ctx).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +315,7 @@ func (c *Client) ClusterInfo() (string, error) {
 
 // GetLiveMetrics returns real-time server metrics
 func (c *Client) GetLiveMetrics() (types.LiveMetricsData, error) {
-	info, err := c.client.Info(c.ctx, "stats", "memory", "clients", "cpu").Result()
+	info, err := c.cmdable().Info(c.ctx, "stats", "memory", "clients", "cpu").Result()
 	if err != nil {
 		return types.LiveMetricsData{}, err
 	}
