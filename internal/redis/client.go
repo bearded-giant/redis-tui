@@ -30,6 +30,7 @@ type Client struct {
 	db       int
 
 	isCluster      bool
+	includeTypes   bool
 	pubsub         *redis.PubSub
 	keyspacePS     *redis.PubSub
 	eventHandlers  []func(types.KeyspaceEvent)
@@ -98,6 +99,12 @@ func (c *Client) scanAll(pattern string, batchSize int64) ([]string, error) {
 func NewClient() *Client {
 	return &Client{
 		ctx:           context.Background(),
+		includeTypes:  true,
 		eventHandlers: []func(types.KeyspaceEvent){},
 	}
+}
+
+// SetIncludeTypes controls whether TYPE is fetched during key scanning
+func (c *Client) SetIncludeTypes(v bool) {
+	c.includeTypes = v
 }

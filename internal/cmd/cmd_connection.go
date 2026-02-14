@@ -64,6 +64,7 @@ func ConnectCmd(host string, port int, password string, dbNum int, useCluster bo
 		if RedisClient == nil {
 			RedisClient = redis.NewClient()
 		}
+		RedisClient.SetIncludeTypes(IncludeTypes)
 		var err error
 		if useCluster {
 			err = RedisClient.ConnectCluster([]string{fmt.Sprintf("%s:%d", host, port)}, password)
@@ -91,6 +92,7 @@ func AutoConnectCmd(conn types.Connection) tea.Cmd {
 		if RedisClient == nil {
 			RedisClient = redis.NewClient()
 		}
+		RedisClient.SetIncludeTypes(IncludeTypes)
 		var err error
 		if conn.UseCluster {
 			err = RedisClient.ConnectCluster([]string{fmt.Sprintf("%s:%d", conn.Host, conn.Port)}, conn.Password)

@@ -43,14 +43,21 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 		return []types.RedisKey{}, nextCursor, nil
 	}
 
-	// Use pipeline to batch Type and TTL calls (fixes N+1 query pattern)
+	// Use pipeline to batch TTL (and optionally TYPE) calls
 	pipe := c.pipeline()
-	typeCmds := make([]*redis.StatusCmd, len(keys))
+	var typeCmds []*redis.StatusCmd
 	ttlCmds := make([]*redis.DurationCmd, len(keys))
 
-	for i, key := range keys {
-		typeCmds[i] = pipe.Type(c.ctx, key)
-		ttlCmds[i] = pipe.TTL(c.ctx, key)
+	if c.includeTypes {
+		typeCmds = make([]*redis.StatusCmd, len(keys))
+		for i, key := range keys {
+			typeCmds[i] = pipe.Type(c.ctx, key)
+			ttlCmds[i] = pipe.TTL(c.ctx, key)
+		}
+	} else {
+		for i, key := range keys {
+			ttlCmds[i] = pipe.TTL(c.ctx, key)
+		}
 	}
 
 	_, err = pipe.Exec(c.ctx)
@@ -60,7 +67,10 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 
 	result := make([]types.RedisKey, len(keys))
 	for i, key := range keys {
-		keyType, _ := typeCmds[i].Result()
+		var keyType string
+		if c.includeTypes && typeCmds != nil {
+			keyType, _ = typeCmds[i].Result()
+		}
 		ttl, _ := ttlCmds[i].Result()
 		result[i] = types.RedisKey{
 			Key:  key,

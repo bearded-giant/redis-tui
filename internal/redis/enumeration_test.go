@@ -106,6 +106,32 @@ func TestScanKeys(t *testing.T) {
 	})
 }
 
+func TestScanKeys_WithoutTypes(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	mr.Set("key:1", "val1")
+	mr.Set("key:2", "val2")
+
+	client.SetIncludeTypes(false)
+
+	keys, _, err := client.ScanKeys("key:*", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys() error = %v", err)
+	}
+	if len(keys) != 2 {
+		t.Fatalf("ScanKeys() returned %d keys, want 2", len(keys))
+	}
+	for _, k := range keys {
+		if k.Type != "" {
+			t.Errorf("key %q type = %q, want empty when includeTypes=false", k.Key, k.Type)
+		}
+		// TTL should still be populated (miniredis returns -1 for no expiry)
+		if k.TTL == 0 {
+			t.Errorf("key %q TTL should be non-zero (no expiry = -1)", k.Key)
+		}
+	}
+}
+
 func TestScanKeysWithRegex(t *testing.T) {
 	t.Run("matches regex pattern", func(t *testing.T) {
 		client, mr := setupTestClient(t)

@@ -56,7 +56,7 @@ func main() {
 }
 
 func parseCLIFlags() *types.Connection {
-	conn, showVersion, doUpdate, err := parseFlags(os.Args[1:])
+	conn, showVersion, doUpdate, scanSize, includeTypes, err := parseFlags(os.Args[1:])
 	if err != nil {
 		if err == flag.ErrHelp {
 			os.Exit(0)
@@ -74,13 +74,15 @@ func parseCLIFlags() *types.Connection {
 		}
 		os.Exit(0)
 	}
+	cmd.ScanSize = scanSize
+	cmd.IncludeTypes = includeTypes
 	return conn
 }
 
 // parseFlags parses the given args into a Connection. Returns nil when no
 // --host is provided (interactive mode). showVersion is true when --version
 // was requested. Returns an error if flag parsing fails.
-func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpdate bool, err error) {
+func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpdate bool, scanSize int64, includeTypes bool, err error) {
 	fs := flag.NewFlagSet("redis-tui", flag.ContinueOnError)
 
 	host := fs.String("host", "", "Redis server hostname (required for quick-connect mode)")
@@ -96,6 +98,8 @@ func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpda
 	tlsSkipVerify := fs.Bool("tls-skip-verify", false, "Skip TLS certificate verification")
 	version := fs.Bool("version", false, "Print version and exit")
 	update := fs.Bool("update", false, "Update to the latest version")
+	scanSizeFlag := fs.Int64("scan-size", 1000, "Redis SCAN COUNT hint (batch size for key scanning)")
+	includeTypesFlag := fs.Bool("include-types", true, "Fetch key types during scan (set false to skip)")
 
 	// Short aliases
 	fs.StringVar(host, "h", "", "Redis server hostname (shorthand)")
@@ -118,25 +122,27 @@ func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpda
 		fmt.Fprintf(os.Stderr, "      --tls-key string    TLS client private key file\n")
 		fmt.Fprintf(os.Stderr, "      --tls-ca string     TLS CA certificate file\n")
 		fmt.Fprintf(os.Stderr, "      --tls-skip-verify   Skip TLS certificate verification\n")
+		fmt.Fprintf(os.Stderr, "      --scan-size int     Redis SCAN COUNT hint (default 1000)\n")
+		fmt.Fprintf(os.Stderr, "      --include-types     Fetch key types during scan (default true)\n")
 		fmt.Fprintf(os.Stderr, "      --version           Print version and exit\n")
 		fmt.Fprintf(os.Stderr, "      --update            Update to the latest version\n")
 	}
 
 	if err := fs.Parse(args); err != nil {
-		return nil, false, false, err
+		return nil, false, false, 0, false, err
 	}
 
 	if *version {
-		return nil, true, false, nil
+		return nil, true, false, *scanSizeFlag, *includeTypesFlag, nil
 	}
 
 	if *update {
-		return nil, false, true, nil
+		return nil, false, true, *scanSizeFlag, *includeTypesFlag, nil
 	}
 
 	// If no host flag provided, return nil (normal interactive mode)
 	if *host == "" {
-		return nil, false, false, nil
+		return nil, false, false, *scanSizeFlag, *includeTypesFlag, nil
 	}
 
 	conn = &types.Connection{
@@ -163,7 +169,7 @@ func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpda
 		}
 	}
 
-	return conn, false, false, nil
+	return conn, false, false, *scanSizeFlag, *includeTypesFlag, nil
 }
 
 func initConfig() (*db.Config, error) {

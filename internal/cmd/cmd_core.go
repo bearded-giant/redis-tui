@@ -6,6 +6,8 @@ import (
 )
 
 var (
-	Config      *db.Config
-	RedisClient *redis.Client
+	Config       *db.Config
+	RedisClient  *redis.Client
+	ScanSize     int64 = 1000
+	IncludeTypes bool  = true
 )

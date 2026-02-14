@@ -41,6 +41,10 @@ func (m Model) handleKeyValueLoadedMsg(msg types.KeyValueLoadedMsg) (tea.Model, 
 		m.StatusMsg = "Error: " + msg.Err.Error()
 	} else {
 		m.CurrentValue = msg.Value
+		// On-demand type resolution: fill in type if it was not fetched during scan
+		if m.CurrentKey != nil && m.CurrentKey.Type == "" && msg.Value.Type != "" {
+			m.CurrentKey.Type = msg.Value.Type
+		}
 		m.Screen = types.ScreenKeyDetail
 	}
 	return m, nil
@@ -54,6 +58,10 @@ func (m Model) handleKeyPreviewLoadedMsg(msg types.KeyPreviewLoadedMsg) (tea.Mod
 	if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) && m.Keys[m.SelectedKeyIdx].Key == msg.Key {
 		m.PreviewKey = msg.Key
 		m.PreviewValue = msg.Value
+		// On-demand type resolution: fill in type if it was not fetched during scan
+		if m.Keys[m.SelectedKeyIdx].Type == "" && msg.Value.Type != "" {
+			m.Keys[m.SelectedKeyIdx].Type = msg.Value.Type
+		}
 	}
 	return m, nil
 }
@@ -90,7 +98,7 @@ func (m Model) handleKeySetMsg(msg types.KeySetMsg) (tea.Model, tea.Cmd) {
 	m.StatusMsg = "Key saved"
 	m.Screen = types.ScreenKeys
 	m.resetAddKeyInputs()
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, 1000)
+	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.ScanSize)
 }
 
 func (m Model) handleKeyRenamedMsg(msg types.KeyRenamedMsg) (tea.Model, tea.Cmd) {
@@ -122,7 +130,7 @@ func (m Model) handleKeyCopiedMsg(msg types.KeyCopiedMsg) (tea.Model, tea.Cmd) {
 	m.StatusMsg = "Key copied to " + msg.DestKey
 	m.Screen = types.ScreenKeyDetail
 	m.KeyCursor = 0
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, 1000)
+	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.ScanSize)
 }
 
 // Value message handlers
@@ -200,5 +208,5 @@ func (m Model) handleBatchTTLSetMsg(msg types.BatchTTLSetMsg) (tea.Model, tea.Cm
 	m.StatusMsg = "Set TTL on " + strconv.Itoa(msg.Count) + " keys"
 	m.Screen = types.ScreenKeys
 	m.KeyCursor = 0
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, 100)
+	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.ScanSize)
 }

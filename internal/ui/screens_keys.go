@@ -57,7 +57,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.PatternInput.Blur()
 			m.KeyCursor = 0
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, 0, 1000)
+			return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.ScanSize)
 		case "esc":
 			m.PatternInput.Blur()
 			m.PatternInput.SetValue(m.KeyPattern)
@@ -133,11 +133,11 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		m.Loading = true
 		m.KeyCursor = 0
-		return m, cmd.LoadKeysCmd(m.KeyPattern, 0, 1000)
+		return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.ScanSize)
 	case "l":
 		if m.KeyCursor > 0 {
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, m.KeyCursor, 1000)
+			return m, cmd.LoadKeysCmd(m.KeyPattern, m.KeyCursor, cmd.ScanSize)
 		}
 	case "i":
 		return m, cmd.LoadServerInfoCmd()
