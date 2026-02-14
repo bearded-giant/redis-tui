@@ -48,7 +48,7 @@ func fetchLatestTag() (string, error) {
 		return "", err
 	}
 
-	resp, err := http.DefaultClient.Do(req) // #nosec G107 - URL built from hardcoded GitHub API base
+	resp, err := http.DefaultClient.Do(req) // #nosec G107 G704 - URL built from hardcoded GitHub API base
 	if err != nil {
 		return "", err
 	}
