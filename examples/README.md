@@ -28,6 +28,21 @@ Connect with redis-tui using any node port (`6380`-`6385`):
 redis-tui -c localhost:6380
 ```
 
+## Seed Data
+
+Populate an instance with sample data covering every data type:
+
+```sh
+# Standalone (localhost:6379)
+go run ./examples/seed
+
+# Cluster
+go run ./examples/seed -addr localhost:6380 -cluster
+
+# Flush existing data before seeding
+go run ./examples/seed -flush
+```
+
 ## Cleanup
 
 ```sh
