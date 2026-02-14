@@ -82,6 +82,11 @@ func (m Model) handleConnectedMsg(msg types.ConnectedMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.ConnectionError = ""
+	m.Keys = nil
+	m.KeyCursor = 0
+	m.SelectedKeyIdx = 0
+	m.KeyPattern = ""
+	m.CurrentKey = nil
 	m.LiveMetrics = nil
 	m.LiveMetricsActive = false
 	m.Screen = types.ScreenKeys

@@ -12,8 +12,31 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// cleanup closes existing connections before establishing a new one
+func (c *Client) cleanup() {
+	if c.keyspacePS != nil {
+		_ = c.keyspacePS.Close()
+		c.keyspacePS = nil
+	}
+	if c.pubsub != nil {
+		_ = c.pubsub.Close()
+		c.pubsub = nil
+	}
+	if c.cluster != nil {
+		_ = c.cluster.Close()
+		c.cluster = nil
+	}
+	if c.client != nil {
+		_ = c.client.Close()
+		c.client = nil
+	}
+	c.isCluster = false
+}
+
 // Connect establishes a connection to Redis
 func (c *Client) Connect(host string, port int, password string, db int) error {
+	c.cleanup()
+
 	c.host = host
 	c.port = port
 	c.password = password
@@ -37,6 +60,8 @@ func (c *Client) Connect(host string, port int, password string, db int) error {
 
 // ConnectWithTLS establishes a TLS connection to Redis
 func (c *Client) ConnectWithTLS(host string, port int, password string, db int, tlsConfig *tls.Config) error {
+	c.cleanup()
+
 	c.host = host
 	c.port = port
 	c.password = password
@@ -61,6 +86,8 @@ func (c *Client) ConnectWithTLS(host string, port int, password string, db int, 
 
 // ConnectCluster establishes a connection to a Redis cluster
 func (c *Client) ConnectCluster(addrs []string, password string) error {
+	c.cleanup()
+
 	c.isCluster = true
 	c.password = password
 
