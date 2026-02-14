@@ -59,25 +59,6 @@ snapshot:
 changelog:
   sort: asc
   use: github
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - Merge pull request
-      - Merge branch
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
-      order: 0
-    - title: Bug Fixes
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
-      order: 1
-    - title: Performance
-      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
-      order: 2
-    - title: Others
-      order: 999
 
 homebrew_casks:
   - name: redis-tui
@@ -114,8 +95,6 @@ release:
   name_template: "Redis TUI v{{.Version}}"
   header: |
     ## What's New in Redis TUI v{{.Version}}
-    
-    See the full changelog below for all changes.
   footer: |
     ## Installation
     
