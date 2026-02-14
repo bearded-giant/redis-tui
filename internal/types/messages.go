@@ -354,6 +354,13 @@ type ConfigSetMsg struct {
 	Err   error
 }
 
+// UpdateAvailableMsg is sent when a newer version is found on GitHub
+type UpdateAvailableMsg struct {
+	LatestVersion string
+	UpgradeCmd    string
+	Err           error
+}
+
 // EditorSaveMsg is sent when user saves in vim editor (:w)
 type EditorSaveMsg struct {
 	Content string

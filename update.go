@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -49,7 +50,15 @@ func runUpdate(currentVersion string) error {
 	}
 
 	if err := checkWriteAccess(execPath); err != nil {
-		return fmt.Errorf("no write permission for %s; try:\n  sudo redis-tui --update", execPath)
+		fmt.Printf("Elevated permissions required to update %s\n", execPath)
+		sudoCmd := exec.Command("sudo", execPath, "--update") // #nosec G204 - execPath is from os.Executable resolved via EvalSymlinks
+		sudoCmd.Stdin = os.Stdin
+		sudoCmd.Stdout = os.Stdout
+		sudoCmd.Stderr = os.Stderr
+		if err := sudoCmd.Run(); err != nil {
+			return fmt.Errorf("update with elevated permissions failed: %w", err)
+		}
+		return nil
 	}
 
 	latest, err := fetchLatestVersion()

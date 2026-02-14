@@ -90,5 +90,8 @@ func (m Model) getStatusBar() string {
 		}
 		return successStyle.Render(m.StatusMsg)
 	}
+	if m.UpdateAvailable != "" {
+		return dimStyle.Render("Update available: " + m.UpdateAvailable + " — run: " + m.UpdateCmd)
+	}
 	return ""
 }

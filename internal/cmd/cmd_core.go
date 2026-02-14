@@ -10,4 +10,5 @@ var (
 	RedisClient  *redis.Client
 	ScanSize     int64 = 1000
 	IncludeTypes bool  = true
+	Version      string
 )

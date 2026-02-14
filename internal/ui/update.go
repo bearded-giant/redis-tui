@@ -154,6 +154,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.ClipboardCopiedMsg:
 		return m.handleClipboardCopiedMsg(msg)
 
+	// Version check
+	case types.UpdateAvailableMsg:
+		if msg.Err == nil && msg.LatestVersion != "" {
+			m.UpdateAvailable = msg.LatestVersion
+			m.UpdateCmd = msg.UpgradeCmd
+		}
+		return m, nil
+
 	// Editor messages (from vimtea :w/:q commands)
 	case types.EditorSaveMsg:
 		if m.CurrentKey != nil {

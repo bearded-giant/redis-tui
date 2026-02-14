@@ -180,6 +180,10 @@ type Model struct {
 	// CLI auto-connect (set when --host flag is provided)
 	CLIConnection *types.Connection
 
+	// Update notification
+	UpdateAvailable string
+	UpdateCmd       string
+
 	// Lazy initialization flag
 	inputsInitialized bool
 }
@@ -315,6 +319,7 @@ func createPubSubInputs() []textinput.Model {
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		cmd.LoadConnectionsCmd(),
+		cmd.CheckVersionCmd(cmd.Version),
 		func() tea.Msg { return tea.EnableBracketedPaste() },
 	}
 	if m.CLIConnection != nil {

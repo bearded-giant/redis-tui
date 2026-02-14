@@ -76,6 +76,7 @@ func parseCLIFlags() *types.Connection {
 	}
 	cmd.ScanSize = scanSize
 	cmd.IncludeTypes = includeTypes
+	cmd.Version = version
 	return conn
 }
 
