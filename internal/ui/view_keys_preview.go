@@ -28,7 +28,7 @@ func (m Model) buildPreviewPanel(width int) string {
 	// Key name (with word wrap for long keys)
 	b.WriteString(keyStyle.Render("Key: "))
 	keyName := selectedKey.Key
-	if len(keyName) > width-6 {
+	if width > 12 && len(keyName) > width-6 {
 		keyName = keyName[:width-9] + "..."
 	}
 	b.WriteString(normalStyle.Render(keyName))
@@ -98,6 +98,9 @@ func (m Model) buildPreviewPanel(width int) string {
 }
 
 func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
+	if maxWidth < 15 {
+		return dimStyle.Render("(too narrow)")
+	}
 	var lines []string
 
 	switch m.PreviewValue.Type {

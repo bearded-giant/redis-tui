@@ -78,7 +78,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "down", "j":
-		if m.SelectedKeyIdx < len(m.Keys)-1 {
+		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys)-1 {
 			m.SelectedKeyIdx++
 			if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
 				return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
@@ -93,12 +93,12 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
 		}
 	case "pgdown", "ctrl+d":
+		if len(m.Keys) == 0 {
+			return m, nil
+		}
 		m.SelectedKeyIdx += 10
 		if m.SelectedKeyIdx >= len(m.Keys) {
 			m.SelectedKeyIdx = len(m.Keys) - 1
-		}
-		if m.SelectedKeyIdx < 0 {
-			m.SelectedKeyIdx = 0
 		}
 		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
 			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)

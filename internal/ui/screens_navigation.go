@@ -190,7 +190,7 @@ func (m Model) handleExpiringKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.SelectedKeyIdx--
 		}
 	case "down", "j":
-		if m.SelectedKeyIdx < len(m.ExpiringKeys)-1 {
+		if len(m.ExpiringKeys) > 0 && m.SelectedKeyIdx < len(m.ExpiringKeys)-1 {
 			m.SelectedKeyIdx++
 		}
 	case "enter":

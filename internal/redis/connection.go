@@ -167,7 +167,14 @@ func (c *Client) SelectDB(db int) error {
 	if c.isCluster {
 		return fmt.Errorf("database selection not supported in cluster mode")
 	}
-	return c.client.Do(c.ctx, "SELECT", db).Err()
+	if c.client == nil {
+		return fmt.Errorf("not connected")
+	}
+	if err := c.client.Do(c.ctx, "SELECT", db).Err(); err != nil {
+		return err
+	}
+	c.db = db
+	return nil
 }
 
 // TestConnection tests a connection
