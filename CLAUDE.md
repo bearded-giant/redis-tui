@@ -10,10 +10,10 @@ Redis TUI Manager — a terminal user interface for managing Redis databases, bu
 make build        # Build binary to bin/redis-tui
 make test         # Run tests: go test -v ./...
 make test-cover   # Tests with coverage report
-make lint         # Run golangci-lint
+make lint         # Run go vet
 make fmt          # Format code with go fmt
 make run          # Run the application
-make dev-deps     # Install golangci-lint and goreleaser
+make dev-deps     # Install goreleaser
 ```
 
 CI runs `go test -v -race -coverprofile=coverage.out ./...` — always ensure tests pass with `-race`.

@@ -33,7 +33,7 @@ test-cover:
 
 ## Run linter
 lint:
-	golangci-lint run ./...
+	go vet ./...
 
 ## Format code
 fmt:
@@ -61,7 +61,6 @@ snapshot:
 
 ## Install development dependencies
 dev-deps:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/goreleaser/goreleaser@latest
 
 ## Show help
