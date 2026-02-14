@@ -3,3 +3,5 @@
 /dist
 /redis-tui
 bin/
+
+redis.test
