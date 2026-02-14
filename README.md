@@ -52,41 +52,37 @@ go install github.com/davidbudnick/redis-tui@latest
 
 ### Live Metrics Dashboard
 ```
-                        📊 Live Metrics Dashboard
-                        master (localhost:6379)
-         ────────────────────────────────────────────────────────────
+Live Metrics Dashboard
+master (localhost:6379)  data points: 15/60
+──────────────────────────────────────────────────────────────
 
-      Ops/sec:      0       Memory:   1.5 MB      Blocked:      0
-      Clients:      3       Net In:   0.03 KB/s   Net Out:   2.36 KB/s
-      Hit Rate: 100.0%      Expired:        1     Evicted:        0
+  Performance
+╭──────────────────────╮╭──────────────────────╮╭──────────────────────╮
+│ Ops/sec              ││ Hit Rate             ││ CPU (sys+user)       │
+│ 42                   ││ 98.5%                ││ 1.23s                │
+╰──────────────────────╯╰──────────────────────╯╰──────────────────────╯
+  Resources
+╭──────────────────────╮╭──────────────────────╮╭──────────────────────╮
+│ Memory               ││ Connected Clients    ││ Blocked Clients      │
+│ 1.5 MB               ││ 3                    ││ 0                    │
+╰──────────────────────╯╰──────────────────────╯╰──────────────────────╯
+  Network
+╭──────────────────────╮╭──────────────────────╮╭──────────────────────╮
+│ Input KB/s           ││ Output KB/s          ││ Total Connections    │
+│ 0.03                 ││ 2.36                 ││ 127                  │
+╰──────────────────────╯╰──────────────────────╯╰──────────────────────╯
 
-         ────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────
 
-                           Ops/sec  0.0 (max: 43.0)
-     ▆▆▆▆▆▆▆▆▆▆▆▆███████████
-     ███████████████████████
-     ███████████████████████
-     ███████████████████████
-     ███████████████████████
-     ███████████████████████           ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
-     ────────────────────────────────────────────────────────────────
-                         Memory (MB)  1.5 (max: 1.5)
-                █████████████████████████████████
-                █████████████████████████████████
-                █████████████████████████████████
-                █████████████████████████████████
-     ████████████████████████████████████████████           █████████
-     ████████████████████████████████████████████           █████████
-     ────────────────────────────────────────────────────────────────
-                         Network KB/s  2.4 (max: 6.0)
-             ███████████
-             ███████████
-             ███████████
-     ▆▆▆▆▆▆▆▆▆▆▆▆███████████
-     ███████████████████████▁▁▁▁▁▁▁▁▁▁▁                 ▁▁▁▁▁▁▁▁▁▁▁
-     ────────────────────────────────────────────────────────────────
+╭──────────────────────────────────────────────────────────────╮
+│ Ops/sec  42.0 (max: 120.0)                                   │
+│  120.0 ▆▆███████████                                         │
+│        ███████████████████████                               │
+│        ███████████████████████           ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁    │
+│        ──────────────────────────────────────────────────    │
+╰──────────────────────────────────────────────────────────────╯
 
-                    Auto-refreshing • c:clear • q/esc:back
+              Auto-refreshing (1s) | c:clear | q/esc:back
 ```
 
 ## Features
@@ -107,10 +103,10 @@ go install github.com/davidbudnick/redis-tui@latest
 - **SSH tunneling** for secure remote access
 - **Connection groups** to organize instances
 - **Database switching** between Redis databases (0-15)
-- **Cluster support** — connect to any cluster node and press `C` to view all nodes, their roles (master/replica), slot ranges, and link state
+- **Cluster support** — connect to any cluster node and press `C` to view all nodes, their roles (master/replica), slot ranges, and link state; cluster metrics in the live dashboard
 
 ### Monitoring and Operations
-- **Live metrics dashboard** — real-time ops/sec, memory, network I/O, hit rate, and client count with scrolling ASCII charts
+- **Live metrics dashboard** — real-time ops/sec, memory, CPU, network I/O, hit rate, and client count with scrolling ASCII charts; cluster node count display
 - **Server info** — version, mode, OS, uptime, memory, and connected clients
 - **Memory stats** — detailed usage breakdown and top keys by memory consumption
 - **Slow log** — view slow query entries with execution time and command details

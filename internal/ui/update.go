@@ -218,6 +218,9 @@ func (m Model) handleTickMsg() (tea.Model, tea.Cmd) {
 	if m.WatchActive {
 		cmds = append(cmds, cmd.WatchKeyTickCmd())
 	}
+	if m.LiveMetricsActive {
+		cmds = append(cmds, cmd.LoadLiveMetricsCmd())
+	}
 	return m, tea.Batch(cmds...)
 }
 

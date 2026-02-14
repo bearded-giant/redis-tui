@@ -82,6 +82,8 @@ func (m Model) handleConnectedMsg(msg types.ConnectedMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.ConnectionError = ""
+	m.LiveMetrics = nil
+	m.LiveMetricsActive = false
 	m.Screen = types.ScreenKeys
 	m.StatusMsg = "Connected"
 	var sendFunc func(tea.Msg)
@@ -99,6 +101,8 @@ func (m Model) handleDisconnectedMsg() (tea.Model, tea.Cmd) {
 	m.CurrentConn = nil
 	m.Keys = nil
 	m.CurrentKey = nil
+	m.LiveMetrics = nil
+	m.LiveMetricsActive = false
 	m.Screen = types.ScreenConnections
 	m.StatusMsg = "Disconnected"
 	return m, cmd.UnsubscribeKeyspaceCmd()

@@ -11,36 +11,55 @@ import (
 func (m Model) viewLiveMetrics() string {
 	var b strings.Builder
 
-	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
-	b.WriteString(titleStyle.Render("📊 Live Metrics Dashboard"))
-	b.WriteString("\n")
-
-	connInfo := ""
-	if m.CurrentConn != nil {
-		connInfo = fmt.Sprintf("%s (%s:%d)", m.CurrentConn.Name, m.CurrentConn.Host, m.CurrentConn.Port)
-	}
-	b.WriteString(dimStyle.Render(connInfo))
-	b.WriteString("\n")
-
 	separatorWidth := m.Width - 10
 	if separatorWidth < 20 {
 		separatorWidth = 20
 	}
-	if separatorWidth > 60 {
-		separatorWidth = 60
+	if separatorWidth > 80 {
+		separatorWidth = 80
 	}
+
+	// Header box
+	headerTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("Live Metrics Dashboard")
+	b.WriteString(headerTitle)
+	b.WriteString("\n")
+
+	// Connection info line
+	connInfo := ""
+	if m.CurrentConn != nil {
+		connInfo = fmt.Sprintf("%s (%s:%d)", m.CurrentConn.Name, m.CurrentConn.Host, m.CurrentConn.Port)
+	}
+
+	if m.LiveMetrics != nil && len(m.LiveMetrics.DataPoints) > 0 {
+		connInfo += fmt.Sprintf("  data points: %d/%d", len(m.LiveMetrics.DataPoints), m.LiveMetrics.MaxDataPoints)
+	}
+
+	b.WriteString(dimStyle.Render(connInfo))
+
+	// Cluster badge — based on connection config, not server detection
+	if m.CurrentConn != nil && m.CurrentConn.UseCluster {
+		clusterBadge := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("208")).
+			Padding(0, 1).
+			Render(fmt.Sprintf("CLUSTER  %d nodes", len(m.ClusterNodes)))
+		b.WriteString("  ")
+		b.WriteString(clusterBadge)
+	}
+
+	b.WriteString("\n")
 	b.WriteString(dimStyle.Render(strings.Repeat("─", separatorWidth)))
 	b.WriteString("\n\n")
 
 	if m.LiveMetrics == nil || len(m.LiveMetrics.DataPoints) == 0 {
 		b.WriteString(dimStyle.Render("Collecting metrics..."))
 		b.WriteString("\n\n")
-		b.WriteString(helpStyle.Render("Press q/esc to go back"))
+		b.WriteString(helpStyle.Render("Auto-refreshing (1s) | c:clear | q/esc:back"))
 		return b.String()
 	}
 
-	// Calculate available width for charts
+	// Chart dimensions
 	chartWidth := m.Width - 20
 	if chartWidth < 30 {
 		chartWidth = 30
@@ -49,89 +68,134 @@ func (m Model) viewLiveMetrics() string {
 		chartWidth = 100
 	}
 
-	// Get latest data point for current values
 	latest := m.LiveMetrics.DataPoints[len(m.LiveMetrics.DataPoints)-1]
 
-	// Current stats in a nice grid layout
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	valueStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
-
-	// Calculate hit rate
+	// Calculate derived stats
 	hitRate := float64(0)
 	if latest.KeyspaceHits+latest.KeyspaceMisses > 0 {
 		hitRate = float64(latest.KeyspaceHits) / float64(latest.KeyspaceHits+latest.KeyspaceMisses) * 100
 	}
+	cpuTotal := latest.UsedCPUSys + latest.UsedCPUUser
 
-	// Stats grid - 3 columns
-	col1 := fmt.Sprintf("%s %s\n%s %s\n%s %s",
-		labelStyle.Render("Ops/sec:"),
-		valueStyle.Render(fmt.Sprintf("%6.0f", latest.OpsPerSec)),
-		labelStyle.Render("Clients:"),
-		valueStyle.Render(fmt.Sprintf("%6d", latest.ConnectedClients)),
-		labelStyle.Render("Hit Rate:"),
-		valueStyle.Render(fmt.Sprintf("%5.1f%%", hitRate)),
+	// Stat card styles
+	cardBorder := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Padding(0, 1).
+		Width(22)
+
+	cardLabel := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	cardValue := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
+	greenValue := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("35"))
+	yellowValue := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("33"))
+
+	// Build stat cards — Performance row
+	perfOps := cardBorder.Render(
+		cardLabel.Render("Ops/sec") + "\n" +
+			cardValue.Render(fmt.Sprintf("%.0f", latest.OpsPerSec)),
+	)
+	perfHit := cardBorder.Render(
+		cardLabel.Render("Hit Rate") + "\n" +
+			greenValue.Render(fmt.Sprintf("%.1f%%", hitRate)),
+	)
+	perfCPU := cardBorder.Render(
+		cardLabel.Render("CPU (sys+user)") + "\n" +
+			yellowValue.Render(fmt.Sprintf("%.2fs", cpuTotal)),
 	)
 
-	col2 := fmt.Sprintf("%s %s\n%s %s\n%s %s",
-		labelStyle.Render("Memory:"),
-		valueStyle.Render(fmt.Sprintf("%8s", formatBytes(latest.UsedMemoryBytes))),
-		labelStyle.Render("Net In:"),
-		valueStyle.Render(fmt.Sprintf("%6.2f KB/s", latest.InputKbps)),
-		labelStyle.Render("Expired:"),
-		valueStyle.Render(fmt.Sprintf("%8d", latest.ExpiredKeys)),
+	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render("  Performance"))
+	b.WriteString("\n")
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, perfOps, perfHit, perfCPU))
+	b.WriteString("\n")
+
+	// Resources row
+	resMem := cardBorder.Render(
+		cardLabel.Render("Memory") + "\n" +
+			cardValue.Render(formatBytes(latest.UsedMemoryBytes)),
+	)
+	resClients := cardBorder.Render(
+		cardLabel.Render("Connected Clients") + "\n" +
+			greenValue.Render(fmt.Sprintf("%d", latest.ConnectedClients)),
+	)
+	resBlocked := cardBorder.Render(
+		cardLabel.Render("Blocked Clients") + "\n" +
+			yellowValue.Render(fmt.Sprintf("%d", latest.BlockedClients)),
 	)
 
-	col3 := fmt.Sprintf("%s %s\n%s %s\n%s %s",
-		labelStyle.Render("Blocked:"),
-		valueStyle.Render(fmt.Sprintf("%6d", latest.BlockedClients)),
-		labelStyle.Render("Net Out:"),
-		valueStyle.Render(fmt.Sprintf("%6.2f KB/s", latest.OutputKbps)),
-		labelStyle.Render("Evicted:"),
-		valueStyle.Render(fmt.Sprintf("%8d", latest.EvictedKeys)),
+	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render("  Resources"))
+	b.WriteString("\n")
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, resMem, resClients, resBlocked))
+	b.WriteString("\n")
+
+	// Network row
+	netIn := cardBorder.Render(
+		cardLabel.Render("Input KB/s") + "\n" +
+			cardValue.Render(fmt.Sprintf("%.2f", latest.InputKbps)),
+	)
+	netOut := cardBorder.Render(
+		cardLabel.Render("Output KB/s") + "\n" +
+			cardValue.Render(fmt.Sprintf("%.2f", latest.OutputKbps)),
+	)
+	netTotal := cardBorder.Render(
+		cardLabel.Render("Total Connections") + "\n" +
+			greenValue.Render(fmt.Sprintf("%d", latest.TotalConnections)),
 	)
 
-	colStyle := lipgloss.NewStyle().Width(22)
-	statsRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		colStyle.Render(col1),
-		colStyle.Render(col2),
-		colStyle.Render(col3),
-	)
-	b.WriteString(statsRow)
+	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render("  Network"))
+	b.WriteString("\n")
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, netIn, netOut, netTotal))
 	b.WriteString("\n\n")
 
 	// Charts section
-	b.WriteString(dimStyle.Render(strings.Repeat("─", 60)))
+	b.WriteString(dimStyle.Render(strings.Repeat("─", separatorWidth)))
 	b.WriteString("\n\n")
 
-	// Ops/sec line chart
+	chartBorder := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("237")).
+		Padding(0, 1)
+
+	// Ops/sec chart
 	opsData := make([]float64, len(m.LiveMetrics.DataPoints))
 	for i, dp := range m.LiveMetrics.DataPoints {
 		opsData[i] = dp.OpsPerSec
 	}
-	b.WriteString(renderLineChart("Ops/sec", opsData, chartWidth, 6, lipgloss.Color("39")))
+	b.WriteString(chartBorder.Render(renderLineChart("Ops/sec", opsData, chartWidth, 6, lipgloss.Color("39"))))
+	b.WriteString("\n")
 
-	// Memory line chart
+	// Memory chart
 	memData := make([]float64, len(m.LiveMetrics.DataPoints))
 	for i, dp := range m.LiveMetrics.DataPoints {
-		memData[i] = float64(dp.UsedMemoryBytes) / 1024 / 1024 // Convert to MB
+		memData[i] = float64(dp.UsedMemoryBytes) / 1024 / 1024
 	}
-	b.WriteString(renderLineChart("Memory (MB)", memData, chartWidth, 6, lipgloss.Color("35")))
+	b.WriteString(chartBorder.Render(renderLineChart("Memory (MB)", memData, chartWidth, 6, lipgloss.Color("35"))))
+	b.WriteString("\n")
 
-	// Network I/O line chart
+	// Network chart
 	netData := make([]float64, len(m.LiveMetrics.DataPoints))
 	for i, dp := range m.LiveMetrics.DataPoints {
 		netData[i] = dp.InputKbps + dp.OutputKbps
 	}
-	b.WriteString(renderLineChart("Network KB/s", netData, chartWidth, 5, lipgloss.Color("33")))
+	b.WriteString(chartBorder.Render(renderLineChart("Network KB/s", netData, chartWidth, 5, lipgloss.Color("33"))))
+	b.WriteString("\n")
 
-	// Clients line chart
+	// Clients chart
 	clientsData := make([]float64, len(m.LiveMetrics.DataPoints))
 	for i, dp := range m.LiveMetrics.DataPoints {
 		clientsData[i] = float64(dp.ConnectedClients)
 	}
-	b.WriteString(renderLineChart("Clients", clientsData, chartWidth, 5, lipgloss.Color("32")))
+	b.WriteString(chartBorder.Render(renderLineChart("Clients", clientsData, chartWidth, 5, lipgloss.Color("32"))))
+	b.WriteString("\n")
 
-	b.WriteString(helpStyle.Render("Auto-refreshing • c:clear • q/esc:back"))
+	// CPU chart
+	cpuData := make([]float64, len(m.LiveMetrics.DataPoints))
+	for i, dp := range m.LiveMetrics.DataPoints {
+		cpuData[i] = dp.UsedCPUSys + dp.UsedCPUUser
+	}
+	b.WriteString(chartBorder.Render(renderLineChart("CPU (seconds)", cpuData, chartWidth, 5, lipgloss.Color("208"))))
+	b.WriteString("\n\n")
+
+	b.WriteString(helpStyle.Render("Auto-refreshing (1s) | c:clear | q/esc:back"))
 
 	return b.String()
 }
@@ -180,8 +244,17 @@ func renderLineChart(title string, data []float64, width, height int, color lipg
 	blocks := []rune{' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 	chartStyle := lipgloss.NewStyle().Foreground(color)
 
+	// Y-axis max label
+	maxLabel := fmt.Sprintf("%6.1f ", maxVal)
+	padLabel := strings.Repeat(" ", len(maxLabel))
+
 	// Render the chart row by row from top to bottom
 	for row := height - 1; row >= 0; row-- {
+		if row == height-1 {
+			b.WriteString(dimStyle.Render(maxLabel))
+		} else {
+			b.WriteString(padLabel)
+		}
 		for _, val := range chartData {
 			// Normalize value to 0-1
 			normalized := (val - minVal) / rangeVal
@@ -209,6 +282,7 @@ func renderLineChart(title string, data []float64, width, height int, color lipg
 	}
 
 	// Bottom axis
+	b.WriteString(padLabel)
 	b.WriteString(dimStyle.Render(strings.Repeat("─", width)))
 	b.WriteString("\n")
 
