@@ -115,15 +115,15 @@ func TestConfig_ListConnections(t *testing.T) {
 		t.Fatalf("Expected 3 connections, got %d", len(connections))
 	}
 
-	// Check sorted by name
-	if connections[0].Name != "alpha" {
-		t.Errorf("First connection = %q, want \"alpha\"", connections[0].Name)
+	// Check sorted by ID (insertion order)
+	if connections[0].Name != "zebra" {
+		t.Errorf("First connection = %q, want \"zebra\"", connections[0].Name)
 	}
-	if connections[1].Name != "beta" {
-		t.Errorf("Second connection = %q, want \"beta\"", connections[1].Name)
+	if connections[1].Name != "alpha" {
+		t.Errorf("Second connection = %q, want \"alpha\"", connections[1].Name)
 	}
-	if connections[2].Name != "zebra" {
-		t.Errorf("Third connection = %q, want \"zebra\"", connections[2].Name)
+	if connections[2].Name != "beta" {
+		t.Errorf("Third connection = %q, want \"beta\"", connections[2].Name)
 	}
 }
 

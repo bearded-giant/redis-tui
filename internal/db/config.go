@@ -164,7 +164,7 @@ func (c *Config) ListConnections() ([]types.Connection, error) {
 	copy(result, c.Connections)
 
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].Name < result[j].Name
+		return result[i].ID < result[j].ID
 	})
 
 	return result, nil
