@@ -4,7 +4,7 @@ Output "docs/main.gif"
 Require ./bin/redis-tui
 
 Set Shell "zsh"
-Set FontSize 14
+Set FontSize 16
 Set FontFamily "SFMono Nerd Font"
 Set Theme "Dracula"
 Set Width 1920
@@ -12,8 +12,11 @@ Set Height 1080
 Set TypingSpeed 0.04s
 Set Padding 20
 
-# Launch the app (hidden)
+# Clean up leftover key from previous runs and launch
 Hide
+Type "docker exec standalone-redis-1 redis-cli DEL 'hello world'"
+Enter
+Sleep 1s
 Type "./bin/redis-tui"
 Enter
 Sleep 2s
