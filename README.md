@@ -197,6 +197,20 @@ rm -f $(go env GOPATH)/bin/redis-tui
 
 </details>
 
+## Docker Compose Examples
+
+Need a Redis instance to try redis-tui? Docker Compose files are included under [`examples/`](examples/README.md).
+
+```bash
+# Standalone Redis on port 6379
+docker compose -f examples/standalone/docker-compose.yml up -d
+redis-tui
+
+# 6-node cluster (3 masters + 3 replicas) on ports 6380-6385
+docker compose -f examples/cluster/docker-compose.yml up -d
+redis-tui -c localhost:6380
+```
+
 ## Configuration
 
 Configuration is stored in `~/.config/redis-tui/config.json`.

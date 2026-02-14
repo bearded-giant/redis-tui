@@ -1,0 +1,60 @@
+services:
+  redis-node-1:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly no
+
+  redis-node-2:
+    image: redis:7-alpine
+    ports:
+      - "6381:6379"
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly no
+
+  redis-node-3:
+    image: redis:7-alpine
+    ports:
+      - "6382:6379"
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly no
+
+  redis-node-4:
+    image: redis:7-alpine
+    ports:
+      - "6383:6379"
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly no
+
+  redis-node-5:
+    image: redis:7-alpine
+    ports:
+      - "6384:6379"
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly no
+
+  redis-node-6:
+    image: redis:7-alpine
+    ports:
+      - "6385:6379"
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly no
+
+  cluster-init:
+    image: redis:7-alpine
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+      - redis-node-5
+      - redis-node-6
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 3
+        echo "Creating Redis cluster..."
+        redis-cli --cluster create \
+          redis-node-1:6379 \
+          redis-node-2:6379 \
+          redis-node-3:6379 \
+          redis-node-4:6379 \
+          redis-node-5:6379 \
+          redis-node-6:6379 \
+          --cluster-replicas 1 --cluster-yes
+        echo "Cluster created."
