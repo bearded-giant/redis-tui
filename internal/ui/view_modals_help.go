@@ -94,19 +94,29 @@ func (m Model) viewHelp() string {
 		},
 	}
 
+	colStyle := lipgloss.NewStyle().Width(34)
+
 	for _, section := range sections {
 		b.WriteString(keyStyle.Render(section.title))
 		b.WriteString("\n")
-		for _, binding := range section.bindings {
-			b.WriteString(fmt.Sprintf("  %-10s %s\n", dimStyle.Render(binding[0]), descStyle.Render(binding[1])))
+		half := (len(section.bindings) + 1) / 2
+		var leftCol, rightCol strings.Builder
+		for i, binding := range section.bindings {
+			line := fmt.Sprintf("  %s %s", dimStyle.Render(binding[0]), descStyle.Render(binding[1]))
+			if i < half {
+				leftCol.WriteString(line + "\n")
+			} else {
+				rightCol.WriteString(line + "\n")
+			}
 		}
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, colStyle.Render(leftCol.String()), colStyle.Render(rightCol.String())))
 		b.WriteString("\n")
 	}
 
 	b.WriteString(helpStyle.Render("Press ? or esc to close"))
 
-	modalWidth := 50
-	if m.Width-10 < 50 {
+	modalWidth := 80
+	if m.Width-10 < 80 {
 		modalWidth = m.Width - 10
 	}
 	modalStyle := lipgloss.NewStyle().

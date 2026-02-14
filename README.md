@@ -117,83 +117,54 @@ rm -f $(go env GOPATH)/bin/redis-tui
 
 ### Global
 
-| Key | Action |
-| --- | --- |
-| `q` | Quit / Go back |
-| `?` | Show help |
-| `j/k` | Navigate up/down |
-| `Ctrl+U/D` | Page up/down |
-| `g/G` | Go to top/bottom |
-| `home/end` | Go to top/bottom |
-| `Ctrl+C` | Force quit |
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| `q` | Quit / Go back | `Ctrl+U/D` | Page up/down |
+| `?` | Show help | `g/G` | Go to top/bottom |
+| `j/k` | Navigate up/down | `home/end` | Go to top/bottom |
+| `Ctrl+C` | Force quit | | |
 
 ### Connections Screen
 
-| Key | Action |
-| --- | --- |
-| `Enter` | Connect to selected |
-| `a/n` | Add new connection |
-| `e` | Edit connection |
-| `d/delete/backspace` | Delete connection |
-| `r` | Refresh list |
-| `Ctrl+T` | Test connection |
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| `Enter` | Connect to selected | `d/delete/backspace` | Delete connection |
+| `a/n` | Add new connection | `r` | Refresh list |
+| `e` | Edit connection | `Ctrl+T` | Test connection |
 
 ### Keys Screen
 
-| Key | Action |
-| --- | --- |
-| `Enter` | View key details |
-| `a/n` | Add new key |
-| `d/delete/backspace` | Delete key |
-| `r` | Refresh keys |
-| `l` | Load more keys |
-| `/` | Filter by pattern |
-| `s/S` | Sort / Toggle direction |
-| `v` | Search by value |
-| `e` | Export to JSON |
-| `I` | Import from JSON |
-| `i` | Server info |
-| `D` | Switch database |
-| `f` | Flush database |
-| `p` | Pub/Sub publish |
-| `L` | View slow log |
-| `E` | Execute Lua script |
-| `O` | View logs |
-| `B` | Bulk delete |
-| `T` | Batch set TTL |
-| `F` | View favorites |
-| `W` | Tree view |
-| `Ctrl+R` | Regex search |
-| `Ctrl+F` | Fuzzy search |
-| `Ctrl+H` | Recent keys |
-| `Ctrl+L` | Client list |
-| `Ctrl+E` | Toggle keyspace events |
-| `Ctrl+X` | View expiring keys |
-| `m` | Live metrics dashboard |
-| `M` | Memory stats |
-| `C` | Cluster info |
-| `K` | Compare keys |
-| `P` | Key templates |
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| `Enter` | View key details | `O` | View logs |
+| `a/n` | Add new key | `B` | Bulk delete |
+| `d/delete/backspace` | Delete key | `T` | Batch set TTL |
+| `r` | Refresh keys | `F` | View favorites |
+| `l` | Load more keys | `W` | Tree view |
+| `/` | Filter by pattern | `Ctrl+R` | Regex search |
+| `s/S` | Sort / Toggle direction | `Ctrl+F` | Fuzzy search |
+| `v` | Search by value | `Ctrl+H` | Recent keys |
+| `e` | Export to JSON | `Ctrl+L` | Client list |
+| `I` | Import from JSON | `Ctrl+E` | Toggle keyspace events |
+| `i` | Server info | `Ctrl+X` | View expiring keys |
+| `D` | Switch database | `m` | Live metrics dashboard |
+| `f` | Flush database | `M` | Memory stats |
+| `p` | Pub/Sub publish | `C` | Cluster info |
+| `L` | View slow log | `K` | Compare keys |
+| `E` | Execute Lua script | `P` | Key templates |
 
 ### Key Detail Screen
 
-| Key | Action |
-| --- | --- |
-| `e` | Edit value (string) |
-| `a` | Add to collection |
-| `x` | Remove from collection |
-| `t` | Set TTL |
-| `R` | Rename key |
-| `c` | Copy key |
-| `d/delete` | Delete key |
-| `r` | Refresh value |
-| `f` | Toggle favorite |
-| `w` | Watch for changes |
-| `h` | View value history |
-| `y` | Copy to clipboard |
-| `J` | JSON path query |
-| `j/k` | Navigate collection items |
-| `esc/backspace` | Go back to keys list |
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| `e` | Edit value (string) | `r` | Refresh value |
+| `a` | Add to collection | `f` | Toggle favorite |
+| `x` | Remove from collection | `w` | Watch for changes |
+| `t` | Set TTL | `h` | View value history |
+| `R` | Rename key | `y` | Copy to clipboard |
+| `c` | Copy key | `J` | JSON path query |
+| `d/delete` | Delete key | `j/k` | Navigate collection items |
+| `esc/backspace` | Go back to keys list | | |
 
 </details>
 
