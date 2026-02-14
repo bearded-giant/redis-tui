@@ -250,7 +250,7 @@ func createConnectionInputs() []textinput.Model {
 }
 
 func createAddKeyInputs() []textinput.Model {
-	inputs := make([]textinput.Model, 2)
+	inputs := make([]textinput.Model, 3)
 
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "Key Name"
@@ -260,6 +260,11 @@ func createAddKeyInputs() []textinput.Model {
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "Value"
 	inputs[1].Width = 30
+
+	// Third input: Field name (hash/stream) or Score (zset)
+	inputs[2] = textinput.New()
+	inputs[2].Placeholder = "Field"
+	inputs[2].Width = 30
 
 	return inputs
 }

@@ -61,11 +61,15 @@ func SetTTLCmd(key string, ttl time.Duration) tea.Cmd {
 	}
 }
 
-func CreateKeyCmd(key string, keyType types.KeyType, value string, ttl time.Duration) tea.Cmd {
+func CreateKeyCmd(key string, keyType types.KeyType, value string, extra string, ttl time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		if RedisClient == nil {
 			return types.KeySetMsg{Key: key, Err: nil}
 		}
+
+		// Delete existing key to prevent WRONGTYPE errors
+		_ = RedisClient.DeleteKey(key)
+
 		var err error
 		switch keyType {
 		case types.KeyTypeString:
@@ -76,15 +80,22 @@ func CreateKeyCmd(key string, keyType types.KeyType, value string, ttl time.Dura
 			err = RedisClient.SAdd(key, value)
 		case types.KeyTypeZSet:
 			score := 0.0
-			if s, parseErr := strconv.ParseFloat(value, 64); parseErr == nil {
-				score = s
-				value = "member"
+			if extra != "" {
+				score, _ = strconv.ParseFloat(extra, 64)
 			}
 			err = RedisClient.ZAdd(key, score, value)
 		case types.KeyTypeHash:
-			err = RedisClient.HSet(key, "field", value)
+			field := extra
+			if field == "" {
+				field = "field"
+			}
+			err = RedisClient.HSet(key, field, value)
 		case types.KeyTypeStream:
-			fields := map[string]interface{}{"data": value}
+			field := extra
+			if field == "" {
+				field = "data"
+			}
+			fields := map[string]interface{}{field: value}
 			_, err = RedisClient.XAdd(key, fields)
 		}
 		return types.KeySetMsg{Key: key, Err: err}

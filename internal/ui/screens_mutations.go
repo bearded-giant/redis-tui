@@ -12,17 +12,29 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// addKeyFieldCount returns the number of focusable fields for the current add key type.
+// Types that need a third input (zset, hash, stream) have 3 fields; others have 2.
+func (m Model) addKeyFieldCount() int {
+	switch m.AddKeyType {
+	case types.KeyTypeZSet, types.KeyTypeHash, types.KeyTypeStream:
+		return 3
+	default:
+		return 2
+	}
+}
+
 func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	fieldCount := m.addKeyFieldCount()
 	switch msg.String() {
 	case "tab":
 		m.AddKeyInputs[m.AddKeyFocusIdx].Blur()
-		m.AddKeyFocusIdx = (m.AddKeyFocusIdx + 1) % len(m.AddKeyInputs)
+		m.AddKeyFocusIdx = (m.AddKeyFocusIdx + 1) % fieldCount
 		m.AddKeyInputs[m.AddKeyFocusIdx].Focus()
 	case "shift+tab":
 		m.AddKeyInputs[m.AddKeyFocusIdx].Blur()
 		m.AddKeyFocusIdx--
 		if m.AddKeyFocusIdx < 0 {
-			m.AddKeyFocusIdx = len(m.AddKeyInputs) - 1
+			m.AddKeyFocusIdx = fieldCount - 1
 		}
 		m.AddKeyInputs[m.AddKeyFocusIdx].Focus()
 	case "ctrl+t":
@@ -33,16 +45,28 @@ func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		for i, t := range typeOrder {
 			if t == m.AddKeyType {
 				m.AddKeyType = typeOrder[(i+1)%len(typeOrder)]
+				// Reset focus if it's beyond the new field count
+				newFieldCount := m.addKeyFieldCount()
+				if m.AddKeyFocusIdx >= newFieldCount {
+					m.AddKeyInputs[m.AddKeyFocusIdx].Blur()
+					m.AddKeyFocusIdx = newFieldCount - 1
+					m.AddKeyInputs[m.AddKeyFocusIdx].Focus()
+				}
 				break
 			}
 		}
 	case "enter":
 		if m.AddKeyInputs[0].Value() != "" {
 			m.Loading = true
+			extra := ""
+			if fieldCount == 3 {
+				extra = m.AddKeyInputs[2].Value()
+			}
 			return m, cmd.CreateKeyCmd(
 				m.AddKeyInputs[0].Value(),
 				m.AddKeyType,
 				m.AddKeyInputs[1].Value(),
+				extra,
 				0,
 			)
 		}
@@ -51,7 +75,7 @@ func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.resetAddKeyInputs()
 	default:
 		var cmds []tea.Cmd
-		for i := range m.AddKeyInputs {
+		for i := 0; i < fieldCount; i++ {
 			var inputCmd tea.Cmd
 			m.AddKeyInputs[i], inputCmd = m.AddKeyInputs[i].Update(msg)
 			cmds = append(cmds, inputCmd)

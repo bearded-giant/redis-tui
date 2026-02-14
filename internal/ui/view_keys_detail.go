@@ -167,24 +167,41 @@ func (m Model) viewAddKey() string {
 	b.WriteString(m.AddKeyInputs[0].View())
 	b.WriteString("\n\n")
 
+	// Determine labels and whether to show the third input based on type
 	valueLabel := "Value:"
+	showThirdInput := false
+	thirdLabel := ""
+
 	switch m.AddKeyType {
 	case types.KeyTypeList:
-		valueLabel = "Initial Element:"
+		valueLabel = "Element:"
 	case types.KeyTypeSet:
-		valueLabel = "Initial Member:"
+		valueLabel = "Member:"
 	case types.KeyTypeZSet:
-		valueLabel = "Initial Member:"
+		valueLabel = "Member:"
+		showThirdInput = true
+		thirdLabel = "Score:"
 	case types.KeyTypeHash:
-		valueLabel = "Initial Field Value:"
+		valueLabel = "Field:"
+		showThirdInput = true
+		thirdLabel = "Value:"
 	case types.KeyTypeStream:
-		valueLabel = "Initial Data:"
+		valueLabel = "Field:"
+		showThirdInput = true
+		thirdLabel = "Value:"
 	}
 
 	b.WriteString(keyStyle.Render(valueLabel))
 	b.WriteString("\n")
 	b.WriteString(m.AddKeyInputs[1].View())
 	b.WriteString("\n\n")
+
+	if showThirdInput {
+		b.WriteString(keyStyle.Render(thirdLabel))
+		b.WriteString("\n")
+		b.WriteString(m.AddKeyInputs[2].View())
+		b.WriteString("\n\n")
+	}
 
 	b.WriteString(helpStyle.Render("tab:next  Ctrl+T:type  enter:save  esc:cancel"))
 
