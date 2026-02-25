@@ -16,7 +16,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var version = "dev"
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
 
 func main() {
 	opts := parseCLIFlags()
@@ -64,7 +68,7 @@ func parseCLIFlags() *types.Connection {
 		os.Exit(2)
 	}
 	if showVersion {
-		fmt.Printf("redis-tui version %s\n", version)
+		fmt.Printf("redis-tui %s (commit: %s, built: %s)\n", version, commit, date)
 		os.Exit(0)
 	}
 	if doUpdate {
