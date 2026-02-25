@@ -151,6 +151,8 @@ Press `?` inside the app to view the full help screen.
 | `--tls-key` | | TLS client private key file | |
 | `--tls-ca` | | TLS CA certificate file | |
 | `--tls-skip-verify` | | Skip TLS certificate verification | false |
+| `--scan-size` | | Redis SCAN COUNT hint (batch size for key scanning) | 1000 |
+| `--include-types` | | Fetch key types during scan (set false to skip) | true |
 | `--version` | | Print version and exit | |
 | `--update` | | Update to the latest version | |
 
