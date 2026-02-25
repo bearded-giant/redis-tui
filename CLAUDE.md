@@ -27,7 +27,7 @@ internal/
   ui/                      # Bubble Tea UI (Model/Update/View pattern)
   redis/                   # Redis client wrapper (standalone + cluster)
   types/                   # Shared type definitions and messages
-  db/                      # Config persistence (~/.redis/config.json)
+  db/                      # Config persistence (~/.config/redis-tui/config.json)
   service/                 # Interfaces (ConfigService, RedisService) and DI container
   testutil/                # Test helpers and mock implementations
 ```
@@ -72,7 +72,7 @@ internal/
 ## Guardrails
 
 - All Redis operations must go through `internal/redis/` — never use `go-redis` directly elsewhere
-- Config schema changes in `internal/db/` must be backward-compatible with existing `~/.redis/config.json` files
+- Config schema changes in `internal/db/` must be backward-compatible with existing `~/.config/redis-tui/config.json` files
 - All new command methods must go through the `Commands` struct with injected services — no global state
 - New message types must follow the `Msg` suffix convention and be defined in the appropriate `messages_*.go` file
 
