@@ -62,7 +62,7 @@ snapshot:
 
 ## Install development dependencies
 dev-deps:
-	go install github.com/goreleaser/goreleaser@latest
+	go install github.com/goreleaser/goreleaser/v2@v2.13.1
 
 ## Show help
 help:
