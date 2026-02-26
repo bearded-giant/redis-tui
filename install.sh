@@ -3,13 +3,13 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
 #
 # Environment variables:
-#   INSTALL_DIR  — directory to install the binary (default: /usr/local/bin)
+#   INSTALL_DIR  — directory to install the binary (default: ~/.local/bin)
 
 set -e
 
 REPO="davidbudnick/redis-tui"
 BINARY="redis-tui"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 info() { printf '\033[1;34m%s\033[0m\n' "$1"; }
 error() { printf '\033[1;31merror: %s\033[0m\n' "$1" >&2; exit 1; }
@@ -90,15 +90,20 @@ fi
 info "Extracting..."
 tar -xzf "${TMPDIR}/${ARCHIVE}" -C "$TMPDIR"
 
+# ensure install directory exists
+mkdir -p "$INSTALL_DIR"
+
 # install binary
-if [ -w "$INSTALL_DIR" ]; then
-  mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-  chmod +x "${INSTALL_DIR}/${BINARY}"
-else
-  info "Elevated permissions required to install to ${INSTALL_DIR}"
-  sudo mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
-  sudo chmod +x "${INSTALL_DIR}/${BINARY}"
-fi
+mv "${TMPDIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+chmod +x "${INSTALL_DIR}/${BINARY}"
 
 info "redis-tui ${VERSION} installed to ${INSTALL_DIR}/${BINARY}"
+
+# check if install dir is on PATH
+case ":$PATH:" in
+  *":${INSTALL_DIR}:"*) ;;
+  *) info "Add ${INSTALL_DIR} to your PATH:"
+     info "  export PATH=\"${INSTALL_DIR}:\$PATH\"" ;;
+esac
+
 info "Run 'redis-tui' to get started!"

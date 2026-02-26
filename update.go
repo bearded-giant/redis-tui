@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -50,15 +49,16 @@ func runUpdate(currentVersion string) error {
 	}
 
 	if err := checkWriteAccess(execPath); err != nil {
-		fmt.Printf("Elevated permissions required to update %s\n", execPath)
-		sudoCmd := exec.Command("sudo", execPath, "--update") // #nosec G204 - execPath is from os.Executable resolved via EvalSymlinks
-		sudoCmd.Stdin = os.Stdin
-		sudoCmd.Stdout = os.Stdout
-		sudoCmd.Stderr = os.Stderr
-		if err := sudoCmd.Run(); err != nil {
-			return fmt.Errorf("update with elevated permissions failed: %w", err)
+		home, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return fmt.Errorf("cannot write to %s and could not determine home directory: %w", execPath, homeErr)
 		}
-		return nil
+		localBin := filepath.Join(home, ".local", "bin")
+		if mkErr := os.MkdirAll(localBin, 0755); mkErr != nil {
+			return fmt.Errorf("cannot write to %s and could not create %s: %w", execPath, localBin, mkErr)
+		}
+		execPath = filepath.Join(localBin, "redis-tui")
+		fmt.Printf("No write access to current location, installing to %s\n", execPath)
 	}
 
 	latest, err := fetchLatestVersion()
@@ -272,17 +272,25 @@ func extractBinary(archivePath, destPath string) error {
 func replaceBinary(currentPath, newPath string) error {
 	oldPath := currentPath + ".old"
 
+	// Back up existing binary if it exists
+	hasBackup := true
 	if err := os.Rename(currentPath, oldPath); err != nil {
-		return fmt.Errorf("could not back up current binary: %w", err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("could not back up current binary: %w", err)
+		}
+		hasBackup = false
 	}
 
 	if err := os.Rename(newPath, currentPath); err != nil {
-		// Rollback: restore the old binary
-		_ = os.Rename(oldPath, currentPath)
+		if hasBackup {
+			_ = os.Rename(oldPath, currentPath)
+		}
 		return fmt.Errorf("could not install new binary: %w", err)
 	}
 
-	_ = os.Remove(oldPath)
+	if hasBackup {
+		_ = os.Remove(oldPath)
+	}
 	return nil
 }
 

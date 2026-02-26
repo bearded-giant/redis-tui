@@ -71,13 +71,13 @@ go install github.com/davidbudnick/redis-tui@latest
 
 ### Native Install (Recommended)
 
-The install script auto-detects your OS and architecture, downloads the latest release, verifies the checksum, and installs the binary to `/usr/local/bin` (override with `INSTALL_DIR`):
+The install script auto-detects your OS and architecture, downloads the latest release, verifies the checksum, and installs the binary to `~/.local/bin` (override with `INSTALL_DIR`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
 
 # Custom install directory
-INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
+INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
 ```
 
 ### Homebrew
@@ -162,7 +162,7 @@ Short flags (`-h`, `-p`, `-a`, `-n`) follow [redis-cli](https://redis.io/docs/la
 
 ```bash
 # Native install
-rm -f /usr/local/bin/redis-tui
+rm -f ~/.local/bin/redis-tui
 
 # Homebrew
 brew uninstall --cask redis-tui
