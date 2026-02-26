@@ -106,7 +106,11 @@ func (m Model) handleConfirmDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "connection":
 			m.Screen = types.ScreenConnections
 		case "key":
-			m.Screen = types.ScreenKeyDetail
+			if m.CurrentKey != nil {
+				m.Screen = types.ScreenKeyDetail
+			} else {
+				m.Screen = types.ScreenKeys
+			}
 		case "flushdb":
 			m.Screen = types.ScreenKeys
 		}
