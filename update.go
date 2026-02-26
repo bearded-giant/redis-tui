@@ -54,7 +54,7 @@ func runUpdate(currentVersion string) error {
 			return fmt.Errorf("cannot write to %s and could not determine home directory: %w", execPath, homeErr)
 		}
 		localBin := filepath.Join(home, ".local", "bin")
-		if mkErr := os.MkdirAll(localBin, 0755); mkErr != nil {
+		if mkErr := os.MkdirAll(localBin, 0750); mkErr != nil {
 			return fmt.Errorf("cannot write to %s and could not create %s: %w", execPath, localBin, mkErr)
 		}
 		execPath = filepath.Join(localBin, "redis-tui")
