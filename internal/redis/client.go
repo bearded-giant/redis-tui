@@ -20,6 +20,7 @@ func init() {
 
 // Client wraps the Redis client with additional functionality
 type Client struct {
+	mu      sync.RWMutex
 	client  *redis.Client
 	cluster *redis.ClusterClient
 	ctx     context.Context
@@ -38,6 +39,8 @@ type Client struct {
 }
 
 func (c *Client) cmdable() redis.Cmdable {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if c.isCluster {
 		return c.cluster
 	}
@@ -45,6 +48,8 @@ func (c *Client) cmdable() redis.Cmdable {
 }
 
 func (c *Client) pipeline() redis.Pipeliner {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if c.isCluster {
 		return c.cluster.Pipeline()
 	}
@@ -54,10 +59,16 @@ func (c *Client) pipeline() redis.Pipeliner {
 // scanAll scans all keys matching pattern. In cluster mode, scans all master
 // nodes via ForEachMaster so keys from every shard are returned.
 func (c *Client) scanAll(pattern string, batchSize int64) ([]string, error) {
-	if c.isCluster {
+	c.mu.RLock()
+	isCluster := c.isCluster
+	cluster := c.cluster
+	ctx := c.ctx
+	c.mu.RUnlock()
+
+	if isCluster {
 		var mu sync.Mutex
 		allKeys := make([]string, 0, 1024)
-		err := c.cluster.ForEachMaster(c.ctx, func(ctx context.Context, client *redis.Client) error {
+		err := cluster.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
 			var cursor uint64
 			for {
 				keys, nextCursor, err := client.Scan(ctx, cursor, pattern, batchSize).Result()
@@ -82,7 +93,7 @@ func (c *Client) scanAll(pattern string, batchSize int64) ([]string, error) {
 	var allKeys []string
 	var cursor uint64
 	for {
-		keys, nextCursor, err := c.cmdable().Scan(c.ctx, cursor, pattern, batchSize).Result()
+		keys, nextCursor, err := c.cmdable().Scan(ctx, cursor, pattern, batchSize).Result()
 		if err != nil {
 			return allKeys, err
 		}
@@ -98,10 +109,16 @@ func (c *Client) scanAll(pattern string, batchSize int64) ([]string, error) {
 // scanEach scans keys matching pattern in batches and calls fn for each batch.
 // Scanning stops when all keys are scanned or fn returns false.
 func (c *Client) scanEach(pattern string, batchSize int64, fn func(keys []string) bool) error {
-	if c.isCluster {
+	c.mu.RLock()
+	isCluster := c.isCluster
+	cluster := c.cluster
+	ctx := c.ctx
+	c.mu.RUnlock()
+
+	if isCluster {
 		var mu sync.Mutex
 		stopped := false
-		return c.cluster.ForEachMaster(c.ctx, func(ctx context.Context, client *redis.Client) error {
+		return cluster.ForEachMaster(ctx, func(ctx context.Context, client *redis.Client) error {
 			var cursor uint64
 			for {
 				mu.Lock()
@@ -134,7 +151,7 @@ func (c *Client) scanEach(pattern string, batchSize int64, fn func(keys []string
 
 	var cursor uint64
 	for {
-		keys, nextCursor, err := c.cmdable().Scan(c.ctx, cursor, pattern, batchSize).Result()
+		keys, nextCursor, err := c.cmdable().Scan(ctx, cursor, pattern, batchSize).Result()
 		if err != nil {
 			return err
 		}
@@ -173,5 +190,7 @@ func NewClient() *Client {
 
 // SetIncludeTypes controls whether TYPE is fetched during key scanning
 func (c *Client) SetIncludeTypes(v bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.includeTypes = v
 }

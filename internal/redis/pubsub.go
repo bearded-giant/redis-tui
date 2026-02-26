@@ -17,10 +17,17 @@ func (c *Client) Publish(channel, message string) (int64, error) {
 
 // Subscribe subscribes to channels
 func (c *Client) Subscribe(channel string) *redis.PubSub {
-	if c.isCluster {
-		return c.cluster.Subscribe(c.ctx, channel)
+	c.mu.RLock()
+	isCluster := c.isCluster
+	cluster := c.cluster
+	client := c.client
+	ctx := c.ctx
+	c.mu.RUnlock()
+
+	if isCluster {
+		return cluster.Subscribe(ctx, channel)
 	}
-	return c.client.Subscribe(c.ctx, channel)
+	return client.Subscribe(ctx, channel)
 }
 
 // PubSubChannels lists active channels
@@ -31,12 +38,20 @@ func (c *Client) PubSubChannels(pattern string) ([]string, error) {
 // SubscribeKeyspace subscribes to keyspace notifications
 func (c *Client) SubscribeKeyspace(pattern string, handler func(types.KeyspaceEvent)) error {
 	// Enable keyspace notifications (may fail on managed Redis, but we try)
-	if c.isCluster {
-		_ = c.cluster.ConfigSet(c.ctx, "notify-keyspace-events", "KEA").Err()
+	c.mu.RLock()
+	isCluster := c.isCluster
+	cluster := c.cluster
+	client := c.client
+	ctx := c.ctx
+	c.mu.RUnlock()
+
+	if isCluster {
+		_ = cluster.ConfigSet(ctx, "notify-keyspace-events", "KEA").Err()
 	} else {
-		_ = c.client.ConfigSet(c.ctx, "notify-keyspace-events", "KEA").Err()
+		_ = client.ConfigSet(ctx, "notify-keyspace-events", "KEA").Err()
 	}
 
+	c.mu.Lock()
 	// Cancel previous goroutine if any
 	if c.cancelKeyspace != nil {
 		c.cancelKeyspace()
@@ -57,23 +72,22 @@ func (c *Client) SubscribeKeyspace(pattern string, handler func(types.KeyspaceEv
 	handlers := c.eventHandlers
 
 	channel := "__keyspace@" + strconv.Itoa(db) + "__:" + pattern
-	if c.isCluster {
-		c.keyspacePS = c.cluster.PSubscribe(c.ctx, channel)
+	if isCluster {
+		c.keyspacePS = cluster.PSubscribe(ctx, channel)
 	} else {
-		c.keyspacePS = c.client.PSubscribe(c.ctx, channel)
+		c.keyspacePS = client.PSubscribe(ctx, channel)
 	}
 
-	ctx, cancel := context.WithCancel(c.ctx)
+	kctx, cancel := context.WithCancel(ctx)
 	c.cancelKeyspace = cancel
-
-	// Capture keyspacePS locally so the goroutine does not race with re-subscribe
 	ps := c.keyspacePS
+	c.mu.Unlock()
 
 	go func() {
 		ch := ps.Channel()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-kctx.Done():
 				return
 			case msg, ok := <-ch:
 				if !ok {
@@ -97,6 +111,8 @@ func (c *Client) SubscribeKeyspace(pattern string, handler func(types.KeyspaceEv
 
 // UnsubscribeKeyspace unsubscribes from keyspace notifications
 func (c *Client) UnsubscribeKeyspace() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.cancelKeyspace != nil {
 		c.cancelKeyspace()
 		c.cancelKeyspace = nil

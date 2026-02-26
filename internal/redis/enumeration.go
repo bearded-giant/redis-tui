@@ -24,16 +24,23 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 		pattern = "*"
 	}
 
+	c.mu.RLock()
+	includeTypes := c.includeTypes
+	isCluster := c.isCluster
+	client := c.client
+	ctx := c.ctx
+	c.mu.RUnlock()
+
 	var keys []string
 	var nextCursor uint64
 	var err error
 
-	if c.isCluster {
+	if isCluster {
 		// In cluster mode, scan all masters to get keys from every shard
 		keys, err = c.scanAll(pattern, count)
 		nextCursor = 0
 	} else {
-		keys, nextCursor, err = c.client.Scan(c.ctx, cursor, pattern, count).Result()
+		keys, nextCursor, err = client.Scan(ctx, cursor, pattern, count).Result()
 	}
 	if err != nil {
 		return nil, 0, err
@@ -48,19 +55,19 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 	var typeCmds []*redis.StatusCmd
 	ttlCmds := make([]*redis.DurationCmd, len(keys))
 
-	if c.includeTypes {
+	if includeTypes {
 		typeCmds = make([]*redis.StatusCmd, len(keys))
 		for i, key := range keys {
-			typeCmds[i] = pipe.Type(c.ctx, key)
-			ttlCmds[i] = pipe.TTL(c.ctx, key)
+			typeCmds[i] = pipe.Type(ctx, key)
+			ttlCmds[i] = pipe.TTL(ctx, key)
 		}
 	} else {
 		for i, key := range keys {
-			ttlCmds[i] = pipe.TTL(c.ctx, key)
+			ttlCmds[i] = pipe.TTL(ctx, key)
 		}
 	}
 
-	_, err = pipe.Exec(c.ctx)
+	_, err = pipe.Exec(ctx)
 	if err != nil && err != redis.Nil {
 		return nil, 0, err
 	}
@@ -68,7 +75,7 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 	result := make([]types.RedisKey, len(keys))
 	for i, key := range keys {
 		var keyType string
-		if c.includeTypes && typeCmds != nil {
+		if includeTypes && typeCmds != nil {
 			keyType, _ = typeCmds[i].Result()
 		}
 		ttl, _ := ttlCmds[i].Result()

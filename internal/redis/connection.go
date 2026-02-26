@@ -15,19 +15,16 @@ import (
 
 // cleanup closes existing connections before establishing a new one
 func (c *Client) cleanup() {
-	_ = c.Disconnect()
+	c.mu.Lock()
+	_ = c.disconnectLocked()
+	c.mu.Unlock()
 }
 
 // Connect establishes a connection to Redis
 func (c *Client) Connect(host string, port int, password string, db int) error {
 	c.cleanup()
 
-	c.host = host
-	c.port = port
-	c.password = password
-	c.db = db
-
-	c.client = redis.NewClient(&redis.Options{
+	client := redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", host, port),
 		Password:     password,
 		DB:           db,
@@ -39,10 +36,19 @@ func (c *Client) Connect(host string, port int, password string, db int) error {
 		MaxRetries:   3,
 	})
 
-	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	c.mu.Lock()
+	c.host = host
+	c.port = port
+	c.password = password
+	c.db = db
+	c.client = client
+	ctx := c.ctx
+	c.mu.Unlock()
+
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.client.Ping(ctx).Result()
+	_, err := client.Ping(pingCtx).Result()
 	return err
 }
 
@@ -50,12 +56,7 @@ func (c *Client) Connect(host string, port int, password string, db int) error {
 func (c *Client) ConnectWithTLS(host string, port int, password string, db int, tlsConfig *tls.Config) error {
 	c.cleanup()
 
-	c.host = host
-	c.port = port
-	c.password = password
-	c.db = db
-
-	c.client = redis.NewClient(&redis.Options{
+	client := redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", host, port),
 		Password:     password,
 		DB:           db,
@@ -68,10 +69,19 @@ func (c *Client) ConnectWithTLS(host string, port int, password string, db int, 
 		TLSConfig:    tlsConfig,
 	})
 
-	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	c.mu.Lock()
+	c.host = host
+	c.port = port
+	c.password = password
+	c.db = db
+	c.client = client
+	ctx := c.ctx
+	c.mu.Unlock()
+
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.client.Ping(ctx).Result()
+	_, err := client.Ping(pingCtx).Result()
 	return err
 }
 
@@ -79,19 +89,16 @@ func (c *Client) ConnectWithTLS(host string, port int, password string, db int, 
 func (c *Client) ConnectCluster(addrs []string, password string) error {
 	c.cleanup()
 
-	c.isCluster = true
-	c.password = password
-
 	// Parse first address for display purposes
 	seedHost := "127.0.0.1"
+	host := seedHost
+	port := 6379
 	if len(addrs) > 0 {
-		host, port := parseAddr(addrs[0])
-		c.host = host
-		c.port = port
+		host, port = parseAddr(addrs[0])
 		seedHost = host
 	}
 
-	c.cluster = redis.NewClusterClient(&redis.ClusterOptions{
+	cluster := redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:        addrs,
 		Password:     password,
 		DialTimeout:  5 * time.Second,
@@ -109,10 +116,19 @@ func (c *Client) ConnectCluster(addrs []string, password string) error {
 		},
 	})
 
-	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	c.mu.Lock()
+	c.isCluster = true
+	c.password = password
+	c.host = host
+	c.port = port
+	c.cluster = cluster
+	ctx := c.ctx
+	c.mu.Unlock()
+
+	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.cluster.Ping(ctx).Result()
+	_, err := cluster.Ping(pingCtx).Result()
 	return err
 }
 
@@ -130,6 +146,12 @@ func parseAddr(addr string) (string, int) {
 
 // Disconnect closes the Redis connection
 func (c *Client) Disconnect() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.disconnectLocked()
+}
+
+func (c *Client) disconnectLocked() error {
 	var errs []error
 	if c.cancelKeyspace != nil {
 		c.cancelKeyspace()
@@ -158,21 +180,31 @@ func (c *Client) Disconnect() error {
 
 // IsCluster returns whether connected to a cluster
 func (c *Client) IsCluster() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.isCluster
 }
 
 // SelectDB switches the database
 func (c *Client) SelectDB(db int) error {
-	if c.isCluster {
+	c.mu.RLock()
+	isCluster := c.isCluster
+	client := c.client
+	ctx := c.ctx
+	c.mu.RUnlock()
+
+	if isCluster {
 		return fmt.Errorf("database selection not supported in cluster mode")
 	}
-	if c.client == nil {
+	if client == nil {
 		return fmt.Errorf("not connected")
 	}
-	if err := c.client.Do(c.ctx, "SELECT", db).Err(); err != nil {
+	if err := client.Do(ctx, "SELECT", db).Err(); err != nil {
 		return err
 	}
+	c.mu.Lock()
 	c.db = db
+	c.mu.Unlock()
 	return nil
 }
 
