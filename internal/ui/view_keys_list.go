@@ -88,7 +88,7 @@ func (m Model) viewKeysListOnly() string {
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render("Press 'a' to add one."))
 	} else {
-		header := fmt.Sprintf("  %-40s %-10s %-15s", "Key", "Type", "TTL")
+		header := fmt.Sprintf("  %-40s %-12s %-15s", "Key", "Type", "TTL")
 		b.WriteString(headerStyle.Render(header))
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render(strings.Repeat("─", 70)))
@@ -150,12 +150,12 @@ func (m Model) viewKeysListOnly() string {
 				ttlStyleLocal = dimStyle
 			}
 
-			typePart := getTypeStyle(key.Type).Render(fmt.Sprintf("%-10s", key.Type))
+			typePart := getTypeStyle(key.Type).Render(fmt.Sprintf("%-12s", key.Type))
 			ttlPart := ttlStyleLocal.Render(fmt.Sprintf("%-15s", ttlStr))
 
 			line := fmt.Sprintf("%-40s %s %s", keyName, typePart, ttlPart)
 			if i == selectedIdx {
-				b.WriteString(selectedStyle.Render("▶ " + fmt.Sprintf("%-40s %-10s %-15s", keyName, key.Type, ttlStr)))
+				b.WriteString(selectedStyle.Render("▶ " + fmt.Sprintf("%-40s %-12s %-15s", keyName, key.Type, ttlStr)))
 			} else {
 				b.WriteString(normalStyle.Render("  ") + line)
 			}
@@ -217,7 +217,7 @@ func (m Model) buildKeysListPanel(width int) string {
 	}
 
 	// Calculate column widths
-	typeWidth := 8
+	typeWidth := 12
 	ttlWidth := 6
 	keyWidth := width - typeWidth - ttlWidth - 6 // 6 for spacing and cursor
 	if keyWidth < 20 {
