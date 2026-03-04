@@ -35,7 +35,7 @@ go install github.com/davidbudnick/redis-tui@latest
 
 ### Browsing and Editing
 - **Key browser** with pattern filtering, regex, and fuzzy search
-- **All data types** — strings, lists, sets, sorted sets, hashes, streams, and JSON (RedisJSON)
+- **All data types** — strings, lists, sets, sorted sets, hashes, streams, JSON (RedisJSON), HyperLogLog, bitmaps, and geospatial
 - **Inline editing** with VIM keybindings for strings and collections
 - **Tree view** for hierarchical key navigation
 - **Favorites and recent keys** for quick access

@@ -60,6 +60,7 @@ func main() {
 	seedStreams(ctx, rdb)
 	seedHyperLogLog(ctx, rdb)
 	seedBitmaps(ctx, rdb)
+	seedGeo(ctx, rdb)
 	seedTTLKeys(ctx, rdb)
 	seedNestedKeys(ctx, rdb)
 	seedJSONStrings(ctx, rdb)
@@ -236,6 +237,28 @@ func seedBitmaps(ctx context.Context, rdb redis.Cmdable) {
 		must(rdb.SetBit(ctx, "bitmap:feature-flags", offset, 1))
 	}
 	fmt.Println("  bitmaps:      2 keys")
+}
+
+func seedGeo(ctx context.Context, rdb redis.Cmdable) {
+	offices := []*redis.GeoLocation{
+		{Name: "New York", Longitude: -74.0060, Latitude: 40.7128},
+		{Name: "London", Longitude: -0.1276, Latitude: 51.5074},
+		{Name: "Tokyo", Longitude: 139.6917, Latitude: 35.6895},
+		{Name: "Sydney", Longitude: 151.2093, Latitude: -33.8688},
+		{Name: "San Francisco", Longitude: -122.4194, Latitude: 37.7749},
+	}
+	must(rdb.GeoAdd(ctx, "geo:offices", offices...))
+
+	restaurants := []*redis.GeoLocation{
+		{Name: "Pizza Palace", Longitude: -73.9857, Latitude: 40.7484},
+		{Name: "Sushi Garden", Longitude: -73.9712, Latitude: 40.7614},
+		{Name: "Taco Town", Longitude: -73.9934, Latitude: 40.7505},
+		{Name: "Burger Barn", Longitude: -73.9787, Latitude: 40.7527},
+		{Name: "Noodle House", Longitude: -73.9862, Latitude: 40.7559},
+		{Name: "Café Central", Longitude: -73.9814, Latitude: 40.7681},
+	}
+	must(rdb.GeoAdd(ctx, "geo:restaurants", restaurants...))
+	fmt.Println("  geo:          2 keys")
 }
 
 func seedTTLKeys(ctx context.Context, rdb redis.Cmdable) {

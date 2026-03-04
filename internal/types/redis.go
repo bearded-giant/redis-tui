@@ -15,6 +15,7 @@ const (
 	KeyTypeJSON        KeyType = "ReJSON-RL"
 	KeyTypeHyperLogLog KeyType = "hyperloglog"
 	KeyTypeBitmap      KeyType = "bitmap"
+	KeyTypeGeo         KeyType = "geo"
 )
 
 // RedisKey represents a key with metadata
@@ -36,9 +37,17 @@ type RedisValue struct {
 	HashValue   map[string]string
 	StreamValue []StreamEntry
 	JSONValue   string
-	HLLCount    int64 // cardinality for HyperLogLog (from PFCOUNT)
-	BitCount     int64   // bit count for Bitmap (from BITCOUNT)
-	BitPositions []int64 // set bit positions for Bitmap display
+	HLLCount     int64       // cardinality for HyperLogLog (from PFCOUNT)
+	GeoValue     []GeoMember // members with coordinates for Geo
+	BitCount     int64       // bit count for Bitmap (from BITCOUNT)
+	BitPositions []int64     // set bit positions for Bitmap display
+}
+
+// GeoMember represents a geospatial member with coordinates
+type GeoMember struct {
+	Name      string
+	Longitude float64
+	Latitude  float64
 }
 
 // ZSetMember represents a sorted set member with score

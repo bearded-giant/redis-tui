@@ -86,9 +86,10 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 		}
 	}
 
-	// Detect string subtypes (HyperLogLog, Bitmap) with a second pipeline
+	// Detect subtypes (HLL, Bitmap for strings; Geo for zsets)
 	if includeTypes {
 		result = c.detectStringSubtypes(result)
+		result = c.detectZSetSubtypes(result)
 	}
 
 	return result, nextCursor, nil
@@ -431,6 +432,43 @@ func (c *Client) detectStringSubtypes(keys []types.RedisKey) []types.RedisKey {
 			keys[idx].Type = types.KeyTypeHyperLogLog
 		} else if isBinaryString(val) {
 			keys[idx].Type = types.KeyTypeBitmap
+		}
+	}
+
+	return keys
+}
+
+// detectZSetSubtypes checks zset-typed keys for Geo subtype by pipelining
+// ZRangeWithScores and checking if scores look like geohash integers.
+func (c *Client) detectZSetSubtypes(keys []types.RedisKey) []types.RedisKey {
+	var zsetIdxs []int
+	for i := range keys {
+		if keys[i].Type == "zset" {
+			zsetIdxs = append(zsetIdxs, i)
+		}
+	}
+	if len(zsetIdxs) == 0 {
+		return keys
+	}
+
+	pipe := c.pipeline()
+	zrangeCmds := make([]*redis.ZSliceCmd, len(zsetIdxs))
+	for j, idx := range zsetIdxs {
+		zrangeCmds[j] = pipe.ZRangeWithScores(c.ctx, keys[idx].Key, 0, 0) // only first member
+	}
+	_, _ = pipe.Exec(c.ctx)
+
+	for j, idx := range zsetIdxs {
+		vals, err := zrangeCmds[j].Result()
+		if err != nil || len(vals) == 0 {
+			continue
+		}
+		member := types.ZSetMember{
+			Member: vals[0].Member.(string),
+			Score:  vals[0].Score,
+		}
+		if looksLikeGeoScores([]types.ZSetMember{member}) {
+			keys[idx].Type = types.KeyTypeGeo
 		}
 	}
 

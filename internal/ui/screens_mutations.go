@@ -3,6 +3,7 @@ package ui
 import (
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davidbudnick/redis-tui/internal/cmd"
@@ -16,7 +17,7 @@ import (
 // Types that need a third input (zset, hash, stream) have 3 fields; others have 2.
 func (m Model) addKeyFieldCount() int {
 	switch m.AddKeyType {
-	case types.KeyTypeZSet, types.KeyTypeHash, types.KeyTypeStream:
+	case types.KeyTypeZSet, types.KeyTypeHash, types.KeyTypeStream, types.KeyTypeGeo:
 		return 3
 	default:
 		return 2
@@ -41,7 +42,7 @@ func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		typeOrder := []types.KeyType{
 			types.KeyTypeString, types.KeyTypeList, types.KeyTypeSet,
 			types.KeyTypeZSet, types.KeyTypeHash, types.KeyTypeStream,
-			types.KeyTypeJSON, types.KeyTypeHyperLogLog, types.KeyTypeBitmap,
+			types.KeyTypeJSON, types.KeyTypeHyperLogLog, types.KeyTypeBitmap, types.KeyTypeGeo,
 		}
 		for i, t := range typeOrder {
 			if t == m.AddKeyType {
@@ -211,6 +212,16 @@ func (m Model) handleAddToCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 					offset, _ = strconv.ParseInt(value, 10, 64)
 				}
 				return m, cmd.SetBitCmd(m.CurrentKey.Key, offset, 1)
+			case types.KeyTypeGeo:
+				lon, lat := 0.0, 0.0
+				if extra != "" {
+					parts := strings.SplitN(extra, ",", 2)
+					if len(parts) == 2 {
+						lon, _ = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+						lat, _ = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+					}
+				}
+				return m, cmd.AddToGeoCmd(m.CurrentKey.Key, lon, lat, value)
 			}
 		}
 	case "esc":
@@ -267,6 +278,10 @@ func (m Model) handleRemoveFromCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.
 			case types.KeyTypeStream:
 				if m.SelectedItemIdx < len(m.CurrentValue.StreamValue) {
 					return m, cmd.RemoveFromStreamCmd(m.CurrentKey.Key, m.CurrentValue.StreamValue[m.SelectedItemIdx].ID)
+				}
+			case types.KeyTypeGeo:
+				if m.SelectedItemIdx < len(m.CurrentValue.GeoValue) {
+					return m, cmd.RemoveFromZSetCmd(m.CurrentKey.Key, m.CurrentValue.GeoValue[m.SelectedItemIdx].Name)
 				}
 			}
 		}

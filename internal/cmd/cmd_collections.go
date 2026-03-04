@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/redis/go-redis/v9"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -127,6 +128,17 @@ func AddToHLLCmd(key string, elements ...string) tea.Cmd {
 			return types.ItemAddedToCollectionMsg{Key: key, Err: nil}
 		}
 		err := rc.PFAdd(key, elements...)
+		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
+	}
+}
+
+func AddToGeoCmd(key string, lon, lat float64, member string) tea.Cmd {
+	return func() tea.Msg {
+		rc := getRedisClient()
+		if rc == nil {
+			return types.ItemAddedToCollectionMsg{Key: key, Err: nil}
+		}
+		err := rc.GeoAdd(key, &redis.GeoLocation{Name: member, Longitude: lon, Latitude: lat})
 		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
 	}
 }

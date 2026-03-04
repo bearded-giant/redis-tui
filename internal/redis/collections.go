@@ -107,6 +107,16 @@ func (c *Client) PFCount(key string) (int64, error) {
 	return c.cmdable().PFCount(c.ctx, key).Result()
 }
 
+// GeoAdd adds members with coordinates to a geospatial index
+func (c *Client) GeoAdd(key string, members ...*redis.GeoLocation) error {
+	return c.cmdable().GeoAdd(c.ctx, key, members...).Err()
+}
+
+// GeoPos returns the positions of members in a geospatial index
+func (c *Client) GeoPos(key string, members ...string) ([]*redis.GeoPos, error) {
+	return c.cmdable().GeoPos(c.ctx, key, members...).Result()
+}
+
 // SetBit sets a bit at the given offset
 func (c *Client) SetBit(key string, offset int64, value int) error {
 	return c.cmdable().SetBit(c.ctx, key, offset, value).Err()

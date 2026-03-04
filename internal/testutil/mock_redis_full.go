@@ -96,6 +96,9 @@ type FullMockRedisClient struct {
 	SetBitError            error
 	GetBitError            error
 	BitCountError          error
+	GeoAddError            error
+	GeoPosResult           []*redis.GeoPos
+	GeoPosError            error
 
 	// Call tracking
 	Calls []string
@@ -428,6 +431,16 @@ func (m *FullMockRedisClient) GetBit(_ string, _ int64) (int64, error) {
 func (m *FullMockRedisClient) BitCount(_ string) (int64, error) {
 	m.Calls = append(m.Calls, "BitCount")
 	return m.BitCountResult, m.BitCountError
+}
+
+func (m *FullMockRedisClient) GeoAdd(_ string, _ ...*redis.GeoLocation) error {
+	m.Calls = append(m.Calls, "GeoAdd")
+	return m.GeoAddError
+}
+
+func (m *FullMockRedisClient) GeoPos(_ string, _ ...string) ([]*redis.GeoPos, error) {
+	m.Calls = append(m.Calls, "GeoPos")
+	return m.GeoPosResult, m.GeoPosError
 }
 
 // Configuration

@@ -122,6 +122,10 @@ type RedisService interface {
 	GetBit(key string, offset int64) (int64, error)
 	BitCount(key string) (int64, error)
 
+	// Geo operations
+	GeoAdd(key string, members ...*redis.GeoLocation) error
+	GeoPos(key string, members ...string) ([]*redis.GeoPos, error)
+
 	// Database operations
 	SelectDB(db int) error
 	FlushDB() error

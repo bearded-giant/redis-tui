@@ -92,6 +92,8 @@ func (m Model) viewAddToCollection() string {
 			label1, label2 = "Element:", ""
 		case types.KeyTypeBitmap:
 			label1, label2 = "Offset:", ""
+		case types.KeyTypeGeo:
+			label1, label2 = "Member:", "Lon,Lat:"
 		}
 
 		b.WriteString(keyStyle.Render(label1))
@@ -177,6 +179,16 @@ func (m Model) viewRemoveFromCollection() string {
 					b.WriteString(selectedStyle.Render(fmt.Sprintf("> %s", e.ID)))
 				} else {
 					b.WriteString(normalStyle.Render(fmt.Sprintf("  %s", e.ID)))
+				}
+				b.WriteString("\n")
+			}
+		case types.KeyTypeGeo:
+			for i, g := range m.CurrentValue.GeoValue {
+				display := fmt.Sprintf("%s  (%.4f, %.4f)", g.Name, g.Longitude, g.Latitude)
+				if i == m.SelectedItemIdx {
+					b.WriteString(selectedStyle.Render("> " + display))
+				} else {
+					b.WriteString(normalStyle.Render("  " + display))
 				}
 				b.WriteString("\n")
 			}

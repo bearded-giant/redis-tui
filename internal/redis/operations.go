@@ -77,6 +77,31 @@ func (c *Client) GetValue(key string) (types.RedisValue, error) {
 			})
 		}
 
+		// Detect Geo: check if scores look like 52-bit geohash integers
+		if len(value.ZSetValue) > 0 && looksLikeGeoScores(value.ZSetValue) {
+			members := make([]string, len(value.ZSetValue))
+			for i, m := range value.ZSetValue {
+				members[i] = m.Member
+			}
+			positions, err := c.cmdable().GeoPos(c.ctx, key, members...).Result()
+			if err == nil {
+				var geoMembers []types.GeoMember
+				for i, pos := range positions {
+					if pos != nil {
+						geoMembers = append(geoMembers, types.GeoMember{
+							Name:      members[i],
+							Longitude: pos.Longitude,
+							Latitude:  pos.Latitude,
+						})
+					}
+				}
+				if len(geoMembers) > 0 {
+					value.Type = types.KeyTypeGeo
+					value.GeoValue = geoMembers
+				}
+			}
+		}
+
 	case "hash":
 		vals, err := c.cmdable().HGetAll(c.ctx, key).Result()
 		if err != nil {
@@ -105,6 +130,22 @@ func (c *Client) GetValue(key string) (types.RedisValue, error) {
 	}
 
 	return value, nil
+}
+
+// looksLikeGeoScores returns true if all sorted set scores look like 52-bit
+// geohash integers produced by GEOADD (range ~1e14 to ~5e15, integer values).
+// Regular ZADD scores (e.g. 1.5, 100, 9850) are much smaller.
+func looksLikeGeoScores(members []types.ZSetMember) bool {
+	for _, m := range members {
+		s := m.Score
+		if s < 1e14 || s > 5e15 {
+			return false
+		}
+		if s != float64(int64(s)) {
+			return false
+		}
+	}
+	return true
 }
 
 // isBinaryString returns true if the string contains binary data (invalid

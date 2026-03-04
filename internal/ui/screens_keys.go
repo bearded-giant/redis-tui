@@ -449,6 +449,8 @@ func (m Model) getCollectionLength() int {
 		return len(m.CurrentValue.HashValue)
 	case types.KeyTypeStream:
 		return len(m.CurrentValue.StreamValue)
+	case types.KeyTypeGeo:
+		return len(m.CurrentValue.GeoValue)
 	case types.KeyTypeHyperLogLog, types.KeyTypeJSON, types.KeyTypeBitmap:
 		return 0
 	default:

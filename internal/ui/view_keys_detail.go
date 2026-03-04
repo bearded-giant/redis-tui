@@ -148,6 +148,14 @@ func (m Model) viewKeyDetail() string {
 		} else {
 			vc.WriteString("(all bits are 0)")
 		}
+	case types.KeyTypeGeo:
+		if len(m.CurrentValue.GeoValue) == 0 {
+			vc.WriteString("(empty geo set)")
+		} else {
+			for _, g := range m.CurrentValue.GeoValue {
+				fmt.Fprintf(&vc, "%s  (%.6f, %.6f)\n", g.Name, g.Longitude, g.Latitude)
+			}
+		}
 	}
 
 	b.WriteString(valueBox.Render(strings.TrimSpace(vc.String())))
@@ -212,6 +220,10 @@ func (m Model) viewAddKey() string {
 		valueLabel = "Element:"
 	case types.KeyTypeBitmap:
 		valueLabel = "Offset:"
+	case types.KeyTypeGeo:
+		valueLabel = "Member:"
+		showThirdInput = true
+		thirdLabel = "Lon,Lat:"
 	}
 
 	b.WriteString(keyStyle.Render(valueLabel))

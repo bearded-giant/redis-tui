@@ -284,6 +284,27 @@ func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
 			lines = append(lines, dimStyle.Render("(all bits are 0)"))
 		}
 
+	case types.KeyTypeGeo:
+		if len(m.PreviewValue.GeoValue) == 0 {
+			return dimStyle.Render("(empty geo set)")
+		}
+		lines = append(lines, dimStyle.Render(fmt.Sprintf("Members: %d", len(m.PreviewValue.GeoValue))))
+		lines = append(lines, "")
+
+		for i, g := range m.PreviewValue.GeoValue {
+			if i >= maxLines-2 {
+				lines = append(lines, dimStyle.Render(fmt.Sprintf("... and %d more", len(m.PreviewValue.GeoValue)-i)))
+				break
+			}
+			name := g.Name
+			if len(name) > maxWidth-25 {
+				name = name[:maxWidth-28] + "..."
+			}
+			lines = append(lines, fmt.Sprintf("%s  %s",
+				normalStyle.Render(name),
+				dimStyle.Render(fmt.Sprintf("(%.4f, %.4f)", g.Longitude, g.Latitude))))
+		}
+
 	default:
 		return dimStyle.Render("(unknown type)")
 	}

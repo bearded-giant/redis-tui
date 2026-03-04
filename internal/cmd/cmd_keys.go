@@ -3,9 +3,11 @@ package cmd
 import (
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/redis/go-redis/v9"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -113,6 +115,16 @@ func CreateKeyCmd(key string, keyType types.KeyType, value string, extra string,
 				offset, _ = strconv.ParseInt(value, 10, 64)
 			}
 			err = rc.SetBit(key, offset, 1)
+		case types.KeyTypeGeo:
+			lon, lat := 0.0, 0.0
+			if extra != "" {
+				parts := strings.SplitN(extra, ",", 2)
+				if len(parts) == 2 {
+					lon, _ = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+					lat, _ = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+				}
+			}
+			err = rc.GeoAdd(key, &redis.GeoLocation{Name: value, Longitude: lon, Latitude: lat})
 		}
 		return types.KeySetMsg{Key: key, Err: err}
 	}
