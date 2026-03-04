@@ -1,3 +1,10 @@
+networks:
+  redis-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
 services:
   redis-node-1:
     image: redis:7-alpine
@@ -12,9 +19,13 @@ services:
         --cluster-enabled yes
         --cluster-config-file nodes-1.conf
         --cluster-node-timeout 5000
+        --cluster-announce-ip 172.30.0.11
         --cluster-announce-port 6380
         --cluster-announce-bus-port 16380
         --appendonly yes
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.11
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "6380", "ping"]
       interval: 5s
@@ -34,9 +45,13 @@ services:
         --cluster-enabled yes
         --cluster-config-file nodes-2.conf
         --cluster-node-timeout 5000
+        --cluster-announce-ip 172.30.0.12
         --cluster-announce-port 6381
         --cluster-announce-bus-port 16381
         --appendonly yes
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.12
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "6381", "ping"]
       interval: 5s
@@ -56,9 +71,13 @@ services:
         --cluster-enabled yes
         --cluster-config-file nodes-3.conf
         --cluster-node-timeout 5000
+        --cluster-announce-ip 172.30.0.13
         --cluster-announce-port 6382
         --cluster-announce-bus-port 16382
         --appendonly yes
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.13
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "6382", "ping"]
       interval: 5s
@@ -78,9 +97,13 @@ services:
         --cluster-enabled yes
         --cluster-config-file nodes-4.conf
         --cluster-node-timeout 5000
+        --cluster-announce-ip 172.30.0.14
         --cluster-announce-port 6383
         --cluster-announce-bus-port 16383
         --appendonly yes
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.14
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "6383", "ping"]
       interval: 5s
@@ -100,9 +123,13 @@ services:
         --cluster-enabled yes
         --cluster-config-file nodes-5.conf
         --cluster-node-timeout 5000
+        --cluster-announce-ip 172.30.0.15
         --cluster-announce-port 6384
         --cluster-announce-bus-port 16384
         --appendonly yes
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.15
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "6384", "ping"]
       interval: 5s
@@ -122,9 +149,13 @@ services:
         --cluster-enabled yes
         --cluster-config-file nodes-6.conf
         --cluster-node-timeout 5000
+        --cluster-announce-ip 172.30.0.16
         --cluster-announce-port 6385
         --cluster-announce-bus-port 16385
         --appendonly yes
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.16
     healthcheck:
       test: ["CMD", "redis-cli", "-p", "6385", "ping"]
       interval: 5s
@@ -133,6 +164,8 @@ services:
 
   cluster-init:
     image: redis:7-alpine
+    networks:
+      - redis-cluster
     depends_on:
       redis-node-1:
         condition: service_healthy
