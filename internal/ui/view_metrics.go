@@ -7,6 +7,29 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	metricsHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
+	metricsSectionStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245"))
+	metricsCardBorder  = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("240")).
+				Padding(0, 1).
+				Width(22)
+	metricsCardLabel  = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	metricsCardValue  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
+	metricsGreenValue = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("35"))
+	metricsYellowValue = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("33"))
+	metricsChartBorder = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("237")).
+				Padding(0, 1)
+	metricsClusterBadge = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("0")).
+				Background(lipgloss.Color("208")).
+				Padding(0, 1)
+)
+
 // viewLiveMetrics renders the live metrics dashboard with ASCII charts
 func (m Model) viewLiveMetrics() string {
 	var b strings.Builder
@@ -20,8 +43,7 @@ func (m Model) viewLiveMetrics() string {
 	}
 
 	// Header box
-	headerTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39")).Render("Live Metrics Dashboard")
-	b.WriteString(headerTitle)
+	b.WriteString(metricsHeaderStyle.Render("Live Metrics Dashboard"))
 	b.WriteString("\n")
 
 	// Connection info line
@@ -38,12 +60,7 @@ func (m Model) viewLiveMetrics() string {
 
 	// Cluster badge — based on connection config, not server detection
 	if m.CurrentConn != nil && m.CurrentConn.UseCluster {
-		clusterBadge := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("0")).
-			Background(lipgloss.Color("208")).
-			Padding(0, 1).
-			Render(fmt.Sprintf("CLUSTER  %d nodes", len(m.ClusterNodes)))
+		clusterBadge := metricsClusterBadge.Render(fmt.Sprintf("CLUSTER  %d nodes", len(m.ClusterNodes)))
 		b.WriteString("  ")
 		b.WriteString(clusterBadge)
 	}
@@ -77,71 +94,59 @@ func (m Model) viewLiveMetrics() string {
 	}
 	cpuTotal := latest.UsedCPUSys + latest.UsedCPUUser
 
-	// Stat card styles
-	cardBorder := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		Padding(0, 1).
-		Width(22)
-
-	cardLabel := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	cardValue := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("39"))
-	greenValue := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("35"))
-	yellowValue := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("33"))
-
 	// Build stat cards — Performance row
-	perfOps := cardBorder.Render(
-		cardLabel.Render("Ops/sec") + "\n" +
-			cardValue.Render(fmt.Sprintf("%.0f", latest.OpsPerSec)),
+	perfOps := metricsCardBorder.Render(
+		metricsCardLabel.Render("Ops/sec") + "\n" +
+			metricsCardValue.Render(fmt.Sprintf("%.0f", latest.OpsPerSec)),
 	)
-	perfHit := cardBorder.Render(
-		cardLabel.Render("Hit Rate") + "\n" +
-			greenValue.Render(fmt.Sprintf("%.1f%%", hitRate)),
+	perfHit := metricsCardBorder.Render(
+		metricsCardLabel.Render("Hit Rate") + "\n" +
+			metricsGreenValue.Render(fmt.Sprintf("%.1f%%", hitRate)),
 	)
-	perfCPU := cardBorder.Render(
-		cardLabel.Render("CPU (sys+user)") + "\n" +
-			yellowValue.Render(fmt.Sprintf("%.2fs", cpuTotal)),
+	perfCPU := metricsCardBorder.Render(
+		metricsCardLabel.Render("CPU (sys+user)") + "\n" +
+			metricsYellowValue.Render(fmt.Sprintf("%.2fs", cpuTotal)),
 	)
 
-	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render("  Performance"))
+	b.WriteString(metricsSectionStyle.Render("  Performance"))
 	b.WriteString("\n")
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, perfOps, perfHit, perfCPU))
 	b.WriteString("\n")
 
 	// Resources row
-	resMem := cardBorder.Render(
-		cardLabel.Render("Memory") + "\n" +
-			cardValue.Render(formatBytes(latest.UsedMemoryBytes)),
+	resMem := metricsCardBorder.Render(
+		metricsCardLabel.Render("Memory") + "\n" +
+			metricsCardValue.Render(formatBytes(latest.UsedMemoryBytes)),
 	)
-	resClients := cardBorder.Render(
-		cardLabel.Render("Connected Clients") + "\n" +
-			greenValue.Render(fmt.Sprintf("%d", latest.ConnectedClients)),
+	resClients := metricsCardBorder.Render(
+		metricsCardLabel.Render("Connected Clients") + "\n" +
+			metricsGreenValue.Render(fmt.Sprintf("%d", latest.ConnectedClients)),
 	)
-	resBlocked := cardBorder.Render(
-		cardLabel.Render("Blocked Clients") + "\n" +
-			yellowValue.Render(fmt.Sprintf("%d", latest.BlockedClients)),
+	resBlocked := metricsCardBorder.Render(
+		metricsCardLabel.Render("Blocked Clients") + "\n" +
+			metricsYellowValue.Render(fmt.Sprintf("%d", latest.BlockedClients)),
 	)
 
-	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render("  Resources"))
+	b.WriteString(metricsSectionStyle.Render("  Resources"))
 	b.WriteString("\n")
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, resMem, resClients, resBlocked))
 	b.WriteString("\n")
 
 	// Network row
-	netIn := cardBorder.Render(
-		cardLabel.Render("Input KB/s") + "\n" +
-			cardValue.Render(fmt.Sprintf("%.2f", latest.InputKbps)),
+	netIn := metricsCardBorder.Render(
+		metricsCardLabel.Render("Input KB/s") + "\n" +
+			metricsCardValue.Render(fmt.Sprintf("%.2f", latest.InputKbps)),
 	)
-	netOut := cardBorder.Render(
-		cardLabel.Render("Output KB/s") + "\n" +
-			cardValue.Render(fmt.Sprintf("%.2f", latest.OutputKbps)),
+	netOut := metricsCardBorder.Render(
+		metricsCardLabel.Render("Output KB/s") + "\n" +
+			metricsCardValue.Render(fmt.Sprintf("%.2f", latest.OutputKbps)),
 	)
-	netTotal := cardBorder.Render(
-		cardLabel.Render("Total Connections") + "\n" +
-			greenValue.Render(fmt.Sprintf("%d", latest.TotalConnections)),
+	netTotal := metricsCardBorder.Render(
+		metricsCardLabel.Render("Total Connections") + "\n" +
+			metricsGreenValue.Render(fmt.Sprintf("%d", latest.TotalConnections)),
 	)
 
-	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render("  Network"))
+	b.WriteString(metricsSectionStyle.Render("  Network"))
 	b.WriteString("\n")
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, netIn, netOut, netTotal))
 	b.WriteString("\n\n")
@@ -150,17 +155,12 @@ func (m Model) viewLiveMetrics() string {
 	b.WriteString(dimStyle.Render(strings.Repeat("─", separatorWidth)))
 	b.WriteString("\n\n")
 
-	chartBorder := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("237")).
-		Padding(0, 1)
-
 	// Ops/sec chart
 	opsData := make([]float64, len(m.LiveMetrics.DataPoints))
 	for i, dp := range m.LiveMetrics.DataPoints {
 		opsData[i] = dp.OpsPerSec
 	}
-	b.WriteString(chartBorder.Render(renderLineChart("Ops/sec", opsData, chartWidth, 6, lipgloss.Color("39"))))
+	b.WriteString(metricsChartBorder.Render(renderLineChart("Ops/sec", opsData, chartWidth, 6, lipgloss.Color("39"))))
 	b.WriteString("\n")
 
 	// Memory chart
@@ -168,7 +168,7 @@ func (m Model) viewLiveMetrics() string {
 	for i, dp := range m.LiveMetrics.DataPoints {
 		memData[i] = float64(dp.UsedMemoryBytes) / 1024 / 1024
 	}
-	b.WriteString(chartBorder.Render(renderLineChart("Memory (MB)", memData, chartWidth, 6, lipgloss.Color("35"))))
+	b.WriteString(metricsChartBorder.Render(renderLineChart("Memory (MB)", memData, chartWidth, 6, lipgloss.Color("35"))))
 	b.WriteString("\n")
 
 	// Network chart
@@ -176,7 +176,7 @@ func (m Model) viewLiveMetrics() string {
 	for i, dp := range m.LiveMetrics.DataPoints {
 		netData[i] = dp.InputKbps + dp.OutputKbps
 	}
-	b.WriteString(chartBorder.Render(renderLineChart("Network KB/s", netData, chartWidth, 5, lipgloss.Color("33"))))
+	b.WriteString(metricsChartBorder.Render(renderLineChart("Network KB/s", netData, chartWidth, 5, lipgloss.Color("33"))))
 	b.WriteString("\n")
 
 	// Clients chart
@@ -184,7 +184,7 @@ func (m Model) viewLiveMetrics() string {
 	for i, dp := range m.LiveMetrics.DataPoints {
 		clientsData[i] = float64(dp.ConnectedClients)
 	}
-	b.WriteString(chartBorder.Render(renderLineChart("Clients", clientsData, chartWidth, 5, lipgloss.Color("32"))))
+	b.WriteString(metricsChartBorder.Render(renderLineChart("Clients", clientsData, chartWidth, 5, lipgloss.Color("32"))))
 	b.WriteString("\n")
 
 	// CPU chart
@@ -192,7 +192,7 @@ func (m Model) viewLiveMetrics() string {
 	for i, dp := range m.LiveMetrics.DataPoints {
 		cpuData[i] = dp.UsedCPUSys + dp.UsedCPUUser
 	}
-	b.WriteString(chartBorder.Render(renderLineChart("CPU (seconds)", cpuData, chartWidth, 5, lipgloss.Color("208"))))
+	b.WriteString(metricsChartBorder.Render(renderLineChart("CPU (seconds)", cpuData, chartWidth, 5, lipgloss.Color("208"))))
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("Auto-refreshing (1s) | c:clear | q/esc:back"))
@@ -229,11 +229,10 @@ func renderLineChart(title string, data []float64, width, height int, color lipg
 	current := data[len(data)-1]
 
 	// Title with current/max values
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(color)
-	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	chartTitleStyle := lipgloss.NewStyle().Bold(true).Foreground(color)
 
-	b.WriteString(titleStyle.Render(title))
-	b.WriteString(infoStyle.Render(fmt.Sprintf("  %.1f", current)))
+	b.WriteString(chartTitleStyle.Render(title))
+	b.WriteString(metricsCardLabel.Render(fmt.Sprintf("  %.1f", current)))
 	b.WriteString(dimStyle.Render(fmt.Sprintf(" (max: %.1f)", maxVal)))
 	b.WriteString("\n")
 
