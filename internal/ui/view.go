@@ -7,59 +7,99 @@ import (
 	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
-// getScreenView returns the view function for a given screen
+// getScreenView returns the view for the current screen.
+// Uses a switch instead of a map to avoid per-frame heap allocation.
 func (m Model) getScreenView() string {
-	viewMap := map[types.Screen]func() string{
-		types.ScreenConnections:          m.viewConnections,
-		types.ScreenAddConnection:        m.viewAddConnection,
-		types.ScreenEditConnection:       m.viewEditConnection,
-		types.ScreenKeys:                 m.viewKeys,
-		types.ScreenKeyDetail:            m.viewKeyDetail,
-		types.ScreenAddKey:               m.viewAddKey,
-		types.ScreenHelp:                 m.viewHelp,
-		types.ScreenConfirmDelete:        m.viewConfirmDelete,
-		types.ScreenServerInfo:           m.viewServerInfo,
-		types.ScreenTTLEditor:            m.viewTTLEditor,
-		types.ScreenEditValue:            m.viewEditValue,
-		types.ScreenAddToCollection:      m.viewAddToCollection,
-		types.ScreenRemoveFromCollection: m.viewRemoveFromCollection,
-		types.ScreenRenameKey:            m.viewRenameKey,
-		types.ScreenCopyKey:              m.viewCopyKey,
-		types.ScreenPubSub:               m.viewPubSub,
-		types.ScreenPublishMessage:       m.viewPubSub,
-		types.ScreenSwitchDB:             m.viewSwitchDB,
-		types.ScreenSearchValues:         m.viewSearchValues,
-		types.ScreenExport:               m.viewExport,
-		types.ScreenImport:               m.viewImport,
-		types.ScreenSlowLog:              m.viewSlowLog,
-		types.ScreenLuaScript:            m.viewLuaScript,
-		types.ScreenTestConnection:       m.viewTestConnection,
-		types.ScreenLogs:                 m.viewLogs,
-		types.ScreenBulkDelete:           m.viewBulkDelete,
-		types.ScreenBatchTTL:             m.viewBatchTTL,
-		types.ScreenFavorites:            m.viewFavorites,
-		types.ScreenRecentKeys:           m.viewRecentKeys,
-		types.ScreenTreeView:             m.viewTreeView,
-		types.ScreenRegexSearch:          m.viewRegexSearch,
-		types.ScreenFuzzySearch:          m.viewFuzzySearch,
-		types.ScreenClientList:           m.viewClientList,
-		types.ScreenMemoryStats:          m.viewMemoryStats,
-		types.ScreenClusterInfo:          m.viewClusterInfo,
-		types.ScreenCompareKeys:          m.viewCompareKeys,
-		types.ScreenTemplates:            m.viewTemplates,
-		types.ScreenValueHistory:         m.viewValueHistory,
-		types.ScreenKeyspaceEvents:       m.viewKeyspaceEvents,
-		types.ScreenJSONPath:             m.viewJSONPath,
-		types.ScreenExpiringKeys:         m.viewExpiringKeys,
-		types.ScreenLiveMetrics:          m.viewLiveMetrics,
-		types.ScreenPubSubChannels:       m.viewPubSubChannels,
-		types.ScreenRedisConfig:          m.viewRedisConfig,
+	switch m.Screen {
+	case types.ScreenConnections:
+		return m.viewConnections()
+	case types.ScreenAddConnection:
+		return m.viewAddConnection()
+	case types.ScreenEditConnection:
+		return m.viewEditConnection()
+	case types.ScreenKeys:
+		return m.viewKeys()
+	case types.ScreenKeyDetail:
+		return m.viewKeyDetail()
+	case types.ScreenAddKey:
+		return m.viewAddKey()
+	case types.ScreenHelp:
+		return m.viewHelp()
+	case types.ScreenConfirmDelete:
+		return m.viewConfirmDelete()
+	case types.ScreenServerInfo:
+		return m.viewServerInfo()
+	case types.ScreenTTLEditor:
+		return m.viewTTLEditor()
+	case types.ScreenEditValue:
+		return m.viewEditValue()
+	case types.ScreenAddToCollection:
+		return m.viewAddToCollection()
+	case types.ScreenRemoveFromCollection:
+		return m.viewRemoveFromCollection()
+	case types.ScreenRenameKey:
+		return m.viewRenameKey()
+	case types.ScreenCopyKey:
+		return m.viewCopyKey()
+	case types.ScreenPubSub, types.ScreenPublishMessage:
+		return m.viewPubSub()
+	case types.ScreenSwitchDB:
+		return m.viewSwitchDB()
+	case types.ScreenSearchValues:
+		return m.viewSearchValues()
+	case types.ScreenExport:
+		return m.viewExport()
+	case types.ScreenImport:
+		return m.viewImport()
+	case types.ScreenSlowLog:
+		return m.viewSlowLog()
+	case types.ScreenLuaScript:
+		return m.viewLuaScript()
+	case types.ScreenTestConnection:
+		return m.viewTestConnection()
+	case types.ScreenLogs:
+		return m.viewLogs()
+	case types.ScreenBulkDelete:
+		return m.viewBulkDelete()
+	case types.ScreenBatchTTL:
+		return m.viewBatchTTL()
+	case types.ScreenFavorites:
+		return m.viewFavorites()
+	case types.ScreenRecentKeys:
+		return m.viewRecentKeys()
+	case types.ScreenTreeView:
+		return m.viewTreeView()
+	case types.ScreenRegexSearch:
+		return m.viewRegexSearch()
+	case types.ScreenFuzzySearch:
+		return m.viewFuzzySearch()
+	case types.ScreenClientList:
+		return m.viewClientList()
+	case types.ScreenMemoryStats:
+		return m.viewMemoryStats()
+	case types.ScreenClusterInfo:
+		return m.viewClusterInfo()
+	case types.ScreenCompareKeys:
+		return m.viewCompareKeys()
+	case types.ScreenTemplates:
+		return m.viewTemplates()
+	case types.ScreenValueHistory:
+		return m.viewValueHistory()
+	case types.ScreenKeyspaceEvents:
+		return m.viewKeyspaceEvents()
+	case types.ScreenJSONPath:
+		return m.viewJSONPath()
+	case types.ScreenExpiringKeys:
+		return m.viewExpiringKeys()
+	case types.ScreenLiveMetrics:
+		return m.viewLiveMetrics()
+	case types.ScreenPubSubChannels:
+		return m.viewPubSubChannels()
+	case types.ScreenRedisConfig:
+		return m.viewRedisConfig()
+	default:
+		return ""
 	}
-
-	if viewFunc, ok := viewMap[m.Screen]; ok {
-		return viewFunc()
-	}
-	return ""
 }
 
 func (m Model) View() string {
