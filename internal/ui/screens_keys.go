@@ -364,7 +364,7 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "x":
 		if m.CurrentKey != nil && m.CurrentKey.Type != types.KeyTypeString && m.CurrentKey.Type != types.KeyTypeJSON &&
-			m.CurrentKey.Type != types.KeyTypeHyperLogLog {
+			m.CurrentKey.Type != types.KeyTypeHyperLogLog && m.CurrentKey.Type != types.KeyTypeBitmap {
 			m.SelectedItemIdx = 0
 			m.Screen = types.ScreenRemoveFromCollection
 		}
@@ -449,7 +449,7 @@ func (m Model) getCollectionLength() int {
 		return len(m.CurrentValue.HashValue)
 	case types.KeyTypeStream:
 		return len(m.CurrentValue.StreamValue)
-	case types.KeyTypeHyperLogLog, types.KeyTypeJSON:
+	case types.KeyTypeHyperLogLog, types.KeyTypeJSON, types.KeyTypeBitmap:
 		return 0
 	default:
 		return 0

@@ -41,7 +41,7 @@ func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		typeOrder := []types.KeyType{
 			types.KeyTypeString, types.KeyTypeList, types.KeyTypeSet,
 			types.KeyTypeZSet, types.KeyTypeHash, types.KeyTypeStream,
-			types.KeyTypeJSON, types.KeyTypeHyperLogLog,
+			types.KeyTypeJSON, types.KeyTypeHyperLogLog, types.KeyTypeBitmap,
 		}
 		for i, t := range typeOrder {
 			if t == m.AddKeyType {
@@ -205,6 +205,12 @@ func (m Model) handleAddToCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 				return m, cmd.AddToStreamCmd(m.CurrentKey.Key, fields)
 			case types.KeyTypeHyperLogLog:
 				return m, cmd.AddToHLLCmd(m.CurrentKey.Key, value)
+			case types.KeyTypeBitmap:
+				offset := int64(0)
+				if value != "" {
+					offset, _ = strconv.ParseInt(value, 10, 64)
+				}
+				return m, cmd.SetBitCmd(m.CurrentKey.Key, offset, 1)
 			}
 		}
 	case "esc":

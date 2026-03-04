@@ -2,6 +2,7 @@ package redis
 
 import (
 	"time"
+	"unicode/utf8"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
@@ -31,6 +32,22 @@ func (c *Client) GetValue(key string) (types.RedisValue, error) {
 			count, err := c.cmdable().PFCount(c.ctx, key).Result()
 			if err == nil {
 				value.HLLCount = count
+			}
+		} else if isBinaryString(val) {
+			// Detect Bitmap: binary data (not HLL)
+			value.Type = types.KeyTypeBitmap
+			count, err := c.cmdable().BitCount(c.ctx, key, &redis.BitCount{Start: 0, End: -1}).Result()
+			if err == nil {
+				value.BitCount = count
+			}
+			// Extract set bit positions from raw bytes
+			for byteIdx := 0; byteIdx < len(val); byteIdx++ {
+				b := val[byteIdx]
+				for bit := 7; bit >= 0; bit-- {
+					if b&(1<<uint(bit)) != 0 {
+						value.BitPositions = append(value.BitPositions, int64(byteIdx*8+(7-bit)))
+					}
+				}
 			}
 		}
 
@@ -88,6 +105,15 @@ func (c *Client) GetValue(key string) (types.RedisValue, error) {
 	}
 
 	return value, nil
+}
+
+// isBinaryString returns true if the string contains binary data (invalid
+// UTF-8 or null bytes), suggesting it was created via SETBIT as a bitmap.
+func isBinaryString(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	return !utf8.ValidString(s)
 }
 
 // JSONGet retrieves a JSON value from a RedisJSON key

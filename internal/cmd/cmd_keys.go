@@ -107,6 +107,12 @@ func CreateKeyCmd(key string, keyType types.KeyType, value string, extra string,
 			err = rc.JSONSet(key, value)
 		case types.KeyTypeHyperLogLog:
 			err = rc.PFAdd(key, value)
+		case types.KeyTypeBitmap:
+			offset := int64(0)
+			if value != "" {
+				offset, _ = strconv.ParseInt(value, 10, 64)
+			}
+			err = rc.SetBit(key, offset, 1)
 		}
 		return types.KeySetMsg{Key: key, Err: err}
 	}

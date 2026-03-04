@@ -14,6 +14,7 @@ const (
 	KeyTypeStream KeyType = "stream"
 	KeyTypeJSON        KeyType = "ReJSON-RL"
 	KeyTypeHyperLogLog KeyType = "hyperloglog"
+	KeyTypeBitmap      KeyType = "bitmap"
 )
 
 // RedisKey represents a key with metadata
@@ -36,6 +37,8 @@ type RedisValue struct {
 	StreamValue []StreamEntry
 	JSONValue   string
 	HLLCount    int64 // cardinality for HyperLogLog (from PFCOUNT)
+	BitCount     int64   // bit count for Bitmap (from BITCOUNT)
+	BitPositions []int64 // set bit positions for Bitmap display
 }
 
 // ZSetMember represents a sorted set member with score

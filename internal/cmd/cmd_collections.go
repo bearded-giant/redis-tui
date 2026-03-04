@@ -130,3 +130,14 @@ func AddToHLLCmd(key string, elements ...string) tea.Cmd {
 		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
 	}
 }
+
+func SetBitCmd(key string, offset int64, value int) tea.Cmd {
+	return func() tea.Msg {
+		rc := getRedisClient()
+		if rc == nil {
+			return types.ItemAddedToCollectionMsg{Key: key, Err: nil}
+		}
+		err := rc.SetBit(key, offset, value)
+		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
+	}
+}

@@ -86,6 +86,11 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 		}
 	}
 
+	// Detect string subtypes (HyperLogLog, Bitmap) with a second pipeline
+	if includeTypes {
+		result = c.detectStringSubtypes(result)
+	}
+
 	return result, nextCursor, nil
 }
 
@@ -393,4 +398,41 @@ func (c *Client) GetKeyPrefixes(separator string, maxDepth int) ([]string, error
 	sort.Strings(result)
 
 	return result, nil
+}
+
+// detectStringSubtypes checks string-typed keys for HLL/bitmap subtypes using
+// a single pipeline GET. Keys whose raw value starts with "HYLL" become
+// KeyTypeHyperLogLog; keys with binary (non-UTF-8) content become KeyTypeBitmap.
+func (c *Client) detectStringSubtypes(keys []types.RedisKey) []types.RedisKey {
+	// Collect indices of string keys
+	var stringIdxs []int
+	for i := range keys {
+		if keys[i].Type == "string" {
+			stringIdxs = append(stringIdxs, i)
+		}
+	}
+	if len(stringIdxs) == 0 {
+		return keys
+	}
+
+	pipe := c.pipeline()
+	getCmds := make([]*redis.StringCmd, len(stringIdxs))
+	for j, idx := range stringIdxs {
+		getCmds[j] = pipe.Get(c.ctx, keys[idx].Key)
+	}
+	_, _ = pipe.Exec(c.ctx)
+
+	for j, idx := range stringIdxs {
+		val, err := getCmds[j].Result()
+		if err != nil {
+			continue
+		}
+		if len(val) >= 4 && val[:4] == "HYLL" {
+			keys[idx].Type = types.KeyTypeHyperLogLog
+		} else if isBinaryString(val) {
+			keys[idx].Type = types.KeyTypeBitmap
+		}
+	}
+
+	return keys
 }

@@ -138,6 +138,16 @@ func (m Model) viewKeyDetail() string {
 		vc.WriteString(formatPossibleJSON(m.CurrentValue.JSONValue))
 	case types.KeyTypeHyperLogLog:
 		fmt.Fprintf(&vc, "Estimated cardinality: %d", m.CurrentValue.HLLCount)
+	case types.KeyTypeBitmap:
+		fmt.Fprintf(&vc, "Bit count: %d\n\n", m.CurrentValue.BitCount)
+		if len(m.CurrentValue.BitPositions) > 0 {
+			vc.WriteString("Set positions:\n")
+			for _, pos := range m.CurrentValue.BitPositions {
+				fmt.Fprintf(&vc, "  bit %d = 1\n", pos)
+			}
+		} else {
+			vc.WriteString("(all bits are 0)")
+		}
 	}
 
 	b.WriteString(valueBox.Render(strings.TrimSpace(vc.String())))
@@ -147,7 +157,7 @@ func (m Model) viewKeyDetail() string {
 	switch m.CurrentKey.Type {
 	case types.KeyTypeString, types.KeyTypeJSON:
 		helpText += "  e:edit"
-	case types.KeyTypeHyperLogLog:
+	case types.KeyTypeHyperLogLog, types.KeyTypeBitmap:
 		helpText += "  a:add"
 	default:
 		helpText += "  a:add  x:remove"
@@ -200,6 +210,8 @@ func (m Model) viewAddKey() string {
 		valueLabel = "JSON Value:"
 	case types.KeyTypeHyperLogLog:
 		valueLabel = "Element:"
+	case types.KeyTypeBitmap:
+		valueLabel = "Offset:"
 	}
 
 	b.WriteString(keyStyle.Render(valueLabel))

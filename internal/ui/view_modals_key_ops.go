@@ -90,6 +90,8 @@ func (m Model) viewAddToCollection() string {
 			label1, label2 = "Field:", "Value:"
 		case types.KeyTypeHyperLogLog:
 			label1, label2 = "Element:", ""
+		case types.KeyTypeBitmap:
+			label1, label2 = "Offset:", ""
 		}
 
 		b.WriteString(keyStyle.Render(label1))

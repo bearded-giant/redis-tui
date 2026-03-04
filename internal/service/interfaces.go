@@ -117,6 +117,11 @@ type RedisService interface {
 	PFAdd(key string, elements ...string) error
 	PFCount(key string) (int64, error)
 
+	// Bitmap operations
+	SetBit(key string, offset int64, value int) error
+	GetBit(key string, offset int64) (int64, error)
+	BitCount(key string) (int64, error)
+
 	// Database operations
 	SelectDB(db int) error
 	FlushDB() error

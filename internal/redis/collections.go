@@ -106,3 +106,18 @@ func (c *Client) PFAdd(key string, elements ...string) error {
 func (c *Client) PFCount(key string) (int64, error) {
 	return c.cmdable().PFCount(c.ctx, key).Result()
 }
+
+// SetBit sets a bit at the given offset
+func (c *Client) SetBit(key string, offset int64, value int) error {
+	return c.cmdable().SetBit(c.ctx, key, offset, value).Err()
+}
+
+// GetBit returns the bit value at the given offset
+func (c *Client) GetBit(key string, offset int64) (int64, error) {
+	return c.cmdable().GetBit(c.ctx, key, offset).Result()
+}
+
+// BitCount returns the number of set bits in a string
+func (c *Client) BitCount(key string) (int64, error) {
+	return c.cmdable().BitCount(c.ctx, key, nil).Result()
+}

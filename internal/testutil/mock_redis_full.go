@@ -44,6 +44,7 @@ type FullMockRedisClient struct {
 	JSONGetError          error
 	JSONSetError          error
 	PFCountResult         int64
+	BitCountResult        int64
 
 	// Configurable errors (one per method)
 	ConnectClusterError    error
@@ -92,6 +93,9 @@ type FullMockRedisClient struct {
 	UnsubscribeKSError     error
 	PFAddError             error
 	PFCountError           error
+	SetBitError            error
+	GetBitError            error
+	BitCountError          error
 
 	// Call tracking
 	Calls []string
@@ -407,6 +411,23 @@ func (m *FullMockRedisClient) PFAdd(_ string, _ ...string) error {
 func (m *FullMockRedisClient) PFCount(_ string) (int64, error) {
 	m.Calls = append(m.Calls, "PFCount")
 	return m.PFCountResult, m.PFCountError
+}
+
+// Bitmap operations
+
+func (m *FullMockRedisClient) SetBit(_ string, _ int64, _ int) error {
+	m.Calls = append(m.Calls, "SetBit")
+	return m.SetBitError
+}
+
+func (m *FullMockRedisClient) GetBit(_ string, _ int64) (int64, error) {
+	m.Calls = append(m.Calls, "GetBit")
+	return 0, m.GetBitError
+}
+
+func (m *FullMockRedisClient) BitCount(_ string) (int64, error) {
+	m.Calls = append(m.Calls, "BitCount")
+	return m.BitCountResult, m.BitCountError
 }
 
 // Configuration

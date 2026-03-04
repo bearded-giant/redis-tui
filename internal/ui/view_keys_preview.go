@@ -268,6 +268,22 @@ func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
 	case types.KeyTypeHyperLogLog:
 		lines = append(lines, normalStyle.Render(fmt.Sprintf("Estimated cardinality: %d", m.PreviewValue.HLLCount)))
 
+	case types.KeyTypeBitmap:
+		lines = append(lines, dimStyle.Render(fmt.Sprintf("Bit count: %d", m.PreviewValue.BitCount)))
+		lines = append(lines, "")
+		if len(m.PreviewValue.BitPositions) > 0 {
+			lines = append(lines, keyStyle.Render("Set positions:"))
+			for i, pos := range m.PreviewValue.BitPositions {
+				if i >= maxLines-4 {
+					lines = append(lines, dimStyle.Render(fmt.Sprintf("... and %d more", len(m.PreviewValue.BitPositions)-i)))
+					break
+				}
+				lines = append(lines, normalStyle.Render(fmt.Sprintf("  bit %d = 1", pos)))
+			}
+		} else {
+			lines = append(lines, dimStyle.Render("(all bits are 0)"))
+		}
+
 	default:
 		return dimStyle.Render("(unknown type)")
 	}

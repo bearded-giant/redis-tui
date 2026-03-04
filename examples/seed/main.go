@@ -59,6 +59,7 @@ func main() {
 	seedHashes(ctx, rdb)
 	seedStreams(ctx, rdb)
 	seedHyperLogLog(ctx, rdb)
+	seedBitmaps(ctx, rdb)
 	seedTTLKeys(ctx, rdb)
 	seedNestedKeys(ctx, rdb)
 	seedJSONStrings(ctx, rdb)
@@ -220,6 +221,21 @@ func seedHyperLogLog(ctx context.Context, rdb redis.Cmdable) {
 	}
 	must(rdb.PFAdd(ctx, "hll:unique-pages", pages...))
 	fmt.Println("  hyperloglog:  2 keys")
+}
+
+func seedBitmaps(ctx context.Context, rdb redis.Cmdable) {
+	// Simulate daily active users — set bits for user IDs that were active
+	activeUsers := []int64{1, 5, 12, 27, 42, 100, 128, 200, 350, 500}
+	for _, offset := range activeUsers {
+		must(rdb.SetBit(ctx, "bitmap:user-activity:2024-01-15", offset, 1))
+	}
+
+	// Simulate feature flags — each bit position represents a feature
+	featureFlags := []int64{0, 2, 5, 7} // features 0, 2, 5, 7 enabled
+	for _, offset := range featureFlags {
+		must(rdb.SetBit(ctx, "bitmap:feature-flags", offset, 1))
+	}
+	fmt.Println("  bitmaps:      2 keys")
 }
 
 func seedTTLKeys(ctx context.Context, rdb redis.Cmdable) {
