@@ -247,6 +247,17 @@ func (m Model) detailValueString() string {
 		}
 	case types.KeyTypeJSON:
 		vc.WriteString(formatPossibleJSON(m.CurrentValue.JSONValue))
+	case types.KeyTypeHyperLogLog:
+		fmt.Fprintf(&vc, "Estimated cardinality: %d", m.CurrentValue.HLLCount)
+	case types.KeyTypeBitmap:
+		fmt.Fprintf(&vc, "Bit count: %d\n", m.CurrentValue.BitCount)
+		for _, pos := range m.CurrentValue.BitPositions {
+			fmt.Fprintf(&vc, "  bit %d = 1\n", pos)
+		}
+	case types.KeyTypeGeo:
+		for _, g := range m.CurrentValue.GeoValue {
+			fmt.Fprintf(&vc, "%s  (%.6f, %.6f)\n", g.Name, g.Longitude, g.Latitude)
+		}
 	}
 	return strings.TrimSpace(vc.String())
 }
