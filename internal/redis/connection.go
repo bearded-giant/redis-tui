@@ -13,6 +13,30 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	defaultDialTimeout  = 5 * time.Second
+	defaultReadTimeout  = 3 * time.Second
+	defaultWriteTimeout = 3 * time.Second
+	defaultPoolSize     = 10
+	defaultMinIdleConns = 3
+	defaultMaxRetries   = 3
+	defaultPingTimeout  = 5 * time.Second
+)
+
+func defaultOptions(addr, password string, db int) *redis.Options {
+	return &redis.Options{
+		Addr:         addr,
+		Password:     password,
+		DB:           db,
+		DialTimeout:  defaultDialTimeout,
+		ReadTimeout:  defaultReadTimeout,
+		WriteTimeout: defaultWriteTimeout,
+		PoolSize:     defaultPoolSize,
+		MinIdleConns: defaultMinIdleConns,
+		MaxRetries:   defaultMaxRetries,
+	}
+}
+
 // cleanup closes existing connections before establishing a new one
 func (c *Client) cleanup() {
 	c.mu.Lock()
@@ -24,17 +48,7 @@ func (c *Client) cleanup() {
 func (c *Client) Connect(host string, port int, password string, db int) error {
 	c.cleanup()
 
-	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		Password:     password,
-		DB:           db,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 3,
-		MaxRetries:   3,
-	})
+	client := redis.NewClient(defaultOptions(fmt.Sprintf("%s:%d", host, port), password, db))
 
 	c.mu.Lock()
 	c.host = host
@@ -45,7 +59,7 @@ func (c *Client) Connect(host string, port int, password string, db int) error {
 	ctx := c.ctx
 	c.mu.Unlock()
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, defaultPingTimeout)
 	defer cancel()
 
 	_, err := client.Ping(pingCtx).Result()
@@ -56,18 +70,9 @@ func (c *Client) Connect(host string, port int, password string, db int) error {
 func (c *Client) ConnectWithTLS(host string, port int, password string, db int, tlsConfig *tls.Config) error {
 	c.cleanup()
 
-	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		Password:     password,
-		DB:           db,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 3,
-		MaxRetries:   3,
-		TLSConfig:    tlsConfig,
-	})
+	opts := defaultOptions(fmt.Sprintf("%s:%d", host, port), password, db)
+	opts.TLSConfig = tlsConfig
+	client := redis.NewClient(opts)
 
 	c.mu.Lock()
 	c.host = host
@@ -78,7 +83,7 @@ func (c *Client) ConnectWithTLS(host string, port int, password string, db int, 
 	ctx := c.ctx
 	c.mu.Unlock()
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, defaultPingTimeout)
 	defer cancel()
 
 	_, err := client.Ping(pingCtx).Result()
@@ -101,18 +106,18 @@ func (c *Client) ConnectCluster(addrs []string, password string) error {
 	cluster := redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:        addrs,
 		Password:     password,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 3,
-		MaxRetries:   3,
+		DialTimeout:  defaultDialTimeout,
+		ReadTimeout:  defaultReadTimeout,
+		WriteTimeout: defaultWriteTimeout,
+		PoolSize:     defaultPoolSize,
+		MinIdleConns: defaultMinIdleConns,
+		MaxRetries:   defaultMaxRetries,
 		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			_, port, err := net.SplitHostPort(addr)
 			if err != nil {
 				return nil, err
 			}
-			return net.DialTimeout(network, net.JoinHostPort(seedHost, port), 5*time.Second)
+			return net.DialTimeout(network, net.JoinHostPort(seedHost, port), defaultDialTimeout)
 		},
 	})
 
@@ -125,7 +130,7 @@ func (c *Client) ConnectCluster(addrs []string, password string) error {
 	ctx := c.ctx
 	c.mu.Unlock()
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, defaultPingTimeout)
 	defer cancel()
 
 	_, err := cluster.Ping(pingCtx).Result()
@@ -210,16 +215,11 @@ func (c *Client) SelectDB(db int) error {
 
 // TestConnection tests a connection
 func (c *Client) TestConnection(host string, port int, password string, db int) (time.Duration, error) {
-	testClient := redis.NewClient(&redis.Options{
-		Addr:        fmt.Sprintf("%s:%d", host, port),
-		Password:    password,
-		DB:          db,
-		DialTimeout: 5 * time.Second,
-	})
+	testClient := redis.NewClient(defaultOptions(fmt.Sprintf("%s:%d", host, port), password, db))
 	defer testClient.Close()
 
 	start := time.Now()
-	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.ctx, defaultPingTimeout)
 	defer cancel()
 
 	_, err := testClient.Ping(ctx).Result()
