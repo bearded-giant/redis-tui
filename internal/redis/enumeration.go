@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -95,16 +96,28 @@ func (c *Client) ScanKeys(pattern string, cursor uint64, count int64) ([]types.R
 	return result, nextCursor, nil
 }
 
+const (
+	// scanBatchDefault is the SCAN COUNT hint for key enumeration.
+	scanBatchDefault int64 = 100
+	// scanBatchPrefixes is the SCAN COUNT hint used when building the prefix tree.
+	scanBatchPrefixes int64 = 500
+	// maxRegexLen is the maximum allowed length for user-provided regex patterns.
+	maxRegexLen = 1024
+)
+
 // ScanKeysWithRegex scans keys using regex pattern with early termination.
 // Uses incremental SCAN to avoid loading the full keyspace into memory.
 func (c *Client) ScanKeysWithRegex(regexPattern string, maxKeys int) ([]types.RedisKey, error) {
+	if len(regexPattern) > maxRegexLen {
+		return nil, errInvalidRegex(fmt.Errorf("pattern exceeds maximum length of %d characters", maxRegexLen))
+	}
 	re, err := regexp.Compile(regexPattern)
 	if err != nil {
 		return nil, errInvalidRegex(err)
 	}
 
 	matchingKeys := make([]string, 0, maxKeys)
-	scanErr := c.scanEach("*", 100, func(keys []string) bool {
+	scanErr := c.scanEach("*", scanBatchDefault, func(keys []string) bool {
 		for _, key := range keys {
 			if re.MatchString(key) {
 				matchingKeys = append(matchingKeys, key)
@@ -160,7 +173,7 @@ func (c *Client) FuzzySearchKeys(searchTerm string, maxKeys int) ([]types.RedisK
 	}
 	var scoredKeys []scoredKey
 
-	err := c.scanEach("*", 100, func(keys []string) bool {
+	err := c.scanEach("*", scanBatchDefault, func(keys []string) bool {
 		for _, key := range keys {
 			keyLower := strings.ToLower(key)
 			score := fuzzyScore(keyLower, searchLower)
@@ -240,7 +253,7 @@ func fuzzyScore(str, pattern string) int {
 // SearchByValue searches for keys containing a value.
 // Uses 2 pipelines per chunk (TYPE + values) and defers TTL to a single final pipeline.
 func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) ([]types.RedisKey, error) {
-	allKeys, err := c.scanAll(pattern, 100)
+	allKeys, err := c.scanAll(pattern, scanBatchDefault)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +265,7 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 	matches := make([]match, 0, maxKeys)
 
 	// Process in chunks to keep pipeline sizes reasonable
-	chunkSize := 100
+	chunkSize := int(scanBatchDefault)
 	for i := 0; i < len(allKeys) && len(matches) < maxKeys; i += chunkSize {
 		end := min(i+chunkSize, len(allKeys))
 		keys := allKeys[i:end]
@@ -378,7 +391,7 @@ func (c *Client) SearchByValue(pattern string, valueSearch string, maxKeys int) 
 func (c *Client) GetKeyPrefixes(separator string, maxDepth int) ([]string, error) {
 	prefixes := make(map[string]bool)
 
-	err := c.scanEach("*", 500, func(keys []string) bool {
+	err := c.scanEach("*", scanBatchPrefixes, func(keys []string) bool {
 		for _, key := range keys {
 			parts := strings.Split(key, separator)
 			for i := 1; i <= len(parts) && i <= maxDepth; i++ {
