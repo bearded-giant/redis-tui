@@ -76,7 +76,7 @@ func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.resetAddKeyInputs()
 	default:
 		var cmds []tea.Cmd
-		for i := 0; i < fieldCount; i++ {
+		for i := range fieldCount {
 			var inputCmd tea.Cmd
 			m.AddKeyInputs[i], inputCmd = m.AddKeyInputs[i].Update(msg)
 			cmds = append(cmds, inputCmd)

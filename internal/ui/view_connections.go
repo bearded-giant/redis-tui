@@ -324,7 +324,7 @@ func (m Model) renderConnForm() string {
 
 	// Fields 0-3: Name, Host, Port, Password (text inputs)
 	textLabels := []string{"Name", "Host", "Port", "Password"}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		labelStyle := keyStyle
 		if m.ConnFocusIdx == i {
 			labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)

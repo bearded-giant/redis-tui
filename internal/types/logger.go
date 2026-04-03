@@ -47,7 +47,7 @@ func (w *LogWriter) GetLogs() []string {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	result := make([]string, w.count)
-	for i := 0; i < w.count; i++ {
+	for i := range w.count {
 		result[i] = w.buf[(w.head+i)%MaxLogs]
 	}
 	return result
