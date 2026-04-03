@@ -399,6 +399,11 @@ func (m *FullMockRedisClient) JSONGet(_ string) (string, error) {
 	return m.JSONGetResult, m.JSONGetError
 }
 
+func (m *FullMockRedisClient) JSONGetPath(_, _ string) (string, error) {
+	m.Calls = append(m.Calls, "JSONGetPath")
+	return m.JSONGetResult, m.JSONGetError
+}
+
 func (m *FullMockRedisClient) JSONSet(_, _ string) error {
 	m.Calls = append(m.Calls, "JSONSet")
 	return m.JSONSetError

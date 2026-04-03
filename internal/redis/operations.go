@@ -162,6 +162,11 @@ func (c *Client) JSONGet(key string) (string, error) {
 	return c.do("JSON.GET", key, "$").Text()
 }
 
+// JSONGetPath retrieves a JSON value at a specific path from a RedisJSON key
+func (c *Client) JSONGetPath(key, path string) (string, error) {
+	return c.do("JSON.GET", key, path).Text()
+}
+
 // JSONSet sets a JSON value on a RedisJSON key
 func (c *Client) JSONSet(key, value string) error {
 	return c.do("JSON.SET", key, "$", value).Err()

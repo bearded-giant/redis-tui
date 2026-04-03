@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
@@ -150,6 +151,20 @@ func (m Model) handleCompareKeysResultMsg(msg types.CompareKeysResultMsg) (tea.M
 		m.CompareResult = &types.KeyComparison{
 			Equal:       equal,
 			Differences: []string{msg.Diff},
+		}
+	}
+	return m, nil
+}
+
+func (m Model) handleJSONPathResultMsg(msg types.JSONPathResultMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	if msg.Err != nil {
+		m.JSONPathResult = "Error: " + msg.Err.Error()
+	} else {
+		if s, ok := msg.Result.(string); ok {
+			m.JSONPathResult = s
+		} else {
+			m.JSONPathResult = fmt.Sprintf("%v", msg.Result)
 		}
 	}
 	return m, nil

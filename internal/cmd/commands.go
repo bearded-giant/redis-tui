@@ -801,6 +801,18 @@ func (c *Commands) LoadKeyPrefixes(separator string, maxDepth int) tea.Cmd {
 	}
 }
 
+// JSON path query
+
+func (c *Commands) JSONPathQuery(key, path string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.JSONPathResultMsg{Err: nil}
+		}
+		result, err := c.redis.JSONGetPath(key, path)
+		return types.JSONPathResultMsg{Result: result, Err: err}
+	}
+}
+
 // Additional collection commands
 
 func (c *Commands) AddToHLL(key string, elements ...string) tea.Cmd {

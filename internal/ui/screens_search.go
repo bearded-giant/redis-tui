@@ -103,9 +103,9 @@ func (m Model) handleCompareKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleJSONPathScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		// TODO: Implement JSON path query
-		if m.JSONPathInput.Value() != "" {
-			m.JSONPathResult = "JSON path queries not yet implemented"
+		if m.JSONPathInput.Value() != "" && m.CurrentKey != nil {
+			m.Loading = true
+			return m, m.Cmds.JSONPathQuery(m.CurrentKey.Key, m.JSONPathInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail

@@ -150,6 +150,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleFuzzySearchResultMsg(msg)
 	case types.CompareKeysResultMsg:
 		return m.handleCompareKeysResultMsg(msg)
+	case types.JSONPathResultMsg:
+		return m.handleJSONPathResultMsg(msg)
 
 	// Redis Config
 	case types.ConfigLoadedMsg:

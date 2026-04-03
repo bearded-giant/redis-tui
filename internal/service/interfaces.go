@@ -86,6 +86,7 @@ type RedisService interface {
 
 	// JSON operations
 	JSONGet(key string) (string, error)
+	JSONGetPath(key, path string) (string, error)
 	JSONSet(key, value string) error
 
 	// TTL operations
