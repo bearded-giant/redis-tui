@@ -42,10 +42,7 @@ func (c *Client) ExportKeys(pattern string) (map[string]any, error) {
 		metas := make([]keyMeta, 0, len(chunk))
 		for j, key := range chunk {
 			kt := typeCmds[j].Val()
-			ttl := ttlCmds[j].Val()
-			if ttl < 0 {
-				ttl = 0
-			}
+			ttl := max(ttlCmds[j].Val(), 0)
 			metas = append(metas, keyMeta{key: key, keyType: kt, ttl: ttl})
 		}
 

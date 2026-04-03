@@ -118,9 +118,9 @@ func sanitizeBinaryString(s string) (string, bool) {
 	var result strings.Builder
 	for _, r := range s {
 		if r < 32 && r != '\n' && r != '\r' && r != '\t' {
-			result.WriteString(fmt.Sprintf("\\x%02x", r))
+			fmt.Fprintf(&result, "\\x%02x", r)
 		} else if r > 126 && r < 160 {
-			result.WriteString(fmt.Sprintf("\\x%02x", r))
+			fmt.Fprintf(&result, "\\x%02x", r)
 		} else {
 			result.WriteRune(r)
 		}
@@ -324,10 +324,7 @@ func isInArrayContext(s string, pos int) bool {
 }
 
 func (m Model) renderModal(content string) string {
-	modalWidth := 60
-	if m.Width-10 < 60 {
-		modalWidth = m.Width - 10
-	}
+	modalWidth := min(60, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).
@@ -338,10 +335,7 @@ func (m Model) renderModal(content string) string {
 }
 
 func (m Model) renderModalWide(content string) string {
-	modalWidth := 90
-	if m.Width-10 < 90 {
-		modalWidth = m.Width - 10
-	}
+	modalWidth := min(90, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).

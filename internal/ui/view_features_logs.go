@@ -32,18 +32,12 @@ func (m Model) viewLogs() string {
 	}
 
 	// Calculate visible window
-	maxVisible := m.Height - 12
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := max(m.Height-12, 5)
 	startIdx := 0
 	if m.LogCursor >= maxVisible {
 		startIdx = m.LogCursor - maxVisible + 1
 	}
-	endIdx := startIdx + maxVisible
-	if endIdx > len(logs) {
-		endIdx = len(logs)
-	}
+	endIdx := min(startIdx+maxVisible, len(logs))
 
 	// Header
 	b.WriteString(headerStyle.Render(fmt.Sprintf("%-10s  %-6s  %s", "Time", "Level", "Message")))
@@ -82,7 +76,7 @@ func (m Model) viewLogs() string {
 			plainLine := fmt.Sprintf("%-10s  %-6s  %s", timeStr, entry.Level, msg)
 			b.WriteString(selectedStyle.Render(plainLine))
 		} else {
-			b.WriteString(fmt.Sprintf("%-10s  %s  %s", timeStr, levelStyled, normalStyle.Render(msg)))
+			fmt.Fprintf(&b, "%-10s  %s  %s", timeStr, levelStyled, normalStyle.Render(msg))
 		}
 		b.WriteString("\n")
 	}

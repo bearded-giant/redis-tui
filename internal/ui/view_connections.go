@@ -90,10 +90,7 @@ func (m Model) viewConnections() string {
 		b.WriteString("\n")
 
 		// Calculate visible range for scrolling
-		maxVisible := (m.Height - 20) / 3
-		if maxVisible < 3 {
-			maxVisible = 3
-		}
+		maxVisible := max((m.Height-20)/3, 3)
 
 		// Ensure selected index is within bounds
 		selectedIdx := m.SelectedConnIdx
@@ -113,10 +110,7 @@ func (m Model) viewConnections() string {
 			endIdx = len(m.Connections)
 			// Adjust startIdx to show more items when at end of list
 			if endIdx-startIdx < maxVisible {
-				startIdx = endIdx - maxVisible
-				if startIdx < 0 {
-					startIdx = 0
-				}
+				startIdx = max(endIdx-maxVisible, 0)
 			}
 		}
 
@@ -137,7 +131,7 @@ func (m Model) viewConnections() string {
 			if isSelected {
 				nameStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
 			}
-			card.WriteString(fmt.Sprintf(" %s %s", icon, nameStyle.Render(conn.Name)))
+			fmt.Fprintf(&card, " %s %s", icon, nameStyle.Render(conn.Name))
 			card.WriteString("\n")
 
 			// Connection details
@@ -184,10 +178,7 @@ func (m Model) viewConnections() string {
 			}
 
 			// Set card width
-			cardWidth := 55
-			if m.Width-10 < cardWidth {
-				cardWidth = m.Width - 10
-			}
+			cardWidth := min(55, m.Width-10)
 			cardStyle = cardStyle.Width(cardWidth)
 
 			b.WriteString(cardStyle.Render(card.String()))
@@ -282,10 +273,7 @@ func (m Model) viewAddConnection() string {
 
 	b.WriteString(helpStyle.Render("tab:next  space:toggle  enter:save  esc:cancel"))
 
-	modalWidth := 55
-	if m.Width-10 < 55 {
-		modalWidth = m.Width - 10
-	}
+	modalWidth := min(55, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).
@@ -305,10 +293,7 @@ func (m Model) viewEditConnection() string {
 
 	b.WriteString(helpStyle.Render("tab:next  space:toggle  enter:save  esc:cancel"))
 
-	modalWidth := 55
-	if m.Width-10 < 55 {
-		modalWidth = m.Width - 10
-	}
+	modalWidth := min(55, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).

@@ -163,7 +163,7 @@ func TestBulkDelete(t *testing.T) {
 	t.Run("basic pattern delete", func(t *testing.T) {
 		client, mr := setupTestClient(t)
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			mr.Set(fmt.Sprintf("bulk:%d", i), "val")
 		}
 		// Key that should NOT be deleted.
@@ -177,7 +177,7 @@ func TestBulkDelete(t *testing.T) {
 			t.Errorf("deleted = %d, want 5", deleted)
 		}
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			if mr.Exists(fmt.Sprintf("bulk:%d", i)) {
 				t.Errorf("key bulk:%d should be deleted", i)
 			}
@@ -191,7 +191,7 @@ func TestBulkDelete(t *testing.T) {
 		client, mr := setupTestClient(t)
 
 		const keyCount = 260
-		for i := 0; i < keyCount; i++ {
+		for i := range keyCount {
 			mr.Set(fmt.Sprintf("chunk:%d", i), "v")
 		}
 
@@ -203,7 +203,7 @@ func TestBulkDelete(t *testing.T) {
 			t.Errorf("deleted = %d, want %d", deleted, keyCount)
 		}
 
-		for i := 0; i < keyCount; i++ {
+		for i := range keyCount {
 			if mr.Exists(fmt.Sprintf("chunk:%d", i)) {
 				t.Errorf("key chunk:%d should be deleted", i)
 			}
@@ -321,7 +321,7 @@ func TestSetTTL(t *testing.T) {
 func TestBatchSetTTL(t *testing.T) {
 	client, mr := setupTestClient(t)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		mr.Set(fmt.Sprintf("bttl:%d", i), "val")
 	}
 
@@ -333,7 +333,7 @@ func TestBatchSetTTL(t *testing.T) {
 		t.Errorf("count = %d, want 5", count)
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		ttl := mr.TTL(fmt.Sprintf("bttl:%d", i))
 		if ttl != 20*time.Second {
 			t.Errorf("bttl:%d TTL = %v, want 20s", i, ttl)
