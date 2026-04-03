@@ -197,7 +197,7 @@ func verifyChecksum(archivePath, checksumPath, archiveFilename string) error {
 	}
 
 	var expectedHash string
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) == 2 && parts[1] == archiveFilename {
 			expectedHash = parts[0]

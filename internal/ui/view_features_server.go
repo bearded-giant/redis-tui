@@ -72,7 +72,7 @@ func (m Model) viewMemoryStats() string {
 			b.WriteString(keyStyle.Render("Top Keys by Memory:"))
 			b.WriteString("\n")
 			for _, key := range m.MemoryStats.TopKeys {
-				b.WriteString(fmt.Sprintf("  %s: %s\n", key.Key, formatBytes(key.Memory)))
+				fmt.Fprintf(&b, "  %s: %s\n", key.Key, formatBytes(key.Memory))
 			}
 		}
 	}
@@ -153,10 +153,10 @@ func (m Model) viewKeyspaceEvents() string {
 			start = len(m.KeyspaceEvents) - 15
 		}
 		for _, event := range m.KeyspaceEvents[start:] {
-			b.WriteString(fmt.Sprintf("%-12s %-10s %-30s\n",
+			fmt.Fprintf(&b, "%-12s %-10s %-30s\n",
 				event.Timestamp.Format("15:04:05"),
 				event.Event,
-				truncate(event.Key, 30)))
+				truncate(event.Key, 30))
 		}
 	}
 
