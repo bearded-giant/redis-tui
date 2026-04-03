@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
@@ -63,7 +62,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.PatternInput.Blur()
 			m.KeyCursor = 0
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		case "esc":
 			m.PatternInput.Blur()
 			m.PatternInput.SetValue("")
@@ -71,7 +70,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.KeyCursor = 0
 			m.SearchSeq++
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		default:
 			var inputCmd tea.Cmd
 			m.PatternInput, inputCmd = m.PatternInput.Update(msg)
@@ -89,14 +88,14 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.SelectedKeyIdx > 0 {
 			m.SelectedKeyIdx--
 			if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
-				return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+				return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 			}
 		}
 	case "down", "j":
 		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys)-1 {
 			m.SelectedKeyIdx++
 			if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
-				return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+				return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 			}
 		}
 	case "pgup", "ctrl+u":
@@ -105,7 +104,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.SelectedKeyIdx = 0
 		}
 		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
-			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+			return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 		}
 	case "pgdown", "ctrl+d":
 		if len(m.Keys) == 0 {
@@ -116,17 +115,17 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.SelectedKeyIdx = len(m.Keys) - 1
 		}
 		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
-			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+			return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 		}
 	case "home", "g":
 		m.SelectedKeyIdx = 0
 		if len(m.Keys) > 0 {
-			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+			return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 		}
 	case "end", "G":
 		if len(m.Keys) > 0 {
 			m.SelectedKeyIdx = len(m.Keys) - 1
-			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+			return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 		}
 	case "enter":
 		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
@@ -134,7 +133,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.CurrentKey = &key
 			m.Loading = true
 			m.SelectedItemIdx = 0
-			return m, tea.Batch(cmd.LoadKeyValueCmd(key.Key), cmd.GetMemoryUsageCmd(key.Key))
+			return m, tea.Batch(m.Cmds.LoadKeyValue(key.Key), m.Cmds.GetMemoryUsage(key.Key))
 		}
 	case "a", "n":
 		m.Screen = types.ScreenAddKey
@@ -148,14 +147,14 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		m.Loading = true
 		m.KeyCursor = 0
-		return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+		return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 	case "l":
 		if m.KeyCursor > 0 {
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, m.KeyCursor, cmd.GetScanSize())
+			return m, m.Cmds.LoadKeys(m.KeyPattern, m.KeyCursor, m.ScanSize)
 		}
 	case "i":
-		return m, cmd.LoadServerInfoCmd()
+		return m, m.Cmds.LoadServerInfo()
 	case "/":
 		m.PatternInput.Focus()
 	case "f":
@@ -178,10 +177,10 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.ImportInput.Focus()
 	case "p":
 		m.Loading = true
-		return m, cmd.GetPubSubChannelsCmd("*")
+		return m, m.Cmds.GetPubSubChannels("*")
 	case "L":
 		m.Loading = true
-		return m, cmd.GetSlowLogCmd(20)
+		return m, m.Cmds.GetSlowLog(20)
 	case "E":
 		m.LuaScriptInput.SetValue("")
 		m.LuaScriptInput.Focus()
@@ -211,7 +210,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			connID = m.CurrentConn.ID
 		}
 		m.Screen = types.ScreenFavorites
-		return m, cmd.LoadFavoritesCmd(connID)
+		return m, m.Cmds.LoadFavorites(connID)
 	case "ctrl+r":
 		m.RegexSearchInput.SetValue("")
 		m.RegexSearchInput.Focus()
@@ -222,17 +221,17 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenFuzzySearch
 	case "ctrl+l":
 		m.Loading = true
-		return m, cmd.GetClientListCmd()
+		return m, m.Cmds.GetClientList()
 	case "m":
 		m.LiveMetricsActive = true
 		m.Loading = true
-		return m, cmd.LoadLiveMetricsCmd()
+		return m, m.Cmds.LoadLiveMetrics()
 	case "M":
 		m.Loading = true
-		return m, cmd.GetMemoryStatsCmd()
+		return m, m.Cmds.GetMemoryStats()
 	case "C":
 		m.Loading = true
-		return m, cmd.GetClusterInfoCmd()
+		return m, m.Cmds.GetClusterInfo()
 	case "K":
 		m.CompareKey1Input.SetValue("")
 		m.CompareKey2Input.SetValue("")
@@ -240,14 +239,14 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.CompareFocusIdx = 0
 		m.Screen = types.ScreenCompareKeys
 	case "P":
-		return m, cmd.LoadTemplatesCmd()
+		return m, m.Cmds.LoadTemplates()
 	case "ctrl+h":
 		connID := int64(0)
 		if m.CurrentConn != nil {
 			connID = m.CurrentConn.ID
 		}
 		m.Screen = types.ScreenRecentKeys
-		return m, cmd.LoadRecentKeysCmd(connID)
+		return m, m.Cmds.LoadRecentKeys(connID)
 	case "ctrl+e":
 		m.KeyspaceSubActive = !m.KeyspaceSubActive
 		if m.KeyspaceSubActive {
@@ -255,17 +254,17 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.SendFunc != nil {
 				sendFunc = *m.SendFunc
 			}
-			return m, cmd.SubscribeKeyspaceCmd("*", sendFunc)
+			return m, m.Cmds.SubscribeKeyspace("*", sendFunc)
 		}
 		m.StatusMsg = "Keyspace events disabled"
 	case "W":
 		m.TreeSeparator = ":"
 		m.Screen = types.ScreenTreeView
 		m.Loading = true
-		return m, cmd.LoadKeyPrefixesCmd(m.TreeSeparator, 3)
+		return m, m.Cmds.LoadKeyPrefixes(m.TreeSeparator, 3)
 	case "ctrl+g":
 		m.Loading = true
-		return m, cmd.LoadRedisConfigCmd("*")
+		return m, m.Cmds.LoadRedisConfig("*")
 	case "ctrl+x":
 		var expiring []types.RedisKey
 		for _, k := range m.Keys {
@@ -282,7 +281,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.KeyCursor = 0
 			m.SearchSeq++
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		}
 		m.Screen = types.ScreenConnections
 	}
@@ -336,7 +335,7 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.CurrentKey != nil {
 			m.Loading = true
 			m.DetailScroll = 0
-			return m, tea.Batch(cmd.LoadKeyValueCmd(m.CurrentKey.Key), cmd.GetMemoryUsageCmd(m.CurrentKey.Key))
+			return m, tea.Batch(m.Cmds.LoadKeyValue(m.CurrentKey.Key), m.Cmds.GetMemoryUsage(m.CurrentKey.Key))
 		}
 	case "e":
 		if m.CurrentKey != nil && (m.CurrentKey.Type == types.KeyTypeString || m.CurrentKey.Type == types.KeyTypeJSON) {
@@ -388,9 +387,9 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				connID = m.CurrentConn.ID
 			}
 			if m.CurrentKey.IsFavorite {
-				return m, cmd.RemoveFavoriteCmd(connID, m.CurrentKey.Key)
+				return m, m.Cmds.RemoveFavorite(connID, m.CurrentKey.Key)
 			}
-			return m, cmd.AddFavoriteCmd(connID, m.CurrentKey.Key, m.CurrentConn.Name)
+			return m, m.Cmds.AddFavorite(connID, m.CurrentKey.Key, m.CurrentConn.Name)
 		}
 	case "w":
 		if m.CurrentKey != nil {
@@ -403,16 +402,16 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.WatchValue = m.CurrentValue.StringValue
 				m.WatchLastUpdate = time.Now()
 				m.StatusMsg = "Watching key for changes..."
-				return m, cmd.WatchKeyTickCmd()
+				return m, m.Cmds.WatchKeyTick()
 			}
 		}
 	case "h":
 		if m.CurrentKey != nil {
-			return m, cmd.LoadValueHistoryCmd(m.CurrentKey.Key)
+			return m, m.Cmds.LoadValueHistory(m.CurrentKey.Key)
 		}
 	case "y":
 		if m.CurrentKey != nil {
-			return m, cmd.CopyToClipboardCmd(m.CurrentValue.StringValue)
+			return m, m.Cmds.CopyToClipboard(m.CurrentValue.StringValue)
 		}
 	case "J":
 		if m.CurrentKey != nil && m.CurrentKey.Type == types.KeyTypeString {

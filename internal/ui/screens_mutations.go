@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
@@ -64,7 +63,7 @@ func (m Model) handleAddKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if fieldCount == 3 {
 				extra = m.AddKeyInputs[2].Value()
 			}
-			return m, cmd.CreateKeyCmd(
+			return m, m.Cmds.CreateKey(
 				m.AddKeyInputs[0].Value(),
 				m.AddKeyType,
 				m.AddKeyInputs[1].Value(),
@@ -94,14 +93,14 @@ func (m Model) handleConfirmDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch m.ConfirmType {
 		case "connection":
 			if conn, ok := m.ConfirmData.(types.Connection); ok {
-				return m, cmd.DeleteConnectionCmd(conn.ID)
+				return m, m.Cmds.DeleteConnection(conn.ID)
 			}
 		case "key":
 			if key, ok := m.ConfirmData.(types.RedisKey); ok {
-				return m, cmd.DeleteKeyCmd(key.Key)
+				return m, m.Cmds.DeleteKey(key.Key)
 			}
 		case "flushdb":
-			return m, cmd.FlushDBCmd()
+			return m, m.Cmds.FlushDB()
 		}
 	case "n", "N", "esc":
 		switch m.ConfirmType {
@@ -131,7 +130,7 @@ func (m Model) handleTTLEditorScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			ttl := time.Duration(ttlSecs) * time.Second
 			m.Loading = true
-			return m, cmd.SetTTLCmd(m.CurrentKey.Key, ttl)
+			return m, m.Cmds.SetTTL(m.CurrentKey.Key, ttl)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
@@ -152,9 +151,9 @@ func (m Model) handleEditValueScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Loading = true
 			content := m.VimEditor.GetBuffer().Text()
 			if m.CurrentKey.Type == types.KeyTypeJSON {
-				return m, cmd.EditJSONValueCmd(m.CurrentKey.Key, content)
+				return m, m.Cmds.EditJSONValue(m.CurrentKey.Key, content)
 			}
-			return m, cmd.EditStringValueCmd(m.CurrentKey.Key, content)
+			return m, m.Cmds.EditStringValue(m.CurrentKey.Key, content)
 		}
 	case "ctrl+q":
 		m.Screen = types.ScreenKeyDetail
@@ -191,9 +190,9 @@ func (m Model) handleAddToCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 			switch m.CurrentKey.Type {
 			case types.KeyTypeList:
-				return m, cmd.AddToListCmd(m.CurrentKey.Key, value)
+				return m, m.Cmds.AddToList(m.CurrentKey.Key, value)
 			case types.KeyTypeSet:
-				return m, cmd.AddToSetCmd(m.CurrentKey.Key, value)
+				return m, m.Cmds.AddToSet(m.CurrentKey.Key, value)
 			case types.KeyTypeZSet:
 				score := 0.0
 				if extra != "" {
@@ -205,17 +204,17 @@ func (m Model) handleAddToCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 						return m, nil
 					}
 				}
-				return m, cmd.AddToZSetCmd(m.CurrentKey.Key, score, value)
+				return m, m.Cmds.AddToZSet(m.CurrentKey.Key, score, value)
 			case types.KeyTypeHash:
 				if extra == "" {
 					extra = "value"
 				}
-				return m, cmd.AddToHashCmd(m.CurrentKey.Key, value, extra)
+				return m, m.Cmds.AddToHash(m.CurrentKey.Key, value, extra)
 			case types.KeyTypeStream:
 				fields := map[string]interface{}{value: extra}
-				return m, cmd.AddToStreamCmd(m.CurrentKey.Key, fields)
+				return m, m.Cmds.AddToStream(m.CurrentKey.Key, fields)
 			case types.KeyTypeHyperLogLog:
-				return m, cmd.AddToHLLCmd(m.CurrentKey.Key, value)
+				return m, m.Cmds.AddToHLL(m.CurrentKey.Key, value)
 			case types.KeyTypeBitmap:
 				offset := int64(0)
 				if value != "" {
@@ -227,7 +226,7 @@ func (m Model) handleAddToCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 						return m, nil
 					}
 				}
-				return m, cmd.SetBitCmd(m.CurrentKey.Key, offset, 1)
+				return m, m.Cmds.SetBit(m.CurrentKey.Key, offset, 1)
 			case types.KeyTypeGeo:
 				lon, lat := 0.0, 0.0
 				if extra != "" {
@@ -248,7 +247,7 @@ func (m Model) handleAddToCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 						}
 					}
 				}
-				return m, cmd.AddToGeoCmd(m.CurrentKey.Key, lon, lat, value)
+				return m, m.Cmds.AddToGeo(m.CurrentKey.Key, lon, lat, value)
 			}
 		}
 	case "esc":
@@ -283,15 +282,15 @@ func (m Model) handleRemoveFromCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.
 			switch m.CurrentKey.Type {
 			case types.KeyTypeList:
 				if m.SelectedItemIdx < len(m.CurrentValue.ListValue) {
-					return m, cmd.RemoveFromListCmd(m.CurrentKey.Key, m.CurrentValue.ListValue[m.SelectedItemIdx])
+					return m, m.Cmds.RemoveFromList(m.CurrentKey.Key, m.CurrentValue.ListValue[m.SelectedItemIdx])
 				}
 			case types.KeyTypeSet:
 				if m.SelectedItemIdx < len(m.CurrentValue.SetValue) {
-					return m, cmd.RemoveFromSetCmd(m.CurrentKey.Key, m.CurrentValue.SetValue[m.SelectedItemIdx])
+					return m, m.Cmds.RemoveFromSet(m.CurrentKey.Key, m.CurrentValue.SetValue[m.SelectedItemIdx])
 				}
 			case types.KeyTypeZSet:
 				if m.SelectedItemIdx < len(m.CurrentValue.ZSetValue) {
-					return m, cmd.RemoveFromZSetCmd(m.CurrentKey.Key, m.CurrentValue.ZSetValue[m.SelectedItemIdx].Member)
+					return m, m.Cmds.RemoveFromZSet(m.CurrentKey.Key, m.CurrentValue.ZSetValue[m.SelectedItemIdx].Member)
 				}
 			case types.KeyTypeHash:
 				keys := make([]string, 0, len(m.CurrentValue.HashValue))
@@ -300,15 +299,15 @@ func (m Model) handleRemoveFromCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.
 				}
 				sort.Strings(keys)
 				if m.SelectedItemIdx < len(keys) {
-					return m, cmd.RemoveFromHashCmd(m.CurrentKey.Key, keys[m.SelectedItemIdx])
+					return m, m.Cmds.RemoveFromHash(m.CurrentKey.Key, keys[m.SelectedItemIdx])
 				}
 			case types.KeyTypeStream:
 				if m.SelectedItemIdx < len(m.CurrentValue.StreamValue) {
-					return m, cmd.RemoveFromStreamCmd(m.CurrentKey.Key, m.CurrentValue.StreamValue[m.SelectedItemIdx].ID)
+					return m, m.Cmds.RemoveFromStream(m.CurrentKey.Key, m.CurrentValue.StreamValue[m.SelectedItemIdx].ID)
 				}
 			case types.KeyTypeGeo:
 				if m.SelectedItemIdx < len(m.CurrentValue.GeoValue) {
-					return m, cmd.RemoveFromZSetCmd(m.CurrentKey.Key, m.CurrentValue.GeoValue[m.SelectedItemIdx].Name)
+					return m, m.Cmds.RemoveFromZSet(m.CurrentKey.Key, m.CurrentValue.GeoValue[m.SelectedItemIdx].Name)
 				}
 			}
 		}
@@ -323,7 +322,7 @@ func (m Model) handleRenameKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.CurrentKey != nil && m.RenameInput.Value() != "" && m.RenameInput.Value() != m.CurrentKey.Key {
 			m.Loading = true
-			return m, cmd.RenameKeyCmd(m.CurrentKey.Key, m.RenameInput.Value())
+			return m, m.Cmds.RenameKey(m.CurrentKey.Key, m.RenameInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
@@ -341,7 +340,7 @@ func (m Model) handleCopyKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.CurrentKey != nil && m.CopyInput.Value() != "" {
 			m.Loading = true
-			return m, cmd.CopyKeyCmd(m.CurrentKey.Key, m.CopyInput.Value(), false)
+			return m, m.Cmds.CopyKey(m.CurrentKey.Key, m.CopyInput.Value(), false)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
@@ -359,7 +358,7 @@ func (m Model) handleBulkDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.BulkDeleteInput.Value() != "" {
 			m.Loading = true
-			return m, cmd.BulkDeleteCmd(m.BulkDeleteInput.Value())
+			return m, m.Cmds.BulkDelete(m.BulkDeleteInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -388,7 +387,7 @@ func (m Model) handleBatchTTLScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if err == nil {
 				m.Loading = true
 				ttl := time.Duration(ttlSecs) * time.Second
-				return m, cmd.BatchSetTTLCmd(m.BatchTTLPattern.Value(), ttl)
+				return m, m.Cmds.BatchSetTTL(m.BatchTTLPattern.Value(), ttl)
 			}
 		}
 	case "esc":

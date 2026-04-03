@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/davidbudnick/redis-tui/internal/service"
 	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/redis/go-redis/v9"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -799,6 +801,84 @@ func (c *Commands) LoadKeyPrefixes(separator string, maxDepth int) tea.Cmd {
 	}
 }
 
+// Additional collection commands
+
+func (c *Commands) AddToHLL(key string, elements ...string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.ItemAddedToCollectionMsg{Key: key, Err: nil}
+		}
+		err := c.redis.PFAdd(key, elements...)
+		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
+	}
+}
+
+func (c *Commands) AddToGeo(key string, lon, lat float64, member string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.ItemAddedToCollectionMsg{Key: key, Err: nil}
+		}
+		err := c.redis.GeoAdd(key, &redis.GeoLocation{Name: member, Longitude: lon, Latitude: lat})
+		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
+	}
+}
+
+func (c *Commands) SetBit(key string, offset int64, value int) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.ItemAddedToCollectionMsg{Key: key, Err: nil}
+		}
+		err := c.redis.SetBit(key, offset, value)
+		return types.ItemAddedToCollectionMsg{Key: key, Err: err}
+	}
+}
+
+// Additional server commands
+
+func (c *Commands) FetchClusterNodes() tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.ClusterNodesLoadedMsg{Err: nil}
+		}
+		nodes, err := c.redis.ClusterNodes()
+		return types.ClusterNodesLoadedMsg{Nodes: nodes, Err: err}
+	}
+}
+
+func (c *Commands) LoadLiveMetrics() tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.LiveMetricsMsg{Err: nil}
+		}
+		data, err := c.redis.GetLiveMetrics()
+		return types.LiveMetricsMsg{Data: data, Err: err}
+	}
+}
+
+func (c *Commands) CheckVersion(currentVersion string) tea.Cmd {
+	return func() tea.Msg {
+		if currentVersion == "" || currentVersion == "dev" {
+			return types.UpdateAvailableMsg{}
+		}
+
+		latest, err := fetchLatestTag()
+		if err != nil {
+			return types.UpdateAvailableMsg{Err: err}
+		}
+
+		if strings.TrimPrefix(latest, "v") == strings.TrimPrefix(currentVersion, "v") {
+			return types.UpdateAvailableMsg{}
+		}
+
+		upgradeCmd := detectUpgradeCmd()
+
+		return types.UpdateAvailableMsg{
+			LatestVersion: latest,
+			UpgradeCmd:    upgradeCmd,
+		}
+	}
+}
+
 // Utility commands (no dependencies)
 
 func (c *Commands) WatchKeyTick() tea.Cmd {
@@ -814,4 +894,58 @@ func (c *Commands) CopyToClipboard(content string) tea.Cmd {
 		err := cmd.Run()
 		return types.ClipboardCopiedMsg{Content: content, Err: err}
 	}
+}
+
+// Version check helpers
+
+const githubRepo = "davidbudnick/redis-tui"
+
+var versionHTTPClient = &http.Client{Timeout: 10 * time.Second}
+
+type githubRelease struct {
+	TagName string `json:"tag_name"`
+}
+
+func fetchLatestTag() (string, error) {
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo)
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := versionHTTPClient.Do(req) // #nosec G107 G704 - URL built from hardcoded GitHub API base
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var release githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", err
+	}
+
+	if release.TagName == "" {
+		return "", fmt.Errorf("empty tag_name in response")
+	}
+
+	return release.TagName, nil
+}
+
+func detectUpgradeCmd() string {
+	execPath, err := os.Executable()
+	if err != nil {
+		return "redis-tui --update"
+	}
+
+	if strings.Contains(execPath, "/Cellar/") || strings.Contains(execPath, "/homebrew/") {
+		return "brew upgrade redis-tui"
+	}
+	if strings.Contains(execPath, "/go/bin/") {
+		return "go install github.com/davidbudnick/redis-tui@latest"
+	}
+	return "redis-tui --update"
 }

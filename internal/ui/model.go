@@ -13,6 +13,9 @@ import (
 )
 
 type Model struct {
+	Cmds              *cmd.Commands
+	ScanSize          int64
+	Version           string
 	Screen            types.Screen
 	Connections       []types.Connection
 	SelectedConnIdx   int
@@ -318,8 +321,8 @@ func createPubSubInputs() []textinput.Model {
 
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
-		cmd.LoadConnectionsCmd(),
-		cmd.CheckVersionCmd(cmd.GetVersion()),
+		m.Cmds.LoadConnections(),
+		m.Cmds.CheckVersion(m.Version),
 		func() tea.Msg { return tea.EnableBracketedPaste() },
 	}
 	if m.CLIConnection != nil {

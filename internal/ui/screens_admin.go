@@ -3,7 +3,6 @@ package ui
 import (
 	"strconv"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,7 +26,7 @@ func (m Model) handleServerInfoScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenKeys
 	case "r":
 		m.Loading = true
-		return m, cmd.LoadServerInfoCmd()
+		return m, m.Cmds.LoadServerInfo()
 	}
 	return m, nil
 }
@@ -41,7 +40,7 @@ func (m Model) handlePubSubScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.PubSubInput[0].Value() != "" && m.PubSubInput[1].Value() != "" {
 			m.Loading = true
-			return m, cmd.PublishMessageCmd(m.PubSubInput[0].Value(), m.PubSubInput[1].Value())
+			return m, m.Cmds.PublishMessage(m.PubSubInput[0].Value(), m.PubSubInput[1].Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenPubSubChannels
@@ -68,7 +67,7 @@ func (m Model) handleSwitchDBScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		dbNum, err := strconv.Atoi(m.DBSwitchInput.Value())
 		if err == nil && dbNum >= 0 && dbNum <= 15 {
 			m.Loading = true
-			return m, cmd.SwitchDBCmd(dbNum)
+			return m, m.Cmds.SwitchDB(dbNum)
 		} else {
 			m.StatusMsg = "Invalid database number (0-15)"
 		}
@@ -92,7 +91,7 @@ func (m Model) handleExportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if pattern == "" {
 				pattern = "*"
 			}
-			return m, cmd.ExportKeysCmd(pattern, m.ExportInput.Value())
+			return m, m.Cmds.ExportKeys(pattern, m.ExportInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -110,7 +109,7 @@ func (m Model) handleImportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.ImportInput.Value() != "" {
 			m.Loading = true
-			return m, cmd.ImportKeysCmd(m.ImportInput.Value())
+			return m, m.Cmds.ImportKeys(m.ImportInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -129,7 +128,7 @@ func (m Model) handleSlowLogScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenKeys
 	case "r":
 		m.Loading = true
-		return m, cmd.GetSlowLogCmd(20)
+		return m, m.Cmds.GetSlowLog(20)
 	}
 	return m, nil
 }
@@ -139,7 +138,7 @@ func (m Model) handleLuaScriptScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.LuaScriptInput.Value() != "" {
 			m.Loading = true
-			return m, cmd.EvalLuaScriptCmd(m.LuaScriptInput.Value(), []string{})
+			return m, m.Cmds.EvalLuaScript(m.LuaScriptInput.Value(), []string{})
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -203,7 +202,7 @@ func (m Model) handleClientListScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		m.Loading = true
-		return m, cmd.GetClientListCmd()
+		return m, m.Cmds.GetClientList()
 	case "esc":
 		m.Screen = types.ScreenKeys
 	}
@@ -214,7 +213,7 @@ func (m Model) handleMemoryStatsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "r":
 		m.Loading = true
-		return m, cmd.GetMemoryStatsCmd()
+		return m, m.Cmds.GetMemoryStats()
 	case "esc":
 		m.Screen = types.ScreenKeys
 	}
@@ -233,7 +232,7 @@ func (m Model) handleClusterInfoScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		m.Loading = true
-		return m, cmd.GetClusterInfoCmd()
+		return m, m.Cmds.GetClusterInfo()
 	case "esc":
 		m.Screen = types.ScreenKeys
 	}
@@ -252,7 +251,7 @@ func (m Model) handlePubSubChannelsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		m.Loading = true
-		return m, cmd.GetPubSubChannelsCmd("*")
+		return m, m.Cmds.GetPubSubChannels("*")
 	case "p":
 		m.Screen = types.ScreenPubSub
 		m.resetPubSubInputs()
@@ -271,7 +270,7 @@ func (m Model) handleRedisConfigScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			value := m.ConfigEditInput.Value()
 			m.EditingConfigParam = ""
 			m.ConfigEditInput.Blur()
-			return m, cmd.SetRedisConfigCmd(param, value)
+			return m, m.Cmds.SetRedisConfig(param, value)
 		case "esc":
 			m.EditingConfigParam = ""
 			m.ConfigEditInput.Blur()
@@ -301,7 +300,7 @@ func (m Model) handleRedisConfigScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		m.Loading = true
-		return m, cmd.LoadRedisConfigCmd("*")
+		return m, m.Cmds.LoadRedisConfig("*")
 	case "esc":
 		m.Screen = types.ScreenKeys
 	}

@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
@@ -35,7 +34,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.KeyPattern = pattern
 			m.KeyCursor = 0
 			m.Loading = true
-			return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		}
 		return m, nil
 
@@ -181,9 +180,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.CurrentKey != nil {
 			m.Loading = true
 			if m.CurrentKey.Type == types.KeyTypeJSON {
-				return m, cmd.EditJSONValueCmd(m.CurrentKey.Key, msg.Content)
+				return m, m.Cmds.EditJSONValue(m.CurrentKey.Key, msg.Content)
 			}
-			return m, cmd.EditStringValueCmd(m.CurrentKey.Key, msg.Content)
+			return m, m.Cmds.EditStringValue(m.CurrentKey.Key, msg.Content)
 		}
 	case types.EditorQuitMsg:
 		m.Screen = types.ScreenKeyDetail
@@ -245,10 +244,10 @@ func (m Model) handleTickMsg() (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	cmds = append(cmds, tickCmd())
 	if m.WatchActive {
-		cmds = append(cmds, cmd.WatchKeyTickCmd())
+		cmds = append(cmds, m.Cmds.WatchKeyTick())
 	}
 	if m.LiveMetricsActive {
-		cmds = append(cmds, cmd.LoadLiveMetricsCmd())
+		cmds = append(cmds, m.Cmds.LoadLiveMetrics())
 	}
 	return m, tea.Batch(cmds...)
 }

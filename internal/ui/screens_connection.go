@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,7 +25,7 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Loading = true
 			m.StatusMsg = "Connecting..."
 			m.ConnectionError = "" // Clear any previous connection error
-			return m, cmd.ConnectCmd(conn.Host, conn.Port, conn.Password, conn.DB, conn.UseCluster)
+			return m, m.Cmds.Connect(conn.Host, conn.Port, conn.Password, conn.DB, conn.UseCluster)
 		}
 	case "a", "n":
 		m.Screen = types.ScreenAddConnection
@@ -46,7 +45,7 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "r":
 		m.Loading = true
-		return m, cmd.LoadConnectionsCmd()
+		return m, m.Cmds.LoadConnections()
 	}
 	return m, nil
 }
@@ -83,7 +82,7 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.ConnInputs[0].Value() != "" && m.ConnInputs[1].Value() != "" {
 			m.Loading = true
-			return m, cmd.AddConnectionCmd(
+			return m, m.Cmds.AddConnection(
 				m.ConnInputs[0].Value(),
 				m.ConnInputs[1].Value(),
 				m.getPort(),
@@ -95,7 +94,7 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+t":
 		m.Loading = true
 		m.Screen = types.ScreenTestConnection
-		return m, cmd.TestConnectionCmd(
+		return m, m.Cmds.TestConnection(
 			m.ConnInputs[1].Value(),
 			m.getPort(),
 			m.ConnInputs[3].Value(),
@@ -179,7 +178,7 @@ func (m Model) handleEditConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.EditingConnection != nil && m.ConnInputs[0].Value() != "" && m.ConnInputs[1].Value() != "" {
 			m.Loading = true
-			return m, cmd.UpdateConnectionCmd(
+			return m, m.Cmds.UpdateConnection(
 				m.EditingConnection.ID,
 				m.ConnInputs[0].Value(),
 				m.ConnInputs[1].Value(),

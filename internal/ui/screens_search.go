@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,7 +16,7 @@ func (m Model) handleSearchValuesScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				pattern = "*"
 			}
 			m.Screen = types.ScreenKeys
-			return m, cmd.SearchByValueCmd(pattern, m.SearchValueInput.Value(), 100)
+			return m, m.Cmds.SearchByValue(pattern, m.SearchValueInput.Value(), 100)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -35,7 +34,7 @@ func (m Model) handleRegexSearchScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.RegexSearchInput.Value() != "" {
 			m.Loading = true
-			return m, cmd.RegexSearchCmd(m.RegexSearchInput.Value(), 100)
+			return m, m.Cmds.RegexSearch(m.RegexSearchInput.Value(), 100)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -53,7 +52,7 @@ func (m Model) handleFuzzySearchScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.FuzzySearchInput.Value() != "" {
 			m.Loading = true
-			return m, cmd.FuzzySearchCmd(m.FuzzySearchInput.Value(), 100)
+			return m, m.Cmds.FuzzySearch(m.FuzzySearchInput.Value(), 100)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -81,7 +80,7 @@ func (m Model) handleCompareKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.CompareKey1Input.Value() != "" && m.CompareKey2Input.Value() != "" {
 			m.Loading = true
-			return m, cmd.CompareKeysCmd(m.CompareKey1Input.Value(), m.CompareKey2Input.Value())
+			return m, m.Cmds.CompareKeys(m.CompareKey1Input.Value(), m.CompareKey2Input.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys

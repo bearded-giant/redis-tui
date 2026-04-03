@@ -10,6 +10,8 @@ import (
 
 	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/db"
+	"github.com/davidbudnick/redis-tui/internal/redis"
+	"github.com/davidbudnick/redis-tui/internal/service"
 	"github.com/davidbudnick/redis-tui/internal/types"
 	"github.com/davidbudnick/redis-tui/internal/ui"
 
@@ -49,7 +51,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize config: %v", err)
 	}
-	cmd.SetConfig(config)
+
+	// Set up dependency injection
+	redisClient := redis.NewClient()
+	redisClient.SetIncludeTypes(cmd.GetIncludeTypes())
+	container := &service.Container{Config: config, Redis: redisClient}
+	m.Cmds = cmd.NewCommandsFromContainer(container)
+	m.ScanSize = cmd.GetScanSize()
+	m.Version = version
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	*m.SendFunc = p.Send
@@ -79,7 +88,6 @@ func parseCLIFlags() *types.Connection {
 	}
 	cmd.SetScanSize(scanSize)
 	cmd.SetIncludeTypes(includeTypes)
-	cmd.SetVersion(version)
 	return conn
 }
 

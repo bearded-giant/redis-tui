@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,7 +27,7 @@ func (m Model) handleKeysLoadedMsg(msg types.KeysLoadedMsg) (tea.Model, tea.Cmd)
 		m.TotalKeys = msg.TotalKeys
 		// Load preview for selected key
 		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
-			return m, cmd.LoadKeyPreviewCmd(m.Keys[m.SelectedKeyIdx].Key)
+			return m, m.Cmds.LoadKeyPreview(m.Keys[m.SelectedKeyIdx].Key)
 		}
 	}
 	return m, nil
@@ -101,7 +100,7 @@ func (m Model) handleKeySetMsg(msg types.KeySetMsg) (tea.Model, tea.Cmd) {
 	m.StatusMsg = "Key saved"
 	m.Screen = types.ScreenKeys
 	m.resetAddKeyInputs()
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+	return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 }
 
 func (m Model) handleKeyRenamedMsg(msg types.KeyRenamedMsg) (tea.Model, tea.Cmd) {
@@ -133,7 +132,7 @@ func (m Model) handleKeyCopiedMsg(msg types.KeyCopiedMsg) (tea.Model, tea.Cmd) {
 	m.StatusMsg = "Key copied to " + msg.DestKey
 	m.Screen = types.ScreenKeyDetail
 	m.KeyCursor = 0
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+	return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 }
 
 // Value message handlers
@@ -147,7 +146,7 @@ func (m Model) handleValueEditedMsg(msg types.ValueEditedMsg) (tea.Model, tea.Cm
 	m.StatusMsg = "Value updated"
 	m.Screen = types.ScreenKeyDetail
 	if m.CurrentKey != nil {
-		return m, cmd.LoadKeyValueCmd(m.CurrentKey.Key)
+		return m, m.Cmds.LoadKeyValue(m.CurrentKey.Key)
 	}
 	return m, nil
 }
@@ -162,7 +161,7 @@ func (m Model) handleItemAddedToCollectionMsg(msg types.ItemAddedToCollectionMsg
 	m.Screen = types.ScreenKeyDetail
 	m.resetAddCollectionInputs()
 	if m.CurrentKey != nil {
-		return m, cmd.LoadKeyValueCmd(m.CurrentKey.Key)
+		return m, m.Cmds.LoadKeyValue(m.CurrentKey.Key)
 	}
 	return m, nil
 }
@@ -175,7 +174,7 @@ func (m Model) handleItemRemovedFromCollectionMsg(msg types.ItemRemovedFromColle
 	}
 	m.StatusMsg = "Item removed"
 	if m.CurrentKey != nil {
-		return m, cmd.LoadKeyValueCmd(m.CurrentKey.Key)
+		return m, m.Cmds.LoadKeyValue(m.CurrentKey.Key)
 	}
 	return m, nil
 }
@@ -211,5 +210,5 @@ func (m Model) handleBatchTTLSetMsg(msg types.BatchTTLSetMsg) (tea.Model, tea.Cm
 	m.StatusMsg = "Set TTL on " + strconv.Itoa(msg.Count) + " keys"
 	m.Screen = types.ScreenKeys
 	m.KeyCursor = 0
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+	return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 }

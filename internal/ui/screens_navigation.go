@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,13 +24,13 @@ func (m Model) handleFavoritesScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.SelectedKeyIdx = i
 					m.CurrentKey = &m.Keys[i]
 					m.Screen = types.ScreenKeyDetail
-					return m, cmd.LoadKeyValueCmd(key)
+					return m, m.Cmds.LoadKeyValue(key)
 				}
 			}
 		}
 	case "d":
 		if len(m.Favorites) > 0 && m.SelectedFavIdx < len(m.Favorites) {
-			return m, cmd.RemoveFavoriteCmd(m.Favorites[m.SelectedFavIdx].ConnectionID, m.Favorites[m.SelectedFavIdx].Key)
+			return m, m.Cmds.RemoveFavorite(m.Favorites[m.SelectedFavIdx].ConnectionID, m.Favorites[m.SelectedFavIdx].Key)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
@@ -57,7 +56,7 @@ func (m Model) handleRecentKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.SelectedKeyIdx = i
 					m.CurrentKey = &m.Keys[i]
 					m.Screen = types.ScreenKeyDetail
-					return m, cmd.LoadKeyValueCmd(key)
+					return m, m.Cmds.LoadKeyValue(key)
 				}
 			}
 		}
@@ -89,7 +88,7 @@ func (m Model) handleTreeViewScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						m.SelectedKeyIdx = i
 						m.CurrentKey = &m.Keys[i]
 						m.Screen = types.ScreenKeyDetail
-						return m, cmd.LoadKeyValueCmd(node.FullPath)
+						return m, m.Cmds.LoadKeyValue(node.FullPath)
 					}
 				}
 			}
@@ -140,7 +139,7 @@ func (m Model) handleValueHistoryScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.CurrentKey != nil && len(m.ValueHistory) > 0 && m.SelectedHistoryIdx < len(m.ValueHistory) {
 			entry := m.ValueHistory[m.SelectedHistoryIdx]
 			m.Loading = true
-			return m, cmd.EditStringValueCmd(m.CurrentKey.Key, entry.Value.StringValue)
+			return m, m.Cmds.EditStringValue(m.CurrentKey.Key, entry.Value.StringValue)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
@@ -198,7 +197,7 @@ func (m Model) handleExpiringKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			key := m.ExpiringKeys[m.SelectedKeyIdx]
 			m.CurrentKey = &key
 			m.Screen = types.ScreenKeyDetail
-			return m, cmd.LoadKeyValueCmd(key.Key)
+			return m, m.Cmds.LoadKeyValue(key.Key)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys

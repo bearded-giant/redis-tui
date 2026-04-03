@@ -3,7 +3,6 @@ package ui
 import (
 	"strconv"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,7 +30,7 @@ func (m Model) handleImportCompleteMsg(msg types.ImportCompleteMsg) (tea.Model, 
 	m.StatusMsg = "Imported " + strconv.Itoa(msg.KeyCount) + " keys from " + msg.Filename
 	m.Screen = types.ScreenKeys
 	m.KeyCursor = 0
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+	return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 }
 
 // Feature message handlers
@@ -45,7 +44,7 @@ func (m Model) handleBulkDeleteMsg(msg types.BulkDeleteMsg) (tea.Model, tea.Cmd)
 	m.StatusMsg = "Deleted " + strconv.Itoa(msg.Deleted) + " keys"
 	m.Screen = types.ScreenKeys
 	m.KeyCursor = 0
-	return m, cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize())
+	return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 }
 
 func (m Model) handleFavoritesLoadedMsg(msg types.FavoritesLoadedMsg) (tea.Model, tea.Cmd) {

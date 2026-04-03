@@ -3,7 +3,6 @@ package ui
 import (
 	"log/slog"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
 	"github.com/davidbudnick/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +14,7 @@ func (m Model) handleAutoConnectMsg(msg types.AutoConnectMsg) (tea.Model, tea.Cm
 	m.Loading = true
 	m.StatusMsg = "Connecting..."
 	m.CLIConnection = nil // Consume so it doesn't re-trigger
-	return m, cmd.AutoConnectCmd(conn)
+	return m, m.Cmds.AutoConnect(conn)
 }
 
 func (m Model) handleConnectionsLoadedMsg(msg types.ConnectionsLoadedMsg) (tea.Model, tea.Cmd) {
@@ -104,9 +103,9 @@ func (m Model) handleConnectedMsg(msg types.ConnectedMsg) (tea.Model, tea.Cmd) {
 	if m.SendFunc != nil {
 		sendFunc = *m.SendFunc
 	}
-	cmds := []tea.Cmd{cmd.LoadKeysCmd(m.KeyPattern, 0, cmd.GetScanSize()), cmd.SubscribeKeyspaceCmd("*", sendFunc), tickCmd()}
+	cmds := []tea.Cmd{m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize), m.Cmds.SubscribeKeyspace("*", sendFunc), tickCmd()}
 	if m.CurrentConn != nil && m.CurrentConn.UseCluster {
-		cmds = append(cmds, cmd.FetchClusterNodesCmd())
+		cmds = append(cmds, m.Cmds.FetchClusterNodes())
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -119,7 +118,7 @@ func (m Model) handleDisconnectedMsg() (tea.Model, tea.Cmd) {
 	m.LiveMetricsActive = false
 	m.Screen = types.ScreenConnections
 	m.StatusMsg = "Disconnected"
-	return m, cmd.UnsubscribeKeyspaceCmd()
+	return m, m.Cmds.UnsubscribeKeyspace()
 }
 
 func (m Model) handleConnectionTestMsg(msg types.ConnectionTestMsg) (tea.Model, tea.Cmd) {
