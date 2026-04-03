@@ -115,8 +115,24 @@ func (m Model) View() string {
 
 	fullContent := content + "\n\n" + status
 
-	// Use PlaceHorizontal and PlaceVertical with whitespace to ensure full screen clear
-	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, fullContent,
+	// Only vertically center short modal/dialog screens
+	vPos := lipgloss.Position(lipgloss.Top)
+	switch m.Screen {
+	case types.ScreenKeyDetail, types.ScreenConnections,
+		types.ScreenAddConnection, types.ScreenEditConnection,
+		types.ScreenConfirmDelete, types.ScreenTestConnection,
+		types.ScreenHelp, types.ScreenAddKey, types.ScreenTTLEditor,
+		types.ScreenRenameKey, types.ScreenCopyKey,
+		types.ScreenSearchValues, types.ScreenRegexSearch,
+		types.ScreenFuzzySearch, types.ScreenSwitchDB,
+		types.ScreenBulkDelete, types.ScreenBatchTTL,
+		types.ScreenExport, types.ScreenImport,
+		types.ScreenCompareKeys, types.ScreenJSONPath,
+		types.ScreenPublishMessage, types.ScreenLuaScript:
+		vPos = lipgloss.Center
+	}
+
+	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, vPos, fullContent,
 		lipgloss.WithWhitespaceChars(" "))
 }
 

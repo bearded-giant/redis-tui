@@ -17,18 +17,25 @@ func (m Model) viewKeyDetail() string {
 		return "No key selected"
 	}
 
-	b.WriteString(titleStyle.Render("Key Detail"))
+	// Use ~60% of screen width for the detail view, capped reasonably
+	boxWidth := m.Width * 3 / 5
+	boxWidth = max(boxWidth, 50)
+	boxWidth = min(boxWidth, m.Width-6)
+
+	b.WriteString(lipgloss.PlaceHorizontal(boxWidth, lipgloss.Center, titleStyle.Render("Key Detail")))
 	b.WriteString("\n\n")
 
-	b.WriteString(keyStyle.Render("Key: "))
-	b.WriteString(normalStyle.Render(m.CurrentKey.Key))
-	b.WriteString("\n")
+	// Build metadata block and center it
+	var meta strings.Builder
+	meta.WriteString(keyStyle.Render("    Key: "))
+	meta.WriteString(normalStyle.Render(m.CurrentKey.Key))
+	meta.WriteString("\n")
 
-	b.WriteString(keyStyle.Render("Type: "))
-	b.WriteString(getTypeStyleBold(m.CurrentKey.Type).Render(string(m.CurrentKey.Type)))
-	b.WriteString("\n")
+	meta.WriteString(keyStyle.Render("   Type: "))
+	meta.WriteString(getTypeStyleBold(m.CurrentKey.Type).Render(string(m.CurrentKey.Type)))
+	meta.WriteString("\n")
 
-	b.WriteString(keyStyle.Render("TTL: "))
+	meta.WriteString(keyStyle.Render("    TTL: "))
 	ttlStr := "No expiry"
 	var ttlDetailStyle lipgloss.Style
 	if m.CurrentKey.TTL > 0 {
@@ -46,23 +53,20 @@ func (m Model) viewKeyDetail() string {
 	} else {
 		ttlDetailStyle = dimStyle
 	}
-	b.WriteString(ttlDetailStyle.Render(ttlStr))
+	meta.WriteString(ttlDetailStyle.Render(ttlStr))
 
 	// Show memory usage if available
 	if m.MemoryUsage > 0 {
-		b.WriteString("  ")
-		b.WriteString(keyStyle.Render("Memory: "))
-		b.WriteString(normalStyle.Render(formatBytes(m.MemoryUsage)))
+		meta.WriteString("  ")
+		meta.WriteString(keyStyle.Render("Memory: "))
+		meta.WriteString(normalStyle.Render(formatBytes(m.MemoryUsage)))
 	}
+
+	b.WriteString(lipgloss.PlaceHorizontal(boxWidth, lipgloss.Center, meta.String()))
 	b.WriteString("\n\n")
 
-	b.WriteString(keyStyle.Render("Value:"))
+	b.WriteString(lipgloss.PlaceHorizontal(boxWidth, lipgloss.Center, keyStyle.Render("Value:")))
 	b.WriteString("\n")
-
-	boxWidth := m.Width - 6
-	if boxWidth < 40 {
-		boxWidth = 40
-	}
 
 	valueBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -211,7 +215,8 @@ func (m Model) viewKeyDetail() string {
 		helpText += "  a:add  x:remove"
 	}
 	helpText += "  esc:back"
-	b.WriteString(helpStyle.Render(helpText))
+	b.WriteString(lipgloss.PlaceHorizontal(boxWidth, lipgloss.Center, helpStyle.Render(helpText)))
+
 
 	return b.String()
 }
