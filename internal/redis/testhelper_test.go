@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
 func setupTestClient(t *testing.T) (*Client, *miniredis.Miniredis) {
@@ -17,7 +18,7 @@ func setupTestClient(t *testing.T) (*Client, *miniredis.Miniredis) {
 
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
-	if err := client.Connect(mr.Host(), port, "", 0); err != nil {
+	if err := client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("failed to connect: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })

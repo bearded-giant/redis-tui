@@ -62,7 +62,7 @@ func TestMockRedisClient_Disconnected(t *testing.T) {
 
 func TestMockRedisClient_Connected(t *testing.T) {
 	m := NewMockRedisClient()
-	if err := m.Connect("localhost", 6379, "", 0); err != nil {
+	if err := m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect failed: %v", err)
 	}
 
@@ -120,7 +120,7 @@ func TestMockRedisClient_Connected(t *testing.T) {
 
 func TestMockRedisClient_Reset(t *testing.T) {
 	m := NewMockRedisClient()
-	_ = m.Connect("localhost", 6379, "", 0)
+	_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 	m.SetKey("key1", types.RedisValue{}, types.KeyTypeString, 0)
 
 	m.Reset()
@@ -137,7 +137,7 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 	t.Run("ConnectError", func(t *testing.T) {
 		m := NewMockRedisClient()
 		m.ConnectError = ErrMockNotConnected
-		err := m.Connect("localhost", 6379, "", 0)
+		err := m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		if err != ErrMockNotConnected {
 			t.Errorf("expected ErrMockNotConnected, got %v", err)
 		}
@@ -145,7 +145,7 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 
 	t.Run("DisconnectError", func(t *testing.T) {
 		m := NewMockRedisClient()
-		_ = m.Connect("localhost", 6379, "", 0)
+		_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		m.DisconnectError = ErrMockNotConnected
 		err := m.Disconnect()
 		if err != ErrMockNotConnected {
@@ -155,7 +155,7 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 
 	t.Run("ScanError", func(t *testing.T) {
 		m := NewMockRedisClient()
-		_ = m.Connect("localhost", 6379, "", 0)
+		_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		m.ScanError = ErrMockNotConnected
 		_, _, err := m.ScanKeys("*", 0, 10)
 		if err != ErrMockNotConnected {
@@ -165,7 +165,7 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 
 	t.Run("GetError", func(t *testing.T) {
 		m := NewMockRedisClient()
-		_ = m.Connect("localhost", 6379, "", 0)
+		_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		m.SetKey("key", types.RedisValue{}, types.KeyTypeString, 0)
 		m.GetError = ErrMockNotConnected
 		_, err := m.GetValue("key")
@@ -176,7 +176,7 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 
 	t.Run("DeleteError", func(t *testing.T) {
 		m := NewMockRedisClient()
-		_ = m.Connect("localhost", 6379, "", 0)
+		_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		m.DeleteError = ErrMockNotConnected
 		err := m.DeleteKey("key")
 		if err != ErrMockNotConnected {
@@ -203,7 +203,7 @@ func TestMockRedisClient_DisconnectSuccess(t *testing.T) {
 
 func TestMockRedisClient_TTLStored(t *testing.T) {
 	m := NewMockRedisClient()
-	_ = m.Connect("localhost", 6379, "", 0)
+	_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 	m.SetKey("ttlkey", types.RedisValue{}, types.KeyTypeString, 5*time.Second)
 
 	keys, _, err := m.ScanKeys("*", 0, 10)

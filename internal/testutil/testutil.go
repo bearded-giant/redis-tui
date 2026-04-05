@@ -39,9 +39,9 @@ func NewTestConfig(t testing.TB) *db.Config {
 }
 
 // MustAddConnection adds a connection to the config or fails the test.
-func MustAddConnection(t testing.TB, cfg *db.Config, name, host string, port int, password string, dbNum int) types.Connection {
+func MustAddConnection(t *testing.T, cfg *db.Config, conn types.Connection) types.Connection {
 	t.Helper()
-	conn, err := cfg.AddConnection(name, host, port, password, dbNum, false)
+	conn, err := cfg.AddConnection(conn)
 	if err != nil {
 		t.Fatalf("failed to add connection: %v", err)
 	}

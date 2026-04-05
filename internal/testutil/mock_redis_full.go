@@ -118,7 +118,7 @@ func (m *FullMockRedisClient) Connect(conn *types.Connection) error {
 	return m.MockRedisClient.Connect(conn)
 }
 
-func (m *FullMockRedisClient) ConnectCluster(_ []string, _ string, _ string) error {
+func (m *FullMockRedisClient) ConnectCluster(_ []string, _ string) error {
 	m.Calls = append(m.Calls, "ConnectCluster")
 	if m.ConnectClusterError != nil {
 		return m.ConnectClusterError

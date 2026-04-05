@@ -52,7 +52,7 @@ func TestNewConfig_CreatesDirectory(t *testing.T) {
 func TestConfig_AddConnection(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "secret", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "secret", DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -150,8 +150,13 @@ func TestConfig_UpdateConnection(t *testing.T) {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
 	originalCreated := conn.Created
+	conn.Name = "updated"
+	conn.Host = "newhost"
+	conn.Port = 6380
+	conn.Password = "new"
+	conn.DB = 1
 
-	updated, err := cfg.UpdateConnection(conn.ID, "updated", "newhost", 6380, "new", 1, false)
+	updated, err := cfg.UpdateConnection(conn)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
@@ -182,7 +187,7 @@ func TestConfig_UpdateConnection(t *testing.T) {
 func TestConfig_UpdateConnection_NotFound(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	_, err := cfg.UpdateConnection(999, "test", "localhost", 6379, "", 0, false)
+	_, err := cfg.UpdateConnection(types.Connection{ID: 999, Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false})
 	if !os.IsNotExist(err) {
 		t.Errorf("Expected os.ErrNotExist, got %v", err)
 	}

@@ -176,13 +176,17 @@ func (c *Config) AddConnection(conn types.Connection) (types.Connection, error) 
 
 	now := time.Now()
 
+	conn.ID = c.nextID
 	conn.Created = now
 	conn.Updated = now
+
+	c.nextID++
 
 	c.Connections = append(c.Connections, conn)
 
 	if err := c.save(); err != nil {
 		c.Connections = c.Connections[:len(c.Connections)-1]
+		c.nextID--
 		return types.Connection{}, err
 	}
 

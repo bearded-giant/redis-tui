@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
 func TestParseClusterNodes(t *testing.T) {
@@ -239,7 +240,7 @@ func TestTestConnection(t *testing.T) {
 			t.Fatalf("failed to parse port: %v", err)
 		}
 
-		latency, err := client.TestConnection(mr.Host(), port, "", 0)
+		latency, err := client.TestConnection(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false})
 		if err != nil {
 			t.Fatalf("TestConnection() error = %v", err)
 		}
@@ -252,7 +253,7 @@ func TestTestConnection(t *testing.T) {
 		client, _ := setupTestClient(t)
 
 		// Use a port that is almost certainly not listening
-		_, err := client.TestConnection("127.0.0.1", 1, "", 0)
+		_, err := client.TestConnection(&types.Connection{Name: "test", Host: "127.0.0.1", Port: 1, Password: "", DB: 0, UseCluster: false})
 		if err == nil {
 			t.Fatal("TestConnection() expected error for wrong port, got nil")
 		}
@@ -268,12 +269,12 @@ func TestTestConnection(t *testing.T) {
 
 		c := NewClient()
 		port, _ := strconv.Atoi(mr.Port())
-		if err := c.Connect(mr.Host(), port, "", 0); err != nil {
+		if err := c.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 			t.Fatalf("Connect() error = %v", err)
 		}
 		t.Cleanup(func() { _ = c.Disconnect() })
 
-		_, err = c.TestConnection("192.0.2.1", 6379, "", 0)
+		_, err = c.TestConnection(&types.Connection{Name: "test", Host: "192.0.2.1", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		if err == nil {
 			t.Fatal("TestConnection() expected error for unreachable host, got nil")
 		}
