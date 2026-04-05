@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"crypto/tls"
 	"time"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
@@ -114,32 +113,25 @@ func NewFullMockRedisClient() *FullMockRedisClient {
 
 // Connection management
 
-func (m *FullMockRedisClient) Connect(host string, port int, password string, db int) error {
+func (m *FullMockRedisClient) Connect(conn *types.Connection) error {
 	m.Calls = append(m.Calls, "Connect")
-	return m.MockRedisClient.Connect(host, port, password, db)
+	return m.MockRedisClient.Connect(conn)
 }
 
-func (m *FullMockRedisClient) ConnectWithTLS(_ string, _ int, _ string, _ int, _ *tls.Config) error {
-	m.Calls = append(m.Calls, "ConnectWithTLS")
-	if m.ConnectWithTLSError != nil {
-		return m.ConnectWithTLSError
-	}
-	return m.MockRedisClient.Connect("", 0, "", 0)
-}
-
-func (m *FullMockRedisClient) ConnectCluster(_ []string, _ string) error {
+func (m *FullMockRedisClient) ConnectCluster(_ []string, _ string, _ string) error {
 	m.Calls = append(m.Calls, "ConnectCluster")
 	if m.ConnectClusterError != nil {
 		return m.ConnectClusterError
 	}
-	return m.MockRedisClient.Connect("", 0, "", 0)
+	conn := types.Connection{Name: "", Host: "", Port: 0, UseCluster: true}
+	return m.MockRedisClient.Connect(&conn)
 }
 
 func (m *FullMockRedisClient) IsCluster() bool {
 	return m.IsClusterResult
 }
 
-func (m *FullMockRedisClient) TestConnection(_ string, _ int, _ string, _ int) (time.Duration, error) {
+func (m *FullMockRedisClient) TestConnection(conn *types.Connection) (time.Duration, error) {
 	m.Calls = append(m.Calls, "TestConnection")
 	return m.TestConnectionLatency, m.TestConnectionError
 }

@@ -57,13 +57,15 @@ func (m *MockConfigClient) Close() error { return m.CloseError }
 func (m *MockConfigClient) ListConnections() ([]types.Connection, error) {
 	return m.ListConnectionsResult, m.ListConnectionsError
 }
-func (m *MockConfigClient) AddConnection(_, _ string, _ int, _ string, _ int, _ bool) (types.Connection, error) {
+
+func (m *MockConfigClient) AddConnection(_ types.Connection) (types.Connection, error) {
 	return m.AddConnectionResult, m.AddConnectionError
 }
-func (m *MockConfigClient) UpdateConnection(_ int64, _, _ string, _ int, _ string, _ int, _ bool) (types.Connection, error) {
+
+func (m *MockConfigClient) UpdateConnection(_ types.Connection) (types.Connection, error) {
 	return m.UpdateConnectionResult, m.UpdateConnectionError
 }
-func (m *MockConfigClient) DeleteConnection(_ int64) error                          { return m.DeleteConnectionError }
+func (m *MockConfigClient) DeleteConnection(_ int64) error { return m.DeleteConnectionError }
 func (m *MockConfigClient) AddFavorite(_ int64, _, _ string) (types.Favorite, error) {
 	return m.AddFavoriteResult, m.AddFavoriteError
 }

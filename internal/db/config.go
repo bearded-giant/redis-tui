@@ -47,7 +47,7 @@ func NewConfig(configPath string) (*Config, error) {
 
 	// Ensure directory exists
 	dir := filepath.Dir(configPath)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err
 	}
 
@@ -149,7 +149,7 @@ func (c *Config) save() error {
 		return err
 	}
 
-	return os.WriteFile(c.path, data, 0600)
+	return os.WriteFile(c.path, data, 0o600)
 }
 
 func (c *Config) Close() error {
@@ -170,64 +170,56 @@ func (c *Config) ListConnections() ([]types.Connection, error) {
 	return result, nil
 }
 
-func (c *Config) AddConnection(name, host string, port int, password string, db int, useCluster bool) (types.Connection, error) {
+func (c *Config) AddConnection(conn types.Connection) (types.Connection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	now := time.Now()
-	conn := types.Connection{
-		ID:         c.nextID,
-		Name:       name,
-		Host:       host,
-		Port:       port,
-		Password:   password,
-		DB:         db,
-		UseCluster: useCluster,
-		Created:    now,
-		Updated:    now,
-	}
-	c.nextID++
+
+	conn.Created = now
+	conn.Updated = now
 
 	c.Connections = append(c.Connections, conn)
 
 	if err := c.save(); err != nil {
 		c.Connections = c.Connections[:len(c.Connections)-1]
-		c.nextID--
 		return types.Connection{}, err
 	}
 
-	return conn, nil
+	addedConnection := c.Connections[len(c.Connections)-1]
+
+	return addedConnection, nil
 }
 
-func (c *Config) UpdateConnection(id int64, name, host string, port int, password string, db int, useCluster bool) (types.Connection, error) {
+func (c *Config) UpdateConnection(conn types.Connection) (types.Connection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for i, conn := range c.Connections {
-		if conn.ID == id {
+	for i, toUpdateConn := range c.Connections {
+		if toUpdateConn.ID == conn.ID {
 			now := time.Now()
 			updatedConn := types.Connection{
-				ID:         id,
-				Name:       name,
-				Host:       host,
-				Port:       port,
-				Password:   password,
-				DB:         db,
-				Group:      conn.Group,
-				Color:      conn.Color,
-				UseSSH:     conn.UseSSH,
-				SSHConfig:  conn.SSHConfig,
-				UseTLS:     conn.UseTLS,
-				TLSConfig:  conn.TLSConfig,
-				UseCluster: useCluster,
-				Created:    conn.Created,
+				ID:         conn.ID,
+				Name:       conn.Name,
+				Host:       conn.Host,
+				Port:       conn.Port,
+				Password:   conn.Password,
+				DB:         conn.DB,
+				Group:      toUpdateConn.Group,
+				Color:      toUpdateConn.Color,
+				UseSSH:     toUpdateConn.UseSSH,
+				SSHConfig:  toUpdateConn.SSHConfig,
+				UseTLS:     toUpdateConn.UseTLS,
+				TLSConfig:  toUpdateConn.TLSConfig,
+				UseCluster: conn.UseCluster,
+				Created:    toUpdateConn.Created,
 				Updated:    now,
 			}
 
 			c.Connections[i] = updatedConn
 
 			if err := c.save(); err != nil {
-				c.Connections[i] = conn // Rollback
+				c.Connections[i] = toUpdateConn // Rollback
 				return types.Connection{}, err
 			}
 

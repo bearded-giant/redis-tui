@@ -49,7 +49,7 @@ type Model struct {
 	PendingSelectKey  string
 
 	// New fields for additional features
-	VimEditor vimtea.Editor
+	VimEditor          vimtea.Editor
 	EditingIndex       int
 	EditingField       string
 	AddCollectionInput []textinput.Model
@@ -165,7 +165,7 @@ type Model struct {
 	PreviewKey    string
 	PreviewValue  types.RedisValue
 	PreviewScroll int
-	DetailScroll int
+	DetailScroll  int
 
 	// Live metrics dashboard
 	LiveMetrics       *types.LiveMetrics
@@ -332,6 +332,22 @@ func (m Model) Init() tea.Cmd {
 		})
 	}
 	return tea.Batch(cmds...)
+}
+
+func (m *Model) convertCurrentInputsToConnection(inputs []textinput.Model, action string) types.Connection {
+	var id int64
+	if action == "edit" {
+		id = m.EditingConnection.ID
+	}
+	return types.Connection{
+		ID:         id,
+		Name:       inputs[0].Value(),
+		Host:       inputs[1].Value(),
+		Port:       m.getPort(),
+		Password:   inputs[3].Value(),
+		DB:         m.getDB(),
+		UseCluster: m.ConnClusterMode,
+	}
 }
 
 func (m Model) getPort() int {

@@ -10,21 +10,21 @@ import (
 
 // Connection stores Redis connection details
 type Connection struct {
-	ID        int64      `json:"id"`
-	Name      string     `json:"name"`
-	Host      string     `json:"host"`
-	Port      int        `json:"port"`
-	Password  string     `json:"password,omitempty"` // #nosec G117 -- stored in local user config
-	DB        int        `json:"db"`
-	Group     string     `json:"group,omitempty"`
-	Color     string     `json:"color,omitempty"`
-	UseSSH    bool       `json:"use_ssh,omitempty"`
-	SSHConfig *SSHConfig `json:"ssh_config,omitempty"`
+	ID         int64      `json:"id"`
+	Name       string     `json:"name"`
+	Host       string     `json:"host"`
+	Port       int        `json:"port"`
+	Password   string     `json:"-"` // #nosec G117 -- stored in local user config. - ensures marshal never returns value
+	DB         int        `json:"db"`
+	Group      string     `json:"group,omitempty"`
+	Color      string     `json:"color,omitempty"`
+	UseSSH     bool       `json:"use_ssh,omitempty"`
+	SSHConfig  *SSHConfig `json:"ssh_config,omitempty"`
 	UseTLS     bool       `json:"use_tls,omitempty"`
 	TLSConfig  *TLSConfig `json:"tls_config,omitempty"`
 	UseCluster bool       `json:"use_cluster,omitempty"`
-	Created   time.Time  `json:"created_at"`
-	Updated   time.Time  `json:"updated_at"`
+	Created    time.Time  `json:"created_at"`
+	Updated    time.Time  `json:"updated_at"`
 }
 
 // SSHConfig stores SSH tunnel configuration
@@ -32,9 +32,9 @@ type SSHConfig struct {
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
 	User           string `json:"user"`
-	Password       string `json:"password,omitempty"` // #nosec G117 -- stored in local user config
+	Password       string `json:"-"` // #nosec G117 -- stored in local user config - ensures marshal never returns value
 	PrivateKeyPath string `json:"private_key_path,omitempty"`
-	Passphrase     string `json:"passphrase,omitempty"`
+	Passphrase     string `json:"-"` // #nosec G117 -- stored in local user config - ensures marshal never returns value
 }
 
 // TLSConfig stores TLS/SSL configuration

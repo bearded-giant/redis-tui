@@ -25,7 +25,7 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Loading = true
 			m.StatusMsg = "Connecting..."
 			m.ConnectionError = "" // Clear any previous connection error
-			return m, m.Cmds.Connect(conn.Host, conn.Port, conn.Password, conn.DB, conn.UseCluster)
+			return m, m.Cmds.Connect(m.CurrentConn)
 		}
 	case "a", "n":
 		m.Screen = types.ScreenAddConnection
@@ -82,23 +82,17 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.ConnInputs[0].Value() != "" && m.ConnInputs[1].Value() != "" {
 			m.Loading = true
+			conn := m.convertCurrentInputsToConnection(m.ConnInputs, "add")
 			return m, m.Cmds.AddConnection(
-				m.ConnInputs[0].Value(),
-				m.ConnInputs[1].Value(),
-				m.getPort(),
-				m.ConnInputs[3].Value(),
-				m.getDB(),
-				m.ConnClusterMode,
+				conn,
 			)
 		}
 	case "ctrl+t":
 		m.Loading = true
 		m.Screen = types.ScreenTestConnection
+		conn := m.convertCurrentInputsToConnection(m.ConnInputs, "test")
 		return m, m.Cmds.TestConnection(
-			m.ConnInputs[1].Value(),
-			m.getPort(),
-			m.ConnInputs[3].Value(),
-			m.getDB(),
+			&conn,
 		)
 	case "esc":
 		m.Screen = types.ScreenConnections
@@ -178,14 +172,9 @@ func (m Model) handleEditConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.EditingConnection != nil && m.ConnInputs[0].Value() != "" && m.ConnInputs[1].Value() != "" {
 			m.Loading = true
+			conn := m.convertCurrentInputsToConnection(m.ConnInputs, "edit")
 			return m, m.Cmds.UpdateConnection(
-				m.EditingConnection.ID,
-				m.ConnInputs[0].Value(),
-				m.ConnInputs[1].Value(),
-				m.getPort(),
-				m.ConnInputs[3].Value(),
-				m.getDB(),
-				m.ConnClusterMode,
+				conn,
 			)
 		}
 	case "esc":

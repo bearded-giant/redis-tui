@@ -14,7 +14,7 @@ func (m Model) handleAutoConnectMsg(msg types.AutoConnectMsg) (tea.Model, tea.Cm
 	m.Loading = true
 	m.StatusMsg = "Connecting..."
 	m.CLIConnection = nil // Consume so it doesn't re-trigger
-	return m, m.Cmds.AutoConnect(conn)
+	return m, m.Cmds.Connect(m.CurrentConn)
 }
 
 func (m Model) handleConnectionsLoadedMsg(msg types.ConnectionsLoadedMsg) (tea.Model, tea.Cmd) {

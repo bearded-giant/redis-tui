@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davidbudnick/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -23,11 +23,11 @@ const (
 	defaultPingTimeout  = 5 * time.Second
 )
 
-func defaultOptions(addr, password string, db int) *redis.Options {
+func defaultOptions(conn *types.Connection) *redis.Options {
 	return &redis.Options{
-		Addr:         addr,
-		Password:     password,
-		DB:           db,
+		Addr:         fmt.Sprintf("%s:%d", conn.Host, conn.Port),
+		Password:     conn.Password,
+		DB:           conn.DB,
 		DialTimeout:  defaultDialTimeout,
 		ReadTimeout:  defaultReadTimeout,
 		WriteTimeout: defaultWriteTimeout,
@@ -45,40 +45,27 @@ func (c *Client) cleanup() {
 }
 
 // Connect establishes a connection to Redis
-func (c *Client) Connect(host string, port int, password string, db int) error {
+func (c *Client) Connect(conn *types.Connection) error {
 	c.cleanup()
 
-	client := redis.NewClient(defaultOptions(fmt.Sprintf("%s:%d", host, port), password, db))
-
-	c.mu.Lock()
-	c.host = host
-	c.port = port
-	c.password = password
-	c.db = db
-	c.client = client
-	ctx := c.ctx
-	c.mu.Unlock()
-
-	pingCtx, cancel := context.WithTimeout(ctx, defaultPingTimeout)
-	defer cancel()
-
-	_, err := client.Ping(pingCtx).Result()
-	return err
-}
-
-// ConnectWithTLS establishes a TLS connection to Redis
-func (c *Client) ConnectWithTLS(host string, port int, password string, db int, tlsConfig *tls.Config) error {
-	c.cleanup()
-
-	opts := defaultOptions(fmt.Sprintf("%s:%d", host, port), password, db)
-	opts.TLSConfig = tlsConfig
+	opts := defaultOptions(conn)
+	if conn.UseTLS {
+		if conn.TLSConfig == nil {
+			return fmt.Errorf("TLS requested but TLS configuration is missing")
+		}
+		tslCfg, err := conn.TLSConfig.BuildTLSConfig()
+		if err != nil {
+			return err
+		}
+		opts.TLSConfig = tslCfg
+	}
 	client := redis.NewClient(opts)
 
 	c.mu.Lock()
-	c.host = host
-	c.port = port
-	c.password = password
-	c.db = db
+	c.host = conn.Host
+	c.port = conn.Port
+	c.password = conn.Password
+	c.db = conn.DB
 	c.client = client
 	ctx := c.ctx
 	c.mu.Unlock()
@@ -214,8 +201,8 @@ func (c *Client) SelectDB(db int) error {
 }
 
 // TestConnection tests a connection
-func (c *Client) TestConnection(host string, port int, password string, db int) (time.Duration, error) {
-	testClient := redis.NewClient(defaultOptions(fmt.Sprintf("%s:%d", host, port), password, db))
+func (c *Client) TestConnection(conn *types.Connection) (time.Duration, error) {
+	testClient := redis.NewClient(defaultOptions(conn))
 	defer testClient.Close()
 
 	start := time.Now()
