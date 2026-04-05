@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
@@ -102,6 +103,9 @@ type FullMockRedisClient struct {
 
 	// Call tracking
 	Calls []string
+
+	// Track TLS usage
+	UsedTLS bool
 }
 
 // NewFullMockRedisClient creates a new fully-mocked Redis client.
@@ -115,6 +119,22 @@ func NewFullMockRedisClient() *FullMockRedisClient {
 
 func (m *FullMockRedisClient) Connect(conn *types.Connection) error {
 	m.Calls = append(m.Calls, "Connect")
+
+	if m.ConnectWithTLSError != nil {
+		return m.ConnectWithTLSError
+	}
+
+	if conn.UseTLS {
+		if conn.TLSConfig == nil {
+			return fmt.Errorf("TLS requested but TLS configuration is missing")
+		}
+		_, err := conn.TLSConfig.BuildTLSConfig()
+		if err != nil {
+			return err
+		}
+		m.UsedTLS = true
+	}
+
 	return m.MockRedisClient.Connect(conn)
 }
 
