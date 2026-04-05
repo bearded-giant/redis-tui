@@ -213,6 +213,80 @@ func TestModel_PopulateConnInputs(t *testing.T) {
 	}
 }
 
+func TestModel_ConvertCurrentInputsToConnection_Add(t *testing.T) {
+	m := NewModel()
+
+	// Set some values / m state
+	m.ConnInputs[0].SetValue("My Connection")
+	m.ConnInputs[1].SetValue("redis.example.com")
+	m.ConnInputs[2].SetValue("6380")
+	m.ConnInputs[3].SetValue("secret")
+	m.ConnInputs[4].SetValue("5")
+	m.ConnClusterMode = true
+	m.ConnFocusIdx = 3
+
+	// Convert
+	conn := m.convertCurrentInputsToConnection(m.ConnInputs, "add")
+
+	if conn.Name != "My Connection" {
+		t.Errorf("Name = %q, want %q", conn.Name, "My Connection")
+	}
+	if conn.Host != "redis.example.com" {
+		t.Errorf("Host = %q, want %q", conn.Host, "redis.example.com")
+	}
+	if conn.Port != 6380 {
+		t.Errorf("Port = %d, want %d", conn.Port, 6380)
+	}
+	if conn.Password != "secret" {
+		t.Errorf("Password = %q, want %q", conn.Password, "secret")
+	}
+	if conn.DB != 5 {
+		t.Errorf("DB = %d, want %d", conn.DB, 5)
+	}
+	if conn.UseCluster != true {
+		t.Errorf("UseCluster = %v, want %v", conn.UseCluster, true)
+	}
+}
+
+func TestModel_ConvertCurrentInputsToConnection_Edit(t *testing.T) {
+	m := NewModel()
+
+	// Set some values / m state
+	m.EditingConnection = &types.Connection{ID: 1, Name: "Old", Host: "localhost", Port: 6379, DB: 0, UseCluster: false}
+	m.ConnInputs[0].SetValue("My Connection")
+	m.ConnInputs[1].SetValue("redis.example.com")
+	m.ConnInputs[2].SetValue("6380")
+	m.ConnInputs[3].SetValue("secret")
+	m.ConnInputs[4].SetValue("5")
+	m.ConnClusterMode = true
+	m.ConnFocusIdx = 3
+
+	// Convert
+	conn := m.convertCurrentInputsToConnection(m.ConnInputs, "edit")
+
+	if conn.Name != "My Connection" {
+		t.Errorf("Name = %q, want %q", conn.Name, "My Connection")
+	}
+	if conn.Host != "redis.example.com" {
+		t.Errorf("Host = %q, want %q", conn.Host, "redis.example.com")
+	}
+	if conn.Port != 6380 {
+		t.Errorf("Port = %d, want %d", conn.Port, 6380)
+	}
+	if conn.Password != "secret" {
+		t.Errorf("Password = %q, want %q", conn.Password, "secret")
+	}
+	if conn.DB != 5 {
+		t.Errorf("DB = %d, want %d", conn.DB, 5)
+	}
+	if conn.UseCluster != true {
+		t.Errorf("UseCluster = %v, want %v", conn.UseCluster, true)
+	}
+	if conn.ID != 1 {
+		t.Errorf("ID = %d, want %d", conn.ID, 1)
+	}
+}
+
 func TestModel_ResetAddCollectionInputs(t *testing.T) {
 	m := NewModel()
 

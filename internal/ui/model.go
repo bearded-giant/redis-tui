@@ -334,22 +334,6 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m *Model) convertCurrentInputsToConnection(inputs []textinput.Model, action string) types.Connection {
-	var id int64
-	if action == "edit" {
-		id = m.EditingConnection.ID
-	}
-	return types.Connection{
-		ID:         id,
-		Name:       inputs[0].Value(),
-		Host:       inputs[1].Value(),
-		Port:       m.getPort(),
-		Password:   inputs[3].Value(),
-		DB:         m.getDB(),
-		UseCluster: m.ConnClusterMode,
-	}
-}
-
 func (m Model) getPort() int {
 	port, err := strconv.Atoi(m.ConnInputs[2].Value())
 	if err != nil {
@@ -398,6 +382,23 @@ func (m *Model) populateConnInputs(conn types.Connection) {
 	m.ConnInputs[3].SetValue(conn.Password)
 	m.ConnInputs[4].SetValue(strconv.Itoa(conn.DB))
 	m.ConnClusterMode = conn.UseCluster
+}
+
+// convertCurrentInputsToConnection converts the current inputs to a connection
+func (m *Model) convertCurrentInputsToConnection(inputs []textinput.Model, action string) types.Connection {
+	var id int64
+	if action == "edit" && m.EditingConnection != nil {
+		id = m.EditingConnection.ID
+	}
+	return types.Connection{
+		ID:         id,
+		Name:       inputs[0].Value(),
+		Host:       inputs[1].Value(),
+		Port:       m.getPort(),
+		Password:   inputs[3].Value(),
+		DB:         m.getDB(),
+		UseCluster: m.ConnClusterMode,
+	}
 }
 
 // connFieldCount returns the number of focusable fields in the connection form.
