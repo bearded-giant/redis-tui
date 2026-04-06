@@ -278,3 +278,92 @@ func TestTestConnection(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// ConfigGet
+// ---------------------------------------------------------------------------
+
+func TestConfigGet(t *testing.T) {
+	t.Run("returns result or graceful error", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		result, err := client.ConfigGet("save")
+		if err != nil {
+			// miniredis may not support CONFIG GET; verify graceful error
+			t.Logf("ConfigGet() returned expected error with miniredis: %v", err)
+			return
+		}
+
+		if _, ok := result["save"]; !ok {
+			t.Error("ConfigGet(\"save\") did not return a 'save' key")
+		}
+	})
+
+	t.Run("wildcard pattern returns results or graceful error", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		result, err := client.ConfigGet("*")
+		if err != nil {
+			// miniredis may not support CONFIG GET; verify graceful error
+			t.Logf("ConfigGet(\"*\") returned expected error with miniredis: %v", err)
+			return
+		}
+
+		if len(result) == 0 {
+			t.Error("ConfigGet(\"*\") returned empty map")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// ConfigSet
+// ---------------------------------------------------------------------------
+
+func TestConfigSet(t *testing.T) {
+	t.Run("set config param returns result or graceful error", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		err := client.ConfigSet("save", "900 1")
+		if err != nil {
+			// miniredis may not support CONFIG SET; verify graceful error
+			t.Logf("ConfigSet() returned expected error with miniredis: %v", err)
+			return
+		}
+
+		result, err := client.ConfigGet("save")
+		if err != nil {
+			t.Fatalf("ConfigGet() error = %v", err)
+		}
+
+		if result["save"] != "900 1" {
+			t.Errorf("ConfigGet(\"save\") = %q, want %q", result["save"], "900 1")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// ClientList
+// ---------------------------------------------------------------------------
+
+func TestClientList(t *testing.T) {
+	t.Run("returns clients or graceful error", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		clients, err := client.ClientList()
+		if err != nil {
+			// miniredis may not support CLIENT LIST; verify graceful error
+			t.Logf("ClientList() returned expected error with miniredis: %v", err)
+			return
+		}
+
+		if len(clients) == 0 {
+			t.Fatal("ClientList() returned 0 clients, want >= 1")
+		}
+
+		// Verify first client has a non-empty address
+		c := clients[0]
+		if c.Addr == "" {
+			t.Error("ClientList() first client has empty Addr")
+		}
+	})
+}

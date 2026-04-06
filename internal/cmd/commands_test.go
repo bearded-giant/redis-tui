@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/davidbudnick/redis-tui/internal/service"
 	"github.com/davidbudnick/redis-tui/internal/testutil"
@@ -1550,6 +1553,496 @@ func TestAutoConnect(t *testing.T) {
 		if result.Err != nil {
 			t.Errorf("nil redis should not error: %v", result.Err)
 		}
+	})
+}
+
+func TestAutoConnect_ClusterWithTLS_IgnoresTLS(t *testing.T) {
+	// Documents current behavior: when both UseCluster and UseTLS are set,
+	// the cluster branch runs first and TLS is silently ignored.
+	// This test guards against accidental changes and documents the gap.
+	cmds, mock := newMockCmds()
+	conn := types.Connection{
+		Host:       "localhost",
+		Port:       7000,
+		UseCluster: true,
+		UseTLS:     true,
+		TLSConfig:  &types.TLSConfig{InsecureSkipVerify: true},
+	}
+	msg := cmds.AutoConnect(conn)()
+	result := msg.(types.ConnectedMsg)
+	if result.Err != nil {
+		t.Errorf("unexpected error: %v", result.Err)
+	}
+	// Cluster path takes priority — ConnectCluster is called, not ConnectWithTLS
+	if len(mock.Calls) == 0 || mock.Calls[0] != "ConnectCluster" {
+		t.Errorf("expected ConnectCluster call (cluster takes priority over TLS), got %v", mock.Calls)
+	}
+}
+
+// --- Tests for previously untested command methods ---
+
+func TestExportKeys(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ExportResult = map[string]any{"key1": "val1", "key2": "val2"}
+		dir := t.TempDir()
+		filename := dir + "/export.json"
+		msg := cmds.ExportKeys("*", filename)()
+		result := msg.(types.ExportCompleteMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.KeyCount != 2 {
+			t.Errorf("KeyCount = %d, want 2", result.KeyCount)
+		}
+		if result.Filename != filename {
+			t.Errorf("Filename = %q, want %q", result.Filename, filename)
+		}
+		// Verify the file was actually written
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			t.Fatalf("failed to read exported file: %v", err)
+		}
+		if len(data) == 0 {
+			t.Error("exported file is empty")
+		}
+	})
+
+	t.Run("export error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ExportError = errors.New("scan failed")
+		dir := t.TempDir()
+		filename := dir + "/export.json"
+		msg := cmds.ExportKeys("*", filename)()
+		result := msg.(types.ExportCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("write error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ExportResult = map[string]any{"key1": "val1"}
+		// Use a path that cannot be written to
+		filename := "/nonexistent-dir/export.json"
+		msg := cmds.ExportKeys("*", filename)()
+		result := msg.(types.ExportCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected error for invalid path")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.ExportKeys("*", "file.json")()
+		result := msg.(types.ExportCompleteMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestImportKeys(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ImportResult = 3
+		dir := t.TempDir()
+		filename := dir + "/import.json"
+		err := os.WriteFile(filename, []byte(`{"key1":"val1","key2":"val2","key3":"val3"}`), 0600)
+		if err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+		msg := cmds.ImportKeys(filename)()
+		result := msg.(types.ImportCompleteMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.KeyCount != 3 {
+			t.Errorf("KeyCount = %d, want 3", result.KeyCount)
+		}
+		if result.Filename != filename {
+			t.Errorf("Filename = %q, want %q", result.Filename, filename)
+		}
+	})
+
+	t.Run("file not found", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		msg := cmds.ImportKeys("/nonexistent/import.json")()
+		result := msg.(types.ImportCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected error for missing file")
+		}
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		dir := t.TempDir()
+		filename := dir + "/bad.json"
+		err := os.WriteFile(filename, []byte(`not valid json`), 0600)
+		if err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+		msg := cmds.ImportKeys(filename)()
+		result := msg.(types.ImportCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected error for invalid JSON")
+		}
+	})
+
+	t.Run("import error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ImportError = errors.New("import failed")
+		dir := t.TempDir()
+		filename := dir + "/import.json"
+		err := os.WriteFile(filename, []byte(`{"key1":"val1"}`), 0600)
+		if err != nil {
+			t.Fatalf("failed to write test file: %v", err)
+		}
+		msg := cmds.ImportKeys(filename)()
+		result := msg.(types.ImportCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.ImportKeys("file.json")()
+		result := msg.(types.ImportCompleteMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestSubscribeKeyspace(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		var received []tea.Msg
+		sendFunc := func(msg tea.Msg) {
+			received = append(received, msg)
+		}
+		msg := cmds.SubscribeKeyspace("*", sendFunc)()
+		result := msg.(types.KeyspaceSubscribedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Pattern != "*" {
+			t.Errorf("Pattern = %q, want %q", result.Pattern, "*")
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.SubscribeKeyspaceError = errors.New("subscribe failed")
+		msg := cmds.SubscribeKeyspace("*", nil)()
+		result := msg.(types.KeyspaceSubscribedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.SubscribeKeyspace("*", nil)()
+		result := msg.(types.KeyspaceSubscribedMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestUnsubscribeKeyspace(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		msg := cmds.UnsubscribeKeyspace()()
+		if msg != nil {
+			t.Errorf("expected nil msg, got %T", msg)
+		}
+		found := false
+		for _, call := range mock.Calls {
+			if call == "UnsubscribeKeyspace" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("expected UnsubscribeKeyspace to be called")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.UnsubscribeKeyspace()()
+		if msg != nil {
+			t.Errorf("expected nil msg, got %T", msg)
+		}
+	})
+}
+
+func TestJSONPathQuery(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.JSONGetResult = `{"name":"test"}`
+		msg := cmds.JSONPathQuery("mykey", "$.name")()
+		result := msg.(types.JSONPathResultMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Result != `{"name":"test"}` {
+			t.Errorf("Result = %q, want %q", result.Result, `{"name":"test"}`)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.JSONGetError = errors.New("json path error")
+		msg := cmds.JSONPathQuery("mykey", "$.bad")()
+		result := msg.(types.JSONPathResultMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.JSONPathQuery("mykey", "$.name")()
+		result := msg.(types.JSONPathResultMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestAddToHLL(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		msg := cmds.AddToHLL("hll", "elem1", "elem2")()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Key != "hll" {
+			t.Errorf("Key = %q, want %q", result.Key, "hll")
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.PFAddError = errors.New("pfadd error")
+		msg := cmds.AddToHLL("hll", "elem")()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.AddToHLL("hll", "elem")()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestAddToGeo(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		msg := cmds.AddToGeo("geo", -122.4194, 37.7749, "San Francisco")()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Key != "geo" {
+			t.Errorf("Key = %q, want %q", result.Key, "geo")
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.GeoAddError = errors.New("geoadd error")
+		msg := cmds.AddToGeo("geo", 0, 0, "origin")()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.AddToGeo("geo", 0, 0, "origin")()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestSetBit(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		msg := cmds.SetBit("bitmap", 7, 1)()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Key != "bitmap" {
+			t.Errorf("Key = %q, want %q", result.Key, "bitmap")
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.SetBitError = errors.New("setbit error")
+		msg := cmds.SetBit("bitmap", 0, 1)()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.SetBit("bitmap", 0, 1)()
+		result := msg.(types.ItemAddedToCollectionMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestFetchClusterNodes(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ClusterNodesResult = []types.ClusterNode{
+			{ID: "node1", Addr: "127.0.0.1:7000"},
+			{ID: "node2", Addr: "127.0.0.1:7001"},
+		}
+		msg := cmds.FetchClusterNodes()()
+		result := msg.(types.ClusterNodesLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if len(result.Nodes) != 2 {
+			t.Errorf("expected 2 nodes, got %d", len(result.Nodes))
+		}
+		if result.Nodes[0].ID != "node1" {
+			t.Errorf("Nodes[0].ID = %q, want %q", result.Nodes[0].ID, "node1")
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ClusterNodesError = errors.New("cluster nodes error")
+		msg := cmds.FetchClusterNodes()()
+		result := msg.(types.ClusterNodesLoadedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.FetchClusterNodes()()
+		result := msg.(types.ClusterNodesLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestLoadLiveMetrics(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.LiveMetricsResult = types.LiveMetricsData{
+			OpsPerSec:       1500,
+			UsedMemoryBytes: 1024000,
+		}
+		msg := cmds.LoadLiveMetrics()()
+		result := msg.(types.LiveMetricsMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Data.OpsPerSec != 1500 {
+			t.Errorf("OpsPerSec = %f, want 1500", result.Data.OpsPerSec)
+		}
+		if result.Data.UsedMemoryBytes != 1024000 {
+			t.Errorf("UsedMemoryBytes = %d, want 1024000", result.Data.UsedMemoryBytes)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.LiveMetricsError = errors.New("metrics error")
+		msg := cmds.LoadLiveMetrics()()
+		result := msg.(types.LiveMetricsMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.LoadLiveMetrics()()
+		result := msg.(types.LiveMetricsMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestCheckVersion(t *testing.T) {
+	t.Run("empty version returns empty msg", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.CheckVersion("")()
+		result := msg.(types.UpdateAvailableMsg)
+		if result.LatestVersion != "" {
+			t.Errorf("LatestVersion = %q, want empty", result.LatestVersion)
+		}
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("dev version returns empty msg", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.CheckVersion("dev")()
+		result := msg.(types.UpdateAvailableMsg)
+		if result.LatestVersion != "" {
+			t.Errorf("LatestVersion = %q, want empty", result.LatestVersion)
+		}
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+}
+
+func TestWatchKeyTick(t *testing.T) {
+	t.Run("returns non-nil cmd", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		cmd := cmds.WatchKeyTick()
+		if cmd == nil {
+			t.Error("expected non-nil cmd from WatchKeyTick")
+		}
+	})
+}
+
+func TestCopyToClipboard(t *testing.T) {
+	t.Run("returns cmd", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		cmd := cmds.CopyToClipboard("test content")
+		if cmd == nil {
+			t.Fatal("expected non-nil cmd from CopyToClipboard")
+		}
+		// Execute the command - it may fail in CI if pbcopy is not available
+		msg := cmd()
+		result := msg.(types.ClipboardCopiedMsg)
+		if result.Content != "test content" {
+			t.Errorf("Content = %q, want %q", result.Content, "test content")
+		}
+		// Note: result.Err may be non-nil if pbcopy is unavailable (e.g. in CI)
 	})
 }
 

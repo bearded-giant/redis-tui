@@ -352,3 +352,152 @@ func TestHSetMap(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// SetBit / GetBit / BitCount
+// ---------------------------------------------------------------------------
+
+func TestSetBit(t *testing.T) {
+	t.Run("set bit at offset", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		if err := client.SetBit("bitmap", 7, 1); err != nil {
+			t.Fatalf("SetBit error: %v", err)
+		}
+
+		val, err := client.GetBit("bitmap", 7)
+		if err != nil {
+			t.Fatalf("GetBit error: %v", err)
+		}
+		if val != 1 {
+			t.Errorf("GetBit(7) = %d, want 1", val)
+		}
+	})
+
+	t.Run("set bit to zero", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		if err := client.SetBit("bitmap2", 3, 1); err != nil {
+			t.Fatalf("SetBit(3, 1) error: %v", err)
+		}
+		if err := client.SetBit("bitmap2", 3, 0); err != nil {
+			t.Fatalf("SetBit(3, 0) error: %v", err)
+		}
+
+		val, err := client.GetBit("bitmap2", 3)
+		if err != nil {
+			t.Fatalf("GetBit error: %v", err)
+		}
+		if val != 0 {
+			t.Errorf("GetBit(3) = %d, want 0", val)
+		}
+	})
+
+}
+
+func TestGetBit(t *testing.T) {
+	t.Run("unset bit returns zero", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		val, err := client.GetBit("nokey", 10)
+		if err != nil {
+			t.Fatalf("GetBit error: %v", err)
+		}
+		if val != 0 {
+			t.Errorf("GetBit on non-existent key = %d, want 0", val)
+		}
+	})
+
+}
+
+func TestBitCount(t *testing.T) {
+	t.Run("counts set bits", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		// Set bits at offsets 0, 1, 7
+		for _, offset := range []int64{0, 1, 7} {
+			if err := client.SetBit("bc", offset, 1); err != nil {
+				t.Fatalf("SetBit(%d) error: %v", offset, err)
+			}
+		}
+
+		count, err := client.BitCount("bc")
+		if err != nil {
+			t.Fatalf("BitCount error: %v", err)
+		}
+		if count != 3 {
+			t.Errorf("BitCount = %d, want 3", count)
+		}
+	})
+
+	t.Run("empty key returns zero", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		count, err := client.BitCount("nokey")
+		if err != nil {
+			t.Fatalf("BitCount error: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("BitCount on non-existent key = %d, want 0", count)
+		}
+	})
+
+}
+
+// ---------------------------------------------------------------------------
+// PFAdd / PFCount
+// ---------------------------------------------------------------------------
+
+func TestPFAdd(t *testing.T) {
+	t.Run("add elements", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		if err := client.PFAdd("hll", "a", "b", "c"); err != nil {
+			t.Fatalf("PFAdd error: %v", err)
+		}
+
+		count, err := client.PFCount("hll")
+		if err != nil {
+			t.Fatalf("PFCount error: %v", err)
+		}
+		if count != 3 {
+			t.Errorf("PFCount = %d, want 3", count)
+		}
+	})
+
+	t.Run("duplicate elements", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		if err := client.PFAdd("hll2", "x", "y"); err != nil {
+			t.Fatalf("PFAdd error: %v", err)
+		}
+		if err := client.PFAdd("hll2", "x", "z"); err != nil {
+			t.Fatalf("PFAdd second call error: %v", err)
+		}
+
+		count, err := client.PFCount("hll2")
+		if err != nil {
+			t.Fatalf("PFCount error: %v", err)
+		}
+		// x, y, z = 3 unique elements
+		if count != 3 {
+			t.Errorf("PFCount = %d, want 3", count)
+		}
+	})
+
+}
+
+func TestPFCount(t *testing.T) {
+	t.Run("empty key returns zero", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		count, err := client.PFCount("nokey")
+		if err != nil {
+			t.Fatalf("PFCount error: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("PFCount on non-existent key = %d, want 0", count)
+		}
+	})
+
+}

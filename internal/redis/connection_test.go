@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
 func TestParseAddr(t *testing.T) {
@@ -61,6 +62,63 @@ func TestConnect(t *testing.T) {
 	if got != "testval" {
 		t.Errorf("Get = %q, want %q", got, "testval")
 	}
+}
+
+func TestConnectWithTLS_NonTLSServer(t *testing.T) {
+	// Connecting with TLS to a non-TLS miniredis should fail
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+
+	client := NewClient()
+	port, _ := strconv.Atoi(mr.Port())
+
+	tlsCfg := &types.TLSConfig{InsecureSkipVerify: true}
+	goTLS, _ := tlsCfg.BuildTLSConfig()
+
+	err = client.ConnectWithTLS(mr.Host(), port, "", 0, goTLS)
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("expected error when connecting with TLS to non-TLS server")
+	}
+}
+
+func TestConnect_WrongPassword(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+	mr.RequireAuth("correct-password")
+
+	client := NewClient()
+	port, _ := strconv.Atoi(mr.Port())
+
+	err = client.Connect(mr.Host(), port, "wrong-password", 0)
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("expected error when connecting with wrong password")
+	}
+}
+
+func TestConnect_CorrectPassword(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+	mr.RequireAuth("correct-password")
+
+	client := NewClient()
+	port, _ := strconv.Atoi(mr.Port())
+
+	err = client.Connect(mr.Host(), port, "correct-password", 0)
+	if err != nil {
+		t.Fatalf("Connect() with correct password returned error: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Disconnect() })
 }
 
 func TestDisconnect(t *testing.T) {
