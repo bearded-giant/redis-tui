@@ -671,6 +671,105 @@ func TestConfig_Persistence_PasswordStripping(t *testing.T) {
 	}
 }
 
+func TestConfig_PasswordFieldCanBeLoaded(t *testing.T) {
+	// Verifies that the Password JSON tag can deserialize passwords.
+	// If someone changes the tag to json:"-", this test fails because
+	// the field can no longer be read from JSON — even though save()
+	// intentionally strips it before writing.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	// Write a config file with a password directly in the JSON
+	raw := `{
+		"connections": [{
+			"id": 1,
+			"name": "manual",
+			"host": "localhost",
+			"port": 6379,
+			"password": "loaded_from_json",
+			"db": 0,
+			"created_at": "2025-01-01T00:00:00Z",
+			"updated_at": "2025-01-01T00:00:00Z"
+		}]
+	}`
+	err := os.WriteFile(path, []byte(raw), 0600)
+	if err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	cfg, err := NewConfig(path)
+	if err != nil {
+		t.Fatalf("NewConfig failed: %v", err)
+	}
+
+	connections, err := cfg.ListConnections()
+	if err != nil {
+		t.Fatalf("ListConnections failed: %v", err)
+	}
+	if len(connections) != 1 {
+		t.Fatalf("expected 1 connection, got %d", len(connections))
+	}
+
+	// The password field must be readable from JSON — save() strips it,
+	// but the struct tag must still support deserialization
+	if connections[0].Password != "loaded_from_json" {
+		t.Errorf("Password = %q, want %q — the json tag may have been changed to json:\"-\"",
+			connections[0].Password, "loaded_from_json")
+	}
+}
+
+func TestConfig_SSHPasswordFieldCanBeLoaded(t *testing.T) {
+	// Same principle: SSH password and passphrase must be loadable from JSON
+	// even though save() strips them before writing.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	raw := `{
+		"connections": [{
+			"id": 1,
+			"name": "ssh-test",
+			"host": "localhost",
+			"port": 6379,
+			"db": 0,
+			"use_ssh": true,
+			"ssh_config": {
+				"host": "bastion",
+				"port": 22,
+				"user": "deploy",
+				"password": "ssh_pass_from_json",
+				"passphrase": "key_pass_from_json"
+			},
+			"created_at": "2025-01-01T00:00:00Z",
+			"updated_at": "2025-01-01T00:00:00Z"
+		}]
+	}`
+	err := os.WriteFile(path, []byte(raw), 0600)
+	if err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	cfg, err := NewConfig(path)
+	if err != nil {
+		t.Fatalf("NewConfig failed: %v", err)
+	}
+
+	connections, err := cfg.ListConnections()
+	if err != nil {
+		t.Fatalf("ListConnections failed: %v", err)
+	}
+	if connections[0].SSHConfig == nil {
+		t.Fatal("SSHConfig should not be nil")
+	}
+	if connections[0].SSHConfig.Password != "ssh_pass_from_json" {
+		t.Errorf("SSHConfig.Password = %q, want %q — the json tag may have been changed to json:\"-\"",
+			connections[0].SSHConfig.Password, "ssh_pass_from_json")
+	}
+	if connections[0].SSHConfig.Passphrase != "key_pass_from_json" {
+		t.Errorf("SSHConfig.Passphrase = %q, want %q — the json tag may have been changed to json:\"-\"",
+			connections[0].SSHConfig.Passphrase, "key_pass_from_json")
+	}
+}
+
 func TestConfig_Persistence_SSHPasswordStripping(t *testing.T) {
 	cfg := newTestConfig(t)
 
