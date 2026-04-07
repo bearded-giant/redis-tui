@@ -11,7 +11,7 @@ import (
 func TestLoadKeys(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		mock.SetKey("k1", types.RedisValue{}, types.KeyTypeString, 0)
 		msg := cmds.LoadKeys("*", 0, 100)()
 		result := msg.(types.KeysLoadedMsg)
@@ -36,7 +36,7 @@ func TestLoadKeys(t *testing.T) {
 func TestLoadKeyValue(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		mock.SetKey("mykey", types.RedisValue{Type: types.KeyTypeString, StringValue: "val"}, types.KeyTypeString, 0)
 		msg := cmds.LoadKeyValue("mykey")()
 		result := msg.(types.KeyValueLoadedMsg)
@@ -88,7 +88,7 @@ func TestLoadKeyPreview(t *testing.T) {
 func TestDeleteKey(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		msg := cmds.DeleteKey("mykey")()
 		result := msg.(types.KeyDeletedMsg)
 		if result.Err != nil {
@@ -160,7 +160,7 @@ func TestCreateKey(t *testing.T) {
 	for _, tt := range keyTypes {
 		t.Run(tt.name, func(t *testing.T) {
 			cmds, mock := newMockCmds()
-			_ = mock.Connect("localhost", 6379, "", 0)
+			_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 			msg := cmds.CreateKey("newkey", tt.keyType, tt.value, tt.extra, 0)()
 			result := msg.(types.KeySetMsg)
 			if result.Err != nil {
@@ -174,7 +174,7 @@ func TestCreateKey(t *testing.T) {
 
 	t.Run("zset with empty extra defaults to 0", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		msg := cmds.CreateKey("zkey", types.KeyTypeZSet, "member", "", 0)()
 		result := msg.(types.KeySetMsg)
 		if result.Err != nil {
@@ -184,7 +184,7 @@ func TestCreateKey(t *testing.T) {
 
 	t.Run("hash with empty extra defaults to 'field'", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		msg := cmds.CreateKey("hkey", types.KeyTypeHash, "val", "", 0)()
 		result := msg.(types.KeySetMsg)
 		if result.Err != nil {
@@ -194,7 +194,7 @@ func TestCreateKey(t *testing.T) {
 
 	t.Run("stream with empty extra defaults to 'data'", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		msg := cmds.CreateKey("skey", types.KeyTypeStream, "val", "", 0)()
 		result := msg.(types.KeySetMsg)
 		if result.Err != nil {

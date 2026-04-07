@@ -14,7 +14,7 @@ import (
 func TestConfig_Persistence_AllConnectionFields(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("prod-redis", "redis.example.com", 6380, "", 2, true)
+	conn, err := cfg.AddConnection(types.Connection{Name: "prod-redis", Host: "redis.example.com", Port: 6380, DB: 2, UseCluster: true})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestConfig_Persistence_AllConnectionFields(t *testing.T) {
 func TestConfig_Persistence_PasswordStripping(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("secure", "localhost", 6379, "s3cr3t_p@ss", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "secure", Host: "localhost", Port: 6379, Password: "s3cr3t_p@ss", DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestConfig_PasswordFieldCanBeLoaded(t *testing.T) {
 			"updated_at": "2025-01-01T00:00:00Z"
 		}]
 	}`
-	err := os.WriteFile(path, []byte(raw), 0600)
+	err := os.WriteFile(path, []byte(raw), 0o600)
 	if err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestConfig_SSHPasswordFieldCanBeLoaded(t *testing.T) {
 			"updated_at": "2025-01-01T00:00:00Z"
 		}]
 	}`
-	err := os.WriteFile(path, []byte(raw), 0600)
+	err := os.WriteFile(path, []byte(raw), 0o600)
 	if err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestConfig_SSHPasswordFieldCanBeLoaded(t *testing.T) {
 func TestConfig_Persistence_SSHPasswordStripping(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("ssh-conn", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "ssh-conn", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestConfig_Persistence_SSHPasswordStripping(t *testing.T) {
 func TestConfig_Persistence_TLSConfig(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("tls-conn", "localhost", 6380, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "tls-conn", Host: "localhost", Port: 6380, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -325,7 +325,7 @@ func TestConfig_Persistence_TLSConfig(t *testing.T) {
 func TestConfig_UpdateConnection_PreservesGroupAndColor(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -341,7 +341,13 @@ func TestConfig_UpdateConnection_PreservesGroupAndColor(t *testing.T) {
 	cfg.mu.Unlock()
 
 	// Update basic fields
-	updated, err := cfg.UpdateConnection(conn.ID, "renamed", "newhost", 6380, "pass", 1, false)
+	conn.Name = "renamed"
+	conn.Host = "newhost"
+	conn.Port = 6380
+	conn.Password = "pass"
+	conn.DB = 1
+	conn.UseCluster = false
+	updated, err := cfg.UpdateConnection(conn)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
@@ -357,7 +363,7 @@ func TestConfig_UpdateConnection_PreservesGroupAndColor(t *testing.T) {
 func TestConfig_UpdateConnection_PreservesSSH(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -377,7 +383,11 @@ func TestConfig_UpdateConnection_PreservesSSH(t *testing.T) {
 	}
 	cfg.mu.Unlock()
 
-	updated, err := cfg.UpdateConnection(conn.ID, "renamed", "newhost", 6380, "", 0, false)
+	conn.Name = "renamed"
+	conn.Host = "newhost"
+	conn.Port = 6380
+	conn.DB = 0
+	updated, err := cfg.UpdateConnection(conn)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
@@ -399,7 +409,7 @@ func TestConfig_UpdateConnection_PreservesSSH(t *testing.T) {
 func TestConfig_UpdateConnection_PreservesTLS(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -420,7 +430,11 @@ func TestConfig_UpdateConnection_PreservesTLS(t *testing.T) {
 	}
 	cfg.mu.Unlock()
 
-	updated, err := cfg.UpdateConnection(conn.ID, "renamed", "newhost", 6380, "", 0, false)
+	conn.Name = "renamed"
+	conn.Host = "newhost"
+	conn.Port = 6380
+	conn.DB = 0
+	updated, err := cfg.UpdateConnection(conn)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
@@ -444,7 +458,7 @@ func TestConfig_UpdateConnection_PreservesTLS(t *testing.T) {
 func TestConfig_Persistence_Favorites(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	_, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	_, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -522,7 +536,7 @@ func TestConfig_Persistence_Groups(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddGroup failed: %v", err)
 	}
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}

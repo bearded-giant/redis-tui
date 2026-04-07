@@ -14,7 +14,7 @@ type Connection struct {
 	Name       string     `json:"name"`
 	Host       string     `json:"host"`
 	Port       int        `json:"port"`
-	Password   string     `json:"-"` // #nosec G117 -- stored in local user config. - ensures marshal never returns value
+	Password   string     `json:"password,omitempty"` // #nosec G117 -- stored in local user config.
 	DB         int        `json:"db"`
 	Group      string     `json:"group,omitempty"`
 	Color      string     `json:"color,omitempty"`
@@ -32,9 +32,9 @@ type SSHConfig struct {
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
 	User           string `json:"user"`
-	Password       string `json:"-"` // #nosec G117 -- stored in local user config - ensures marshal never returns value
+	Password       string `json:"password,omitempty"` // #nosec G117 -- stored in local user config.
 	PrivateKeyPath string `json:"private_key_path,omitempty"`
-	Passphrase     string `json:"-"` // #nosec G117 -- stored in local user config - ensures marshal never returns value
+	Passphrase     string `json:"passphrase,omitempty"`
 }
 
 // TLSConfig stores TLS/SSL configuration

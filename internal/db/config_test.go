@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -83,15 +85,15 @@ func TestConfig_AddConnection(t *testing.T) {
 func TestConfig_AddConnection_IncrementingIDs(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn1, err := cfg.AddConnection("test1", "localhost", 6379, "", 0, false)
+	conn1, err := cfg.AddConnection(types.Connection{Name: "test1", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
-	conn2, err := cfg.AddConnection("test2", "localhost", 6380, "", 0, false)
+	conn2, err := cfg.AddConnection(types.Connection{Name: "test2", Host: "localhost", Port: 6380, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
-	conn3, err := cfg.AddConnection("test3", "localhost", 6381, "", 0, false)
+	conn3, err := cfg.AddConnection(types.Connection{Name: "test3", Host: "localhost", Port: 6381, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -108,15 +110,15 @@ func TestConfig_ListConnections(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	// Add connections in non-alphabetical order
-	_, err := cfg.AddConnection("zebra", "localhost", 6379, "", 0, false)
+	_, err := cfg.AddConnection(types.Connection{Name: "zebra", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
-	_, err = cfg.AddConnection("alpha", "localhost", 6380, "", 0, false)
+	_, err = cfg.AddConnection(types.Connection{Name: "alpha", Host: "localhost", Port: 6380, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
-	_, err = cfg.AddConnection("beta", "localhost", 6381, "", 0, false)
+	_, err = cfg.AddConnection(types.Connection{Name: "beta", Host: "localhost", Port: 6381, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -145,7 +147,7 @@ func TestConfig_ListConnections(t *testing.T) {
 func TestConfig_UpdateConnection(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("original", "localhost", 6379, "old", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "original", Host: "localhost", Port: 6379, Password: "old", DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -196,7 +198,7 @@ func TestConfig_UpdateConnection_NotFound(t *testing.T) {
 func TestConfig_DeleteConnection(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}

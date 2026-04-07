@@ -198,7 +198,7 @@ func TestConfig_Persistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConfig failed: %v", err)
 	}
-	_, err = cfg1.AddConnection("test", "localhost", 6379, "pass", 0, false)
+	_, err = cfg1.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -304,7 +304,7 @@ func TestConfig_Groups(t *testing.T) {
 	}
 
 	// Add connection to group
-	conn, errConn := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, errConn := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if errConn != nil {
 		t.Fatalf("AddConnection failed: %v", errConn)
 	}

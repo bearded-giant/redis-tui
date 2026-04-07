@@ -78,7 +78,7 @@ func (c *Client) Connect(conn *types.Connection) error {
 }
 
 // ConnectCluster establishes a connection to a Redis cluster
-func (c *Client) ConnectCluster(addrs []string, password string) error {
+func (c *Client) ConnectCluster(addrs []string, conn *types.Connection) error {
 	c.cleanup()
 
 	// Parse first address for display purposes
@@ -92,7 +92,7 @@ func (c *Client) ConnectCluster(addrs []string, password string) error {
 
 	cluster := redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:        addrs,
-		Password:     password,
+		Password:     conn.Password,
 		DialTimeout:  defaultDialTimeout,
 		ReadTimeout:  defaultReadTimeout,
 		WriteTimeout: defaultWriteTimeout,
@@ -110,7 +110,7 @@ func (c *Client) ConnectCluster(addrs []string, password string) error {
 
 	c.mu.Lock()
 	c.isCluster = true
-	c.password = password
+	c.password = conn.Password // ClusterClient does not support passwords
 	c.host = host
 	c.port = port
 	c.cluster = cluster

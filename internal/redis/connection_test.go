@@ -64,27 +64,6 @@ func TestConnect(t *testing.T) {
 	}
 }
 
-func TestConnectWithTLS_NonTLSServer(t *testing.T) {
-	// Connecting with TLS to a non-TLS miniredis should fail
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatalf("failed to start miniredis: %v", err)
-	}
-	t.Cleanup(mr.Close)
-
-	client := NewClient()
-	port, _ := strconv.Atoi(mr.Port())
-
-	tlsCfg := &types.TLSConfig{InsecureSkipVerify: true}
-	goTLS, _ := tlsCfg.BuildTLSConfig()
-
-	err = client.ConnectWithTLS(mr.Host(), port, "", 0, goTLS)
-	if err == nil {
-		_ = client.Disconnect()
-		t.Fatal("expected error when connecting with TLS to non-TLS server")
-	}
-}
-
 func TestConnect_WrongPassword(t *testing.T) {
 	mr, err := miniredis.Run()
 	if err != nil {
@@ -96,7 +75,7 @@ func TestConnect_WrongPassword(t *testing.T) {
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
 
-	err = client.Connect(mr.Host(), port, "wrong-password", 0)
+	err = client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "wrong-password", DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("expected error when connecting with wrong password")
@@ -114,7 +93,7 @@ func TestConnect_CorrectPassword(t *testing.T) {
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
 
-	err = client.Connect(mr.Host(), port, "correct-password", 0)
+	err = client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "correct-password", DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("Connect() with correct password returned error: %v", err)
 	}

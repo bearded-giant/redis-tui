@@ -18,7 +18,7 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	// Step 1: Add a connection with all features
-	conn, err := cfg.AddConnection("prod", "redis.example.com", 6380, "secret", 2, true)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -101,7 +101,12 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 	}
 
 	// Step 3: Update the connection and verify preserved fields
-	updated, err := cfg2.UpdateConnection(got.ID, "prod-updated", "redis2.example.com", 6381, "", 3, false)
+	got.Name = "prod-updated"
+	got.Host = "redis2.example.com"
+	got.Port = 6381
+	got.DB = 3
+	got.UseCluster = false
+	updated, err := cfg2.UpdateConnection(got)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
@@ -151,7 +156,7 @@ func TestConfig_CorruptedJSON(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	// Write invalid JSON
-	err := os.WriteFile(path, []byte(`{broken json!!!`), 0600)
+	err := os.WriteFile(path, []byte(`{broken json!!!`), 0o600)
 	if err != nil {
 		t.Fatalf("failed to write corrupt config: %v", err)
 	}
@@ -166,7 +171,7 @@ func TestConfig_EmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
-	err := os.WriteFile(path, []byte(``), 0600)
+	err := os.WriteFile(path, []byte(``), 0o600)
 	if err != nil {
 		t.Fatalf("failed to write empty config: %v", err)
 	}
@@ -182,15 +187,15 @@ func TestConfig_NextID_AfterReload(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	// Add 3 connections, IDs should be 1, 2, 3
-	conn1, err := cfg.AddConnection("a", "localhost", 6379, "", 0, false)
+	conn1, err := cfg.AddConnection(types.Connection{Name: "a", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
-	_, err = cfg.AddConnection("b", "localhost", 6380, "", 0, false)
+	_, err = cfg.AddConnection(types.Connection{Name: "b", Host: "localhost", Port: 6380, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
-	conn3, err := cfg.AddConnection("c", "localhost", 6381, "", 0, false)
+	conn3, err := cfg.AddConnection(types.Connection{Name: "c", Host: "localhost", Port: 6381, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -205,7 +210,7 @@ func TestConfig_NextID_AfterReload(t *testing.T) {
 	cfg2 := reloadConfig(t, cfg)
 
 	// Add a new connection — its ID must be higher than conn3
-	conn4, err := cfg2.AddConnection("d", "localhost", 6382, "", 0, false)
+	conn4, err := cfg2.AddConnection(types.Connection{Name: "d", Host: "localhost", Port: 6382, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection after reload failed: %v", err)
 	}
@@ -225,7 +230,7 @@ func TestConfig_NextID_WithGaps(t *testing.T) {
 			{"id": 100, "name": "high-id", "host": "localhost", "port": 6379, "db": 0, "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"}
 		]
 	}`
-	err := os.WriteFile(path, []byte(raw), 0600)
+	err := os.WriteFile(path, []byte(raw), 0o600)
 	if err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}
@@ -235,7 +240,7 @@ func TestConfig_NextID_WithGaps(t *testing.T) {
 		t.Fatalf("NewConfig failed: %v", err)
 	}
 
-	conn, err := cfg.AddConnection("new", "localhost", 6380, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "new", Host: "localhost", Port: 6380, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -250,7 +255,7 @@ func TestConfig_ConcurrentReadWrite(t *testing.T) {
 
 	// Seed some data
 	for i := range 5 {
-		_, err := cfg.AddConnection("conn"+string(rune('a'+i)), "localhost", 6379+i, "", 0, false)
+		_, err := cfg.AddConnection(types.Connection{Name: "conn" + string(rune('a'+i)), Host: "localhost", Port: 6379 + i, DB: 0, UseCluster: false})
 		if err != nil {
 			t.Fatalf("AddConnection failed: %v", err)
 		}
@@ -310,7 +315,7 @@ func TestConfig_ConcurrentAddDelete(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			conn, err := cfg.AddConnection("concurrent"+string(rune('a'+i)), "localhost", 6379+i, "", 0, false)
+			conn, err := cfg.AddConnection(types.Connection{Name: "concurrent" + string(rune('a'+i)), Host: "localhost", Port: 6379 + i, DB: 0, UseCluster: false})
 			if err != nil {
 				return
 			}
@@ -340,7 +345,7 @@ func TestConfig_ConcurrentAddDelete(t *testing.T) {
 func TestConfig_DeleteConnection_OrphanedFavorites(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection("test", "localhost", 6379, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}

@@ -39,7 +39,7 @@ func TestNewTestConfig(t *testing.T) {
 
 func TestMustAddConnection(t *testing.T) {
 	cfg := NewTestConfig(t)
-	conn := MustAddConnection(t, cfg, "test", "localhost", 6379, "", 0)
+	conn := MustAddConnection(t, cfg, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	if conn.Name != "test" {
 		t.Errorf("Name = %q, want %q", conn.Name, "test")
 	}
@@ -53,7 +53,7 @@ func TestMustAddConnection(t *testing.T) {
 
 func TestAssertConnectionExists(t *testing.T) {
 	cfg := NewTestConfig(t)
-	conn := MustAddConnection(t, cfg, "test", "localhost", 6379, "", 0)
+	conn := MustAddConnection(t, cfg, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	got := AssertConnectionExists(t, cfg, conn.ID)
 	if got.Name != "test" {
 		t.Errorf("Name = %q, want %q", got.Name, "test")
@@ -93,7 +93,7 @@ func TestFileExists(t *testing.T) {
 		t.Error("FileExists should return false for non-existent file")
 	}
 
-	err := os.WriteFile(path, []byte("test"), 0600)
+	err := os.WriteFile(path, []byte("test"), 0o600)
 	if err != nil {
 		t.Fatalf("failed to write test file: %v", err)
 	}

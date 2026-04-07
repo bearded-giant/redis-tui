@@ -59,7 +59,7 @@ type ConfigService interface {
 type RedisService interface {
 	// Connection management
 	Connect(conn *types.Connection) error
-	ConnectCluster(addrs []string, password string) error
+	ConnectCluster(addrs []string, conn *types.Connection) error
 	Disconnect() error
 	IsCluster() bool
 	TestConnection(conn *types.Connection) (time.Duration, error)

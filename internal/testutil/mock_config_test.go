@@ -69,7 +69,7 @@ func TestMockConfigClient_AddConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.AddConnectionResult = types.Connection{ID: 1, Name: "new"}
-		got, err := m.AddConnection("new", "localhost", 6379, "", 0, false)
+		got, err := m.AddConnection(types.Connection{Name: "new", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		AssertNoError(t, err, "AddConnection")
 		AssertEqual(t, got.Name, "new", "connection name")
 	})
@@ -77,7 +77,7 @@ func TestMockConfigClient_AddConnection(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.AddConnectionError = errConfig
-		_, err := m.AddConnection("new", "localhost", 6379, "", 0, false)
+		_, err := m.AddConnection(types.Connection{Name: "new", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		if !errors.Is(err, errConfig) {
 			t.Errorf("expected errConfig, got %v", err)
 		}
@@ -88,7 +88,8 @@ func TestMockConfigClient_UpdateConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.UpdateConnectionResult = types.Connection{ID: 1, Name: "updated"}
-		got, err := m.UpdateConnection(1, "updated", "localhost", 6379, "", 0, false)
+		toUpdateConn := types.Connection{ID: 1, Name: "updated", Host: "localhost", Port: 6379, DB: 0, UseCluster: false}
+		got, err := m.UpdateConnection(toUpdateConn)
 		AssertNoError(t, err, "UpdateConnection")
 		AssertEqual(t, got.Name, "updated", "connection name")
 	})
@@ -96,7 +97,7 @@ func TestMockConfigClient_UpdateConnection(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.UpdateConnectionError = errConfig
-		_, err := m.UpdateConnection(1, "updated", "localhost", 6379, "", 0, false)
+		_, err := m.UpdateConnection(types.Connection{ID: 1, Name: "updated", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		if !errors.Is(err, errConfig) {
 			t.Errorf("expected errConfig, got %v", err)
 		}
