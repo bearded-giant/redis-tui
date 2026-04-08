@@ -9,6 +9,41 @@ import (
 	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
+func TestConnectionErrorPaths(t *testing.T) {
+	t.Run("LoadConnections error", func(t *testing.T) {
+		mc := testutil.NewMockConfigClient()
+		mc.ListConnectionsError = errors.New("list failed")
+		cmds := NewCommands(mc, nil)
+		msg := cmds.LoadConnections()()
+		result := msg.(types.ConnectionsLoadedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("AddConnection error", func(t *testing.T) {
+		mc := testutil.NewMockConfigClient()
+		mc.AddConnectionError = errors.New("add failed")
+		cmds := NewCommands(mc, nil)
+		msg := cmds.AddConnection("n", "h", 1, "", 0, false)()
+		result := msg.(types.ConnectionAddedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("UpdateConnection error", func(t *testing.T) {
+		mc := testutil.NewMockConfigClient()
+		mc.UpdateConnectionError = errors.New("update failed")
+		cmds := NewCommands(mc, nil)
+		msg := cmds.UpdateConnection(1, "n", "h", 1, "", 0, false)()
+		result := msg.(types.ConnectionUpdatedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+}
+
 func TestLoadConnections(t *testing.T) {
 	t.Run("success empty", func(t *testing.T) {
 		cfg := testutil.NewTestConfig(t)

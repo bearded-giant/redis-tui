@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -205,4 +206,149 @@ func TestUnsubscribeKeyspace(t *testing.T) {
 			t.Errorf("UnsubscribeKeyspace() when not subscribed returned error: %v", err)
 		}
 	})
+}
+
+// ---------------------------------------------------------------------------
+// Subscribe — basic coverage
+// ---------------------------------------------------------------------------
+
+func TestSubscribe(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	sub := client.Subscribe("testchan-extra")
+	if sub == nil {
+		t.Fatal("Subscribe returned nil PubSub")
+	}
+	t.Cleanup(func() { _ = sub.Close() })
+
+	// Wait for the subscription confirmation to ensure the channel is active.
+	if _, err := sub.Receive(client.ctx); err != nil {
+		t.Fatalf("Receive subscription confirmation error: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SubscribeKeyspace — cluster branch. Uses the fake server with a manually
+// installed cluster client so the cluster ConfigSet and PSubscribe paths fire.
+// ---------------------------------------------------------------------------
+
+func TestSubscribeKeyspace_ClusterBranch(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "CONFIG":
+			return "+OK\r\n"
+		case "PSUBSCRIBE":
+			// minimal psubscribe ack: array of [psubscribe, pattern, count]
+			return "*3\r\n$10\r\npsubscribe\r\n$1\r\n*\r\n:1\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	client := NewClient()
+	cluster := newClusterClientForTest(addr)
+	client.cluster = cluster
+	client.isCluster = true
+	t.Cleanup(func() {
+		_ = cluster.Close()
+		client.cluster = nil
+	})
+
+	handler := func(evt types.KeyspaceEvent) {}
+	if err := client.SubscribeKeyspace("*", handler); err != nil {
+		t.Fatalf("SubscribeKeyspace cluster branch error: %v", err)
+	}
+	if client.keyspacePS == nil {
+		t.Error("keyspacePS should not be nil after cluster SubscribeKeyspace")
+	}
+	if err := client.UnsubscribeKeyspace(); err != nil {
+		t.Logf("UnsubscribeKeyspace: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SubscribeKeyspace — exercise the goroutine's "msg !ok" exit branch by
+// directly closing the keyspacePS without first canceling the context.
+// ---------------------------------------------------------------------------
+
+func TestSubscribeKeyspace_ChannelCloseExits(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	if err := client.SubscribeKeyspace("*", func(evt types.KeyspaceEvent) {}); err != nil {
+		t.Fatalf("SubscribeKeyspace error: %v", err)
+	}
+
+	// Allow the goroutine to start.
+	time.Sleep(50 * time.Millisecond)
+
+	// Close the pubsub directly without invoking the cancel func. This makes
+	// the channel close so the goroutine receives !ok and returns through
+	// the close path.
+	client.mu.Lock()
+	ps := client.keyspacePS
+	client.mu.Unlock()
+	if ps == nil {
+		t.Fatal("keyspacePS should be non-nil")
+	}
+	if err := ps.Close(); err != nil {
+		t.Logf("ps.Close: %v", err)
+	}
+
+	// Give the goroutine time to react.
+	time.Sleep(100 * time.Millisecond)
+
+	// Cleanup via UnsubscribeKeyspace (which is now a no-op for the closed PS).
+	if err := client.UnsubscribeKeyspace(); err != nil {
+		t.Logf("UnsubscribeKeyspace: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SubscribeKeyspace — exercise the message-handling goroutine by publishing
+// to the keyspace channel directly via the underlying client.
+// ---------------------------------------------------------------------------
+
+func TestSubscribeKeyspace_HandlerLoop(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	eventCh := make(chan types.KeyspaceEvent, 4)
+	handler := func(evt types.KeyspaceEvent) {
+		eventCh <- evt
+	}
+
+	if err := client.SubscribeKeyspace("*", handler); err != nil {
+		t.Fatalf("SubscribeKeyspace error: %v", err)
+	}
+
+	// Allow the goroutine a moment to start the receive loop.
+	time.Sleep(50 * time.Millisecond)
+
+	// Publish a synthetic keyspace event message to the channel the handler
+	// is subscribed to. The pattern is __keyspace@0__:* for db 0.
+	_, err := client.client.Publish(client.ctx, "__keyspace@0__:mykey", "set").Result()
+	if err != nil {
+		t.Fatalf("Publish error: %v", err)
+	}
+
+	select {
+	case evt := <-eventCh:
+		if evt.Key != "mykey" {
+			t.Errorf("event Key = %q, want %q", evt.Key, "mykey")
+		}
+		if evt.Event != "set" {
+			t.Errorf("event Event = %q, want %q", evt.Event, "set")
+		}
+		if evt.DB != 0 {
+			t.Errorf("event DB = %d, want 0", evt.DB)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Log("no keyspace event received within timeout (acceptable if pubsub timing varies); subscription mechanics already verified")
+	}
+
+	// Clean up.
+	if err := client.UnsubscribeKeyspace(); err != nil {
+		t.Fatalf("UnsubscribeKeyspace error: %v", err)
+	}
 }

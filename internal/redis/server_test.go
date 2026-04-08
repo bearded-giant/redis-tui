@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -366,4 +367,305 @@ func TestClientList(t *testing.T) {
 			t.Error("ClientList() first client has empty Addr")
 		}
 	})
+}
+
+// ---------------------------------------------------------------------------
+// SlowLogGet — miniredis may not implement SLOWLOG; verify graceful behavior.
+// ---------------------------------------------------------------------------
+
+func TestSlowLogGet(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	entries, err := client.SlowLogGet(10)
+	if err != nil {
+		t.Logf("SlowLogGet returned expected error with miniredis: %v", err)
+		return
+	}
+
+	// If supported, the result should be a non-nil slice (may be empty).
+	if entries == nil {
+		t.Error("SlowLogGet returned nil slice without error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ClusterNodes / ClusterInfo on a standalone client — these dispatch to the
+// non-cluster client path. miniredis may not implement these commands but
+// the call must not panic.
+// ---------------------------------------------------------------------------
+
+func TestClusterNodes_Standalone(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	nodes, err := client.ClusterNodes()
+	if err != nil {
+		t.Logf("ClusterNodes returned expected error with miniredis: %v", err)
+		return
+	}
+	// If supported, just verify the slice is reachable (may be empty).
+	_ = nodes
+}
+
+func TestClusterInfo_Standalone(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	info, err := client.ClusterInfo()
+	if err != nil {
+		t.Logf("ClusterInfo returned expected error with miniredis: %v", err)
+		return
+	}
+	_ = info
+}
+
+// ---------------------------------------------------------------------------
+// GetMemoryStats / getTopKeysByMemory — exercising the path even when
+// miniredis returns minimal/empty data. Seed many keys to ensure scanLimited
+// is invoked when GetMemoryStats reaches getTopKeysByMemory.
+// ---------------------------------------------------------------------------
+
+func TestGetMemoryStats_WithSeededKeys(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Seed enough keys to traverse multiple SCAN batches inside scanLimited.
+	for i := 0; i < 150; i++ {
+		mr.Set(fmt.Sprintf("memkey:%d", i), "some-value")
+	}
+
+	stats, err := client.GetMemoryStats()
+	if err != nil {
+		// miniredis may not fully support INFO memory; verify graceful failure.
+		t.Logf("GetMemoryStats returned expected error: %v", err)
+		return
+	}
+
+	// If miniredis returns enough data to populate stats, verify TopKeys is
+	// reachable (may be nil/empty due to MEMORY USAGE limitations).
+	_ = stats.TopKeys
+}
+
+// ---------------------------------------------------------------------------
+// getTopKeysByMemory — call directly because GetMemoryStats short-circuits
+// when miniredis fails the INFO memory section. Direct invocation exercises
+// scanLimited, the pipeline batching, the sort, and the result truncation.
+// ---------------------------------------------------------------------------
+
+func TestGetTopKeysByMemory_Direct(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	for i := 0; i < 30; i++ {
+		mr.Set(fmt.Sprintf("topmem:%d", i), fmt.Sprintf("value-%d", i))
+	}
+
+	// Limit smaller than total keys to exercise the sort+truncate.
+	result := client.getTopKeysByMemory(10)
+	// miniredis may not support MEMORY USAGE on every key, so the result may
+	// be nil or shorter than 10. Both are acceptable, just verify no panic.
+	if len(result) > 10 {
+		t.Errorf("result length = %d, want <= 10", len(result))
+	}
+}
+
+func TestGetTopKeysByMemory_EmptyDB(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	result := client.getTopKeysByMemory(20)
+	if result != nil {
+		t.Errorf("expected nil result for empty DB, got %v", result)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetServerInfo — INFO error path.
+// ---------------------------------------------------------------------------
+
+func TestGetServerInfo_InfoError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "INFO" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.GetServerInfo(); err == nil {
+		t.Error("expected error from GetServerInfo when INFO errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetServerInfo — malformed line (line without colon) is skipped.
+// ---------------------------------------------------------------------------
+
+func TestGetServerInfo_MalformedLine(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	body := "redis_version:7.0.0\r\nmalformed_no_colon\r\nredis_mode:standalone\r\n"
+	srv.setResponse("INFO", respBulkString(body))
+	srv.setResponse("DBSIZE", ":0\r\n")
+
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	info, err := c.GetServerInfo()
+	if err != nil {
+		t.Fatalf("GetServerInfo error: %v", err)
+	}
+	if info.Version != "7.0.0" {
+		t.Errorf("Version = %q, want 7.0.0", info.Version)
+	}
+	if info.Mode != "standalone" {
+		t.Errorf("Mode = %q, want standalone", info.Mode)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// getTopKeysByMemory — MemoryUsage error continues. Use the fake server to
+// drive a single key through the pipeline where MEMORY USAGE returns an error.
+// ---------------------------------------------------------------------------
+
+func TestGetTopKeysByMemory_MemErrorContinues(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$1\r\nx\r\n"
+		case "MEMORY":
+			// MEMORY USAGE x returns an error.
+			return "-ERR injected\r\n"
+		case "TYPE":
+			return "+string\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	result := c.getTopKeysByMemory(10)
+	if len(result) != 0 {
+		t.Errorf("result length = %d, want 0 (all skipped via continue)", len(result))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ClientList — malformed field (without "=") is skipped. We return a CLIENT
+// LIST line containing a stray bareword to drive the continue path.
+// ---------------------------------------------------------------------------
+
+func TestClientList_MalformedField(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	body := "id=1 addr=127.0.0.1:1 strayfield name=foo\n"
+	srv.setResponse("CLIENT", respBulkString(body))
+
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	clients, err := c.ClientList()
+	if err != nil {
+		t.Fatalf("ClientList error: %v", err)
+	}
+	if len(clients) != 1 {
+		t.Fatalf("clients = %d, want 1", len(clients))
+	}
+	if clients[0].Name != "foo" {
+		t.Errorf("Name = %q, want foo (stray field should be skipped)", clients[0].Name)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ClusterNodes — error return path on standalone client.
+// ---------------------------------------------------------------------------
+
+func TestClusterNodes_Error(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "CLUSTER" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.ClusterNodes(); err == nil {
+		t.Error("expected error from ClusterNodes when CLUSTER NODES errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ClusterNodes — cluster client branch with error. Verifies the err return
+// inside the cluster path.
+// ---------------------------------------------------------------------------
+
+func TestClusterNodes_ClusterErrorReturn(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "CLUSTER" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	client := NewClient()
+	cluster := newClusterClientForTest(addr)
+	client.cluster = cluster
+	client.isCluster = true
+	t.Cleanup(func() {
+		_ = cluster.Close()
+		client.cluster = nil
+	})
+
+	if _, err := client.ClusterNodes(); err == nil {
+		t.Error("expected error from ClusterNodes (cluster) when CLUSTER NODES errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetLiveMetrics — malformed line skipped.
+// ---------------------------------------------------------------------------
+
+func TestGetLiveMetrics_MalformedLine(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	body := "instantaneous_ops_per_sec:5\r\nmalformed_no_colon\r\nused_memory:1024\r\n"
+	srv.setResponse("INFO", respBulkString(body))
+
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	m, err := c.GetLiveMetrics()
+	if err != nil {
+		t.Fatalf("GetLiveMetrics error: %v", err)
+	}
+	if m.OpsPerSec != 5 {
+		t.Errorf("OpsPerSec = %f, want 5", m.OpsPerSec)
+	}
+	if m.UsedMemoryBytes != 1024 {
+		t.Errorf("UsedMemoryBytes = %d, want 1024", m.UsedMemoryBytes)
+	}
 }

@@ -251,3 +251,185 @@ func TestReconnectCycle(t *testing.T) {
 		t.Errorf("Get = %q, want %q", got, "reconnectval")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// ConnectCluster — exercises the ClusterClient setup and Ping failure path.
+// We pass an unreachable address so the Ping returns an error, but the
+// function still walks through parseAddr, ClusterOptions construction,
+// and the cluster locking branches.
+// ---------------------------------------------------------------------------
+
+func TestConnectCluster_UnreachableAddr(t *testing.T) {
+	client := NewClient()
+
+	// Address with default port and host that should not be listening.
+	err := client.ConnectCluster([]string{"127.0.0.1:1"}, "")
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("ConnectCluster expected error for unreachable addr, got nil")
+	}
+
+	// Verify the cluster fields were set even though Ping failed.
+	if !client.IsCluster() {
+		t.Error("IsCluster() = false after ConnectCluster, want true")
+	}
+	if client.host != "127.0.0.1" {
+		t.Errorf("client.host = %q, want %q", client.host, "127.0.0.1")
+	}
+	if client.port != 1 {
+		t.Errorf("client.port = %d, want %d", client.port, 1)
+	}
+
+	// Disconnect should clean up the cluster client.
+	if err := client.Disconnect(); err != nil {
+		t.Logf("Disconnect after failed ConnectCluster: %v", err)
+	}
+}
+
+func TestConnectCluster_EmptyAddrs(t *testing.T) {
+	client := NewClient()
+
+	// No addresses — should still construct the cluster client and fail on Ping.
+	err := client.ConnectCluster([]string{}, "")
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("ConnectCluster expected error for empty addrs, got nil")
+	}
+
+	// Default seed host/port should be used.
+	if client.host != "127.0.0.1" {
+		t.Errorf("client.host = %q, want %q", client.host, "127.0.0.1")
+	}
+	if client.port != 6379 {
+		t.Errorf("client.port = %d, want %d", client.port, 6379)
+	}
+
+	_ = client.Disconnect()
+}
+
+// ---------------------------------------------------------------------------
+// Disconnect — exercise the pubsub field close branch. The pubsub field is
+// only ever set externally (no production setter), so we set it directly
+// from the test in the same package.
+// ---------------------------------------------------------------------------
+
+func TestDisconnect_WithPubsubField(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	// Subscribe via the underlying client and store the pubsub on the
+	// Client struct so disconnectLocked exercises the c.pubsub != nil branch.
+	client.pubsub = client.client.Subscribe(client.ctx, "fake")
+	if _, err := client.pubsub.Receive(client.ctx); err != nil {
+		t.Fatalf("Receive subscription confirmation error: %v", err)
+	}
+
+	if err := client.Disconnect(); err != nil {
+		t.Fatalf("Disconnect error: %v", err)
+	}
+	if client.pubsub != nil {
+		t.Error("pubsub should be nil after Disconnect")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// disconnectLocked — exercise cluster.Close branch via failed ConnectCluster.
+// After ConnectCluster (even though Ping fails) the cluster client is set
+// and Disconnect should hit the cluster Close path.
+// ---------------------------------------------------------------------------
+
+func TestDisconnect_ClusterCloseBranch(t *testing.T) {
+	client := NewClient()
+
+	// Use unreachable addr — Ping fails but cluster client is still attached.
+	err := client.ConnectCluster([]string{"127.0.0.1:1"}, "")
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("ConnectCluster expected error, got nil")
+	}
+
+	if client.cluster == nil {
+		t.Fatal("cluster client should be set after ConnectCluster even on Ping failure")
+	}
+
+	if err := client.Disconnect(); err != nil {
+		t.Logf("Disconnect on failed cluster: %v", err)
+	}
+	if client.cluster != nil {
+		t.Error("cluster should be nil after Disconnect")
+	}
+	if client.isCluster {
+		t.Error("isCluster should be false after Disconnect")
+	}
+}
+
+func TestDisconnect_AfterSubscribeKeyspace(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	handler := func(evt types.KeyspaceEvent) {}
+	if err := client.SubscribeKeyspace("*", handler); err != nil {
+		t.Fatalf("SubscribeKeyspace error: %v", err)
+	}
+
+	// Verify the keyspace pubsub was set up.
+	if client.keyspacePS == nil {
+		t.Fatal("keyspacePS should not be nil after SubscribeKeyspace")
+	}
+	if client.cancelKeyspace == nil {
+		t.Fatal("cancelKeyspace should not be nil after SubscribeKeyspace")
+	}
+
+	// Disconnect should clean up keyspacePS and cancelKeyspace.
+	if err := client.Disconnect(); err != nil {
+		t.Fatalf("Disconnect error: %v", err)
+	}
+	if client.keyspacePS != nil {
+		t.Error("keyspacePS should be nil after Disconnect")
+	}
+	if client.cancelKeyspace != nil {
+		t.Error("cancelKeyspace should be nil after Disconnect")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ConnectCluster — invalid address (no port separator) drives the Dialer's
+// SplitHostPort error path. The cluster client will eventually try to dial
+// the configured Addrs entry; SplitHostPort fails for an addr like "no-port"
+// and the Dialer returns the error.
+// ---------------------------------------------------------------------------
+
+func TestConnectCluster_DialerSplitHostPortError(t *testing.T) {
+	client := NewClient()
+	t.Cleanup(func() { _ = client.Disconnect() })
+
+	// "no-port" has no colon — net.SplitHostPort returns an error from the
+	// Dialer closure, which exercises the err-return branch.
+	err := client.ConnectCluster([]string{"no-port"}, "")
+	if err == nil {
+		t.Fatal("expected error from ConnectCluster with addr lacking a port")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SelectDB — SELECT command error path. Use the fake server to make SELECT
+// return an error.
+// ---------------------------------------------------------------------------
+
+func TestSelectDB_SelectError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SELECT" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if err := c.SelectDB(2); err == nil {
+		t.Error("expected error from SelectDB when SELECT errors")
+	}
+}

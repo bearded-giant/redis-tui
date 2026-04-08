@@ -37,6 +37,12 @@ type MockConfigClient struct {
 	TreeSeparatorResult     string
 	SetTreeSeparatorError   error
 	WatchIntervalResult     time.Duration
+
+	// Call counters for void methods that otherwise have no observable effect.
+	AddRecentKeyCalls     int
+	ClearRecentKeysCalls  int
+	AddValueHistoryCalls  int
+	ClearValueHistoryCalls int
 }
 
 // NewMockConfigClient creates a new fully-mocked Config client.
@@ -64,14 +70,18 @@ func (m *MockConfigClient) AddFavorite(_ int64, _, _ string) (types.Favorite, er
 func (m *MockConfigClient) RemoveFavorite(_ int64, _ string) error    { return m.RemoveFavoriteError }
 func (m *MockConfigClient) ListFavorites(_ int64) []types.Favorite    { return m.ListFavoritesResult }
 func (m *MockConfigClient) IsFavorite(_ int64, _ string) bool         { return m.IsFavoriteResult }
-func (m *MockConfigClient) AddRecentKey(_ int64, _ string, _ types.KeyType) {}
-func (m *MockConfigClient) ListRecentKeys(_ int64) []types.RecentKey  { return m.ListRecentKeysResult }
-func (m *MockConfigClient) ClearRecentKeys(_ int64)                   {}
-func (m *MockConfigClient) AddValueHistory(_ string, _ types.RedisValue, _ string) {}
+func (m *MockConfigClient) AddRecentKey(_ int64, _ string, _ types.KeyType) {
+	m.AddRecentKeyCalls++
+}
+func (m *MockConfigClient) ListRecentKeys(_ int64) []types.RecentKey { return m.ListRecentKeysResult }
+func (m *MockConfigClient) ClearRecentKeys(_ int64)                  { m.ClearRecentKeysCalls++ }
+func (m *MockConfigClient) AddValueHistory(_ string, _ types.RedisValue, _ string) {
+	m.AddValueHistoryCalls++
+}
 func (m *MockConfigClient) GetValueHistory(_ string) []types.ValueHistoryEntry {
 	return m.GetValueHistoryResult
 }
-func (m *MockConfigClient) ClearValueHistory()                                    {}
+func (m *MockConfigClient) ClearValueHistory() { m.ClearValueHistoryCalls++ }
 func (m *MockConfigClient) ListTemplates() []types.KeyTemplate                    { return m.ListTemplatesResult }
 func (m *MockConfigClient) AddTemplate(_ types.KeyTemplate) error                 { return m.AddTemplateError }
 func (m *MockConfigClient) DeleteTemplate(_ string) error                         { return m.DeleteTemplateError }

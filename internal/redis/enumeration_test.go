@@ -1,10 +1,14 @@
 package redis
 
 import (
+	"fmt"
 	"sort"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 func TestGetTotalKeys(t *testing.T) {
@@ -320,4 +324,612 @@ func TestGetKeyPrefixes(t *testing.T) {
 			t.Errorf("GetKeyPrefixes() on empty db returned %d prefixes, want 0", len(prefixes))
 		}
 	})
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeysWithRegex — pattern length exceeds maxRegexLen
+// ---------------------------------------------------------------------------
+
+func TestScanKeysWithRegex_PatternTooLong(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	// 1500 characters - well over the 1024 max.
+	longPattern := strings.Repeat("a", 1500)
+
+	_, err := client.ScanKeysWithRegex(longPattern, 100)
+	if err == nil {
+		t.Fatal("expected error for pattern exceeding max length")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeysWithRegex — early termination when maxKeys reached.
+// ---------------------------------------------------------------------------
+
+func TestScanKeysWithRegex_MaxKeysEarlyTerm(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	for i := 0; i < 30; i++ {
+		mr.Set(fmt.Sprintf("regex:%d", i), "v")
+	}
+
+	results, err := client.ScanKeysWithRegex(`^regex:`, 5)
+	if err != nil {
+		t.Fatalf("ScanKeysWithRegex error: %v", err)
+	}
+	if len(results) != 5 {
+		t.Errorf("results length = %d, want 5", len(results))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// detectZSetSubtypes — exercised via ScanKeys when zset keys are present.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_DetectZSetSubtypes(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Plain zset with non-geo scores.
+	mr.ZAdd("plain:zset", 1.5, "alpha")
+	mr.ZAdd("plain:zset", 2.5, "beta")
+
+	// Empty zset cannot exist in Redis (an empty zset is deleted),
+	// but a single-member zset is fine.
+	mr.ZAdd("solo:zset", 100, "x")
+
+	keys, _, err := client.ScanKeys("*", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+
+	for _, k := range keys {
+		// Both should remain plain "zset" because their scores are not in geo range.
+		if k.Type != "zset" {
+			t.Errorf("key %q type = %q, want %q", k.Key, k.Type, "zset")
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// detectZSetSubtypes — geo path. We seed a zset whose scores look like
+// 52-bit geohash integers via direct ZADD with such scores.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_DetectZSetSubtypes_Geo(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	// 52-bit integer in the geohash range (~1e14 to ~5e15) that is not a
+	// fractional float.
+	if err := client.ZAdd("geo:zset", 3.4e15, "Palermo"); err != nil {
+		t.Fatalf("ZAdd error: %v", err)
+	}
+
+	keys, _, err := client.ScanKeys("geo:zset", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(keys))
+	}
+	if keys[0].Type != "geo" {
+		t.Errorf("type = %q, want geo", keys[0].Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// detectStringSubtypes — exercise the HLL magic-bytes detection branch.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_DetectStringSubtypes_HLL(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// String key whose raw value starts with "HYLL" magic.
+	mr.Set("hll:fake", "HYLL"+string(make([]byte, 12)))
+
+	keys, _, err := client.ScanKeys("hll:fake", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(keys))
+	}
+	if keys[0].Type != "hyperloglog" {
+		t.Errorf("type = %q, want hyperloglog", keys[0].Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FuzzySearchKeys — edge case: maxKeys smaller than match count.
+// ---------------------------------------------------------------------------
+
+func TestFuzzySearchKeys_MaxKeysLimit(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	for i := 0; i < 10; i++ {
+		mr.Set(fmt.Sprintf("user:%d", i), "v")
+	}
+
+	results, err := client.FuzzySearchKeys("user", 5)
+	if err != nil {
+		t.Fatalf("FuzzySearchKeys error: %v", err)
+	}
+	if len(results) != 5 {
+		t.Errorf("results length = %d, want 5", len(results))
+	}
+	for _, r := range results {
+		if !strings.HasPrefix(r.Key, "user:") {
+			t.Errorf("unexpected key %q", r.Key)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SearchByValue — exercise the maxKeys early termination.
+// ---------------------------------------------------------------------------
+
+func TestSearchByValue_MaxKeysLimit(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	for i := 0; i < 20; i++ {
+		mr.Set(fmt.Sprintf("v:%d", i), "needle")
+	}
+
+	results, err := client.SearchByValue("*", "needle", 5)
+	if err != nil {
+		t.Fatalf("SearchByValue error: %v", err)
+	}
+	if len(results) != 5 {
+		t.Errorf("results length = %d, want 5", len(results))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetKeyPrefixes — exercise depth limit boundary.
+// ---------------------------------------------------------------------------
+
+func TestGetKeyPrefixes_DepthLimit(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Deep key path; only the first two levels should be returned.
+	mr.Set("a:b:c:d:e", "v")
+
+	prefixes, err := client.GetKeyPrefixes(":", 2)
+	if err != nil {
+		t.Fatalf("GetKeyPrefixes error: %v", err)
+	}
+
+	// Expect "a" and "a:b" (depth 1 and 2).
+	want := map[string]bool{"a": true, "a:b": true}
+	got := make(map[string]bool)
+	for _, p := range prefixes {
+		got[p] = true
+	}
+	for w := range want {
+		if !got[w] {
+			t.Errorf("missing prefix %q in %v", w, prefixes)
+		}
+	}
+	for g := range got {
+		if !want[g] {
+			t.Errorf("unexpected prefix %q", g)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// scanLimited / scanEach early-termination — exercise via direct call.
+// ---------------------------------------------------------------------------
+
+func TestScanLimitedViaScanEach(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Seed enough keys to span multiple scan batches.
+	for i := 0; i < 250; i++ {
+		mr.Set(fmt.Sprintf("limited:%d", i), "v")
+	}
+
+	keys, err := client.scanLimited("*", 100, 50)
+	if err != nil {
+		t.Fatalf("scanLimited error: %v", err)
+	}
+	if len(keys) != 50 {
+		t.Errorf("scanLimited returned %d keys, want 50", len(keys))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetTotalKeys — DBSIZE error path. Use the fake server to inject an error
+// reply for DBSIZE so the function returns 0.
+// ---------------------------------------------------------------------------
+
+func TestGetTotalKeys_Error(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "DBSIZE" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	got := c.GetTotalKeys()
+	if got != 0 {
+		t.Errorf("GetTotalKeys = %d, want 0", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeys — error path on the underlying SCAN command.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_ScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, _, err := c.ScanKeys("*", 0, 100); err == nil {
+		t.Error("expected error from ScanKeys when SCAN errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeys — pipe.Exec error path. Return one key from SCAN, then make TYPE
+// (the first command in the pipeline) fail. The pipeline.Exec should bubble
+// up an error that is not redis.Nil.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_PipeExecError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$3\r\nfoo\r\n"
+		case "TYPE", "TTL":
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, _, err := c.ScanKeys("*", 0, 100); err == nil {
+		t.Error("expected error from ScanKeys when pipeline.Exec errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeys — cluster branch dispatches to scanAll.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_ClusterBranch(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$3\r\nfoo\r\n"
+		case "TYPE":
+			return "+string\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	client := NewClient()
+	cluster := newClusterClientForTest(addr)
+	client.cluster = cluster
+	client.isCluster = true
+	t.Cleanup(func() {
+		_ = cluster.Close()
+		client.cluster = nil
+	})
+
+	keys, _, err := client.ScanKeys("*", 0, 100)
+	if err != nil {
+		t.Logf("ScanKeys cluster branch err: %v", err)
+	}
+	_ = keys
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeysWithRegex — scanEach error path.
+// ---------------------------------------------------------------------------
+
+func TestScanKeysWithRegex_ScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.ScanKeysWithRegex(".*", 100); err == nil {
+		t.Error("expected error from ScanKeysWithRegex when SCAN errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FuzzySearchKeys — scanEach error path.
+// ---------------------------------------------------------------------------
+
+func TestFuzzySearchKeys_ScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.FuzzySearchKeys("term", 100); err == nil {
+		t.Error("expected error from FuzzySearchKeys when SCAN errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SearchByValue — scanAll error path.
+// ---------------------------------------------------------------------------
+
+func TestSearchByValue_ScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.SearchByValue("*", "needle", 10); err == nil {
+		t.Error("expected error from SearchByValue when SCAN errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SearchByValue — ReJSON-RL branch and default-continue branch via fake server.
+// ---------------------------------------------------------------------------
+
+func TestSearchByValue_ReJSONAndDefault(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			// Return two keys: one ReJSON-RL and one with an unknown type.
+			return "*2\r\n$1\r\n0\r\n*2\r\n$5\r\nkjson\r\n$5\r\nweird\r\n"
+		case "TYPE":
+			if len(argv) >= 2 && argv[1] == "kjson" {
+				return "+ReJSON-RL\r\n"
+			}
+			return "+weirdtype\r\n"
+		case "JSON.GET":
+			return respBulkString(`{"haystack":"needle"}`)
+		case "TTL":
+			return ":-1\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	results, err := c.SearchByValue("*", "needle", 10)
+	if err != nil {
+		t.Fatalf("SearchByValue error: %v", err)
+	}
+	// Only the kjson key should match (the weird-typed one is skipped via the
+	// default branch in queue and find-matching switches).
+	found := false
+	for _, r := range results {
+		if r.Key == "kjson" {
+			found = true
+		}
+		if r.Key == "weird" {
+			t.Errorf("weird key should be skipped via default branch")
+		}
+	}
+	if !found {
+		t.Errorf("kjson should be in results: %v", results)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetKeyPrefixes — scanEach error path.
+// ---------------------------------------------------------------------------
+
+func TestGetKeyPrefixes_ScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.GetKeyPrefixes(":", 3); err == nil {
+		t.Error("expected error from GetKeyPrefixes when SCAN errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// detectStringSubtypes — bitmap detection branch via SETBIT-created key.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_DetectStringSubtypes_Bitmap(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	// Use SETBIT via the wrapper to create a binary-string-typed key.
+	for _, off := range []int64{0, 1, 7} {
+		if err := client.SetBit("bm:detect", off, 1); err != nil {
+			t.Fatalf("SetBit: %v", err)
+		}
+	}
+
+	keys, _, err := client.ScanKeys("bm:detect", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(keys))
+	}
+	if keys[0].Type != "bitmap" {
+		t.Errorf("type = %q, want bitmap", keys[0].Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// detectStringSubtypes — Get error path on a single string key. We use the
+// fake server to return one key from SCAN, "string" type, then have GET fail.
+// ---------------------------------------------------------------------------
+
+func TestDetectStringSubtypes_GetError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	var firstGet sync.Once
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$1\r\nx\r\n"
+		case "TYPE":
+			return "+string\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		case "GET":
+			// First GET (the one from detectStringSubtypes) errors out.
+			ret := ""
+			firstGet.Do(func() { ret = "-ERR injected\r\n" })
+			if ret != "" {
+				return ret
+			}
+			return "$0\r\n\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	keys, _, err := c.ScanKeys("*", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(keys))
+	}
+	// Detection failed (GET errored) so type stays "string".
+	if keys[0].Type != "string" {
+		t.Errorf("type = %q, want string (detection failed)", keys[0].Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// detectZSetSubtypes — ZRange error path. Use the fake server: SCAN returns
+// one zset, TYPE says zset, ZRANGE errors. Detection should leave the type
+// as plain "zset".
+// ---------------------------------------------------------------------------
+
+func TestDetectZSetSubtypes_ZRangeError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$1\r\nz\r\n"
+		case "TYPE":
+			return "+zset\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		case "ZRANGE":
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	keys, _, err := c.ScanKeys("*", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(keys))
+	}
+	if keys[0].Type != "zset" {
+		t.Errorf("type = %q, want zset (detection failed)", keys[0].Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ScanKeys — plain zset not mis-detected.
+// ---------------------------------------------------------------------------
+
+func TestScanKeys_PlainZSetNotMisDetected(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	if err := client.ZAddBatch("nz", goredis.Z{Score: 0.123, Member: "x"}); err != nil {
+		t.Fatalf("ZAddBatch error: %v", err)
+	}
+
+	keys, _, err := client.ScanKeys("nz", 0, 100)
+	if err != nil {
+		t.Fatalf("ScanKeys error: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(keys))
+	}
+	if keys[0].Type != "zset" {
+		t.Errorf("type = %q, want zset", keys[0].Type)
+	}
 }

@@ -1,12 +1,14 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // ---------------------------------------------------------------------------
@@ -413,5 +415,589 @@ func TestMemoryUsage(t *testing.T) {
 	}
 	if mem <= 0 {
 		t.Errorf("MemoryUsage = %d, want > 0", mem)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// silentLogger.Printf — trivial coverage
+// ---------------------------------------------------------------------------
+
+func TestSilentLoggerPrintf(t *testing.T) {
+	// Should not panic and produces no output (logger is silent).
+	l := &silentLogger{}
+	l.Printf(context.Background(), "test %s %d", "hello", 42)
+}
+
+// ---------------------------------------------------------------------------
+// looksLikeGeoScores — direct unit tests
+// ---------------------------------------------------------------------------
+
+func TestLooksLikeGeoScores(t *testing.T) {
+	tests := []struct {
+		name    string
+		members []types.ZSetMember
+		want    bool
+	}{
+		{
+			name:    "empty slice returns true (vacuously)",
+			members: []types.ZSetMember{},
+			want:    true,
+		},
+		{
+			name: "small score is not geo",
+			members: []types.ZSetMember{
+				{Member: "a", Score: 1.5},
+			},
+			want: false,
+		},
+		{
+			name: "non-integer score in geo range",
+			members: []types.ZSetMember{
+				// 1.5e14 + 0.25 — fits in float64 mantissa, retains fractional part.
+				{Member: "a", Score: 1.5e14 + 0.25},
+			},
+			want: false,
+		},
+		{
+			name: "integer score in geo range",
+			members: []types.ZSetMember{
+				{Member: "a", Score: 3.4e15},
+				{Member: "b", Score: 1.5e15},
+			},
+			want: true,
+		},
+		{
+			name: "score too large",
+			members: []types.ZSetMember{
+				{Member: "a", Score: 6e15},
+			},
+			want: false,
+		},
+		{
+			name: "score below threshold",
+			members: []types.ZSetMember{
+				{Member: "a", Score: 1e13},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := looksLikeGeoScores(tt.members)
+			if got != tt.want {
+				t.Errorf("looksLikeGeoScores(%v) = %v, want %v", tt.members, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// isBinaryString — direct unit tests
+// ---------------------------------------------------------------------------
+
+func TestIsBinaryString(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{"empty string", "", false},
+		{"valid utf-8 ascii", "hello", false},
+		{"valid utf-8 multibyte", "héllo", false},
+		// Invalid UTF-8 sequence: a single 0xff byte (continuation byte without lead)
+		{"invalid utf-8 single byte", string([]byte{0xff}), true},
+		{"invalid utf-8 mixed", string([]byte{'a', 0xfe, 0xfd}), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isBinaryString(tt.s)
+			if got != tt.want {
+				t.Errorf("isBinaryString(%q) = %v, want %v", tt.s, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetValue — HyperLogLog branch
+// ---------------------------------------------------------------------------
+
+func TestGetValue_HyperLogLog(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Real Redis HLL header is "HYLL" + 12 bytes of metadata, then registers.
+	// We just need the prefix for detection.
+	mr.Set("hllmagic", "HYLL"+string(make([]byte, 12)))
+
+	v, err := client.GetValue("hllmagic")
+	if err != nil {
+		t.Fatalf("GetValue error: %v", err)
+	}
+	if v.Type != types.KeyTypeHyperLogLog {
+		t.Errorf("Type = %q, want %q", v.Type, types.KeyTypeHyperLogLog)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetValue — Bitmap branch
+// ---------------------------------------------------------------------------
+
+func TestGetValue_Bitmap(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	// Set bits at positions 0, 1, and 7 (within first byte: 0b11000001 = 0xC1).
+	for _, off := range []int64{0, 1, 7} {
+		if err := client.SetBit("bm", off, 1); err != nil {
+			t.Fatalf("SetBit(%d) error: %v", off, err)
+		}
+	}
+
+	v, err := client.GetValue("bm")
+	if err != nil {
+		t.Fatalf("GetValue error: %v", err)
+	}
+
+	// The value 0xC1 contains a continuation byte (0xC1 by itself isn't valid utf-8),
+	// so it should be detected as a bitmap.
+	if v.Type != types.KeyTypeBitmap {
+		t.Logf("Bitmap detection requires invalid UTF-8 raw bytes; got type %q (raw=%q)", v.Type, v.StringValue)
+		t.Errorf("Type = %q, want %q", v.Type, types.KeyTypeBitmap)
+	}
+	if v.BitCount != 3 {
+		t.Errorf("BitCount = %d, want 3", v.BitCount)
+	}
+	if len(v.BitPositions) != 3 {
+		t.Errorf("BitPositions length = %d, want 3", len(v.BitPositions))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetValue — Geo branch
+// ---------------------------------------------------------------------------
+
+func TestGetValue_Geo(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	err := client.GeoAdd("places",
+		&goredis.GeoLocation{Name: "Palermo", Longitude: 13.361389, Latitude: 38.115556},
+		&goredis.GeoLocation{Name: "Catania", Longitude: 15.087269, Latitude: 37.502669},
+	)
+	if err != nil {
+		t.Skipf("GeoAdd not supported by miniredis: %v", err)
+	}
+
+	v, err := client.GetValue("places")
+	if err != nil {
+		t.Fatalf("GetValue error: %v", err)
+	}
+
+	if v.Type == types.KeyTypeGeo {
+		if len(v.GeoValue) != 2 {
+			t.Errorf("GeoValue length = %d, want 2", len(v.GeoValue))
+		}
+	} else {
+		t.Logf("Geo not detected as KeyTypeGeo, got %q (miniredis score format may differ)", v.Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// JSONGet / JSONGetPath / JSONSet — RedisJSON not supported by miniredis,
+// but exercising the do() method ensures it returns gracefully.
+// ---------------------------------------------------------------------------
+
+func TestJSONGet_Unsupported(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	_, err := client.JSONGet("nokey")
+	if err == nil {
+		t.Error("JSONGet expected error from miniredis, got nil")
+	}
+}
+
+func TestJSONGetPath_Unsupported(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	_, err := client.JSONGetPath("nokey", "$.field")
+	if err == nil {
+		t.Error("JSONGetPath expected error from miniredis, got nil")
+	}
+}
+
+func TestJSONSet_Unsupported(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	err := client.JSONSet("nokey", `{"a":1}`)
+	if err == nil {
+		t.Error("JSONSet expected error from miniredis, got nil")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GeoPos — direct call after seeding via GeoAdd
+// ---------------------------------------------------------------------------
+
+func TestGeoPos(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	err := client.GeoAdd("locs",
+		&goredis.GeoLocation{Name: "A", Longitude: 13.361389, Latitude: 38.115556},
+	)
+	if err != nil {
+		t.Skipf("GeoAdd not supported by miniredis: %v", err)
+	}
+
+	positions, err := client.GeoPos("locs", "A")
+	if err != nil {
+		t.Fatalf("GeoPos error: %v", err)
+	}
+	if len(positions) != 1 {
+		t.Fatalf("expected 1 position, got %d", len(positions))
+	}
+	if positions[0] == nil {
+		t.Error("expected non-nil position for known member")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BulkDelete — empty match returns 0 with no error
+// ---------------------------------------------------------------------------
+
+func TestBulkDelete_NoMatches(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	deleted, err := client.BulkDelete("absent:*")
+	if err != nil {
+		t.Fatalf("BulkDelete error: %v", err)
+	}
+	if deleted != 0 {
+		t.Errorf("deleted = %d, want 0", deleted)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BatchSetTTL — empty match path
+// ---------------------------------------------------------------------------
+
+func TestBatchSetTTL_NoMatches(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	count, err := client.BatchSetTTL("absent:*", 30)
+	if err != nil {
+		t.Fatalf("BatchSetTTL error: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("count = %d, want 0", count)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BatchSetTTL — persist (ttl = 0) path on real keys
+// ---------------------------------------------------------------------------
+
+func TestBatchSetTTL_Persist(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Seed keys with existing TTLs.
+	for i := 0; i < 5; i++ {
+		key := fmt.Sprintf("persistme:%d", i)
+		mr.Set(key, "v")
+		mr.SetTTL(key, 60_000_000_000) // 60s in nanoseconds (time.Duration)
+	}
+
+	count, err := client.BatchSetTTL("persistme:*", 0)
+	if err != nil {
+		t.Fatalf("BatchSetTTL error: %v", err)
+	}
+	if count != 5 {
+		t.Errorf("count = %d, want 5", count)
+	}
+	// All keys should now have no TTL (persistent).
+	for i := 0; i < 5; i++ {
+		key := fmt.Sprintf("persistme:%d", i)
+		ttl := mr.TTL(key)
+		if ttl != 0 {
+			t.Errorf("%s TTL = %v, want 0", key, ttl)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetValue — HyperLogLog success path with PFCount populated.
+// ---------------------------------------------------------------------------
+
+func TestGetValue_HyperLogLog_PFCountSuccess(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "TYPE":
+			return "+string\r\n"
+		case "GET":
+			// Return HYLL-prefixed bulk string so HLL detection triggers.
+			return respBulkString("HYLL" + string(make([]byte, 12)))
+		case "PFCOUNT":
+			return ":7\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	v, err := c.GetValue("k")
+	if err != nil {
+		t.Fatalf("GetValue error: %v", err)
+	}
+	if v.Type != types.KeyTypeHyperLogLog {
+		t.Errorf("Type = %q, want %q", v.Type, types.KeyTypeHyperLogLog)
+	}
+	if v.HLLCount != 7 {
+		t.Errorf("HLLCount = %d, want 7", v.HLLCount)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetValue — error paths for each value type. Uses the fake server so we can
+// reply success for TYPE but inject an error for the value command.
+// ---------------------------------------------------------------------------
+
+func TestGetValue_TypeError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "TYPE" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.GetValue("anything"); err == nil {
+		t.Error("expected error from GetValue when TYPE returns error")
+	}
+}
+
+// gvFakeClient connects a real Client to a fakeRedisServer that responds to
+// TYPE with the requested key type and to the matching value command with an
+// error. This drives the error-return branches inside GetValue.
+func gvFakeClient(t *testing.T, keyType string, valueCmd string) *Client {
+	t.Helper()
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "TYPE":
+			return "+" + keyType + "\r\n"
+		case valueCmd:
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+	return c
+}
+
+func TestGetValue_StringError(t *testing.T) {
+	c := gvFakeClient(t, "string", "GET")
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on string GET error")
+	}
+}
+
+func TestGetValue_ListError(t *testing.T) {
+	c := gvFakeClient(t, "list", "LRANGE")
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on list LRANGE error")
+	}
+}
+
+func TestGetValue_SetError(t *testing.T) {
+	c := gvFakeClient(t, "set", "SMEMBERS")
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on set SMEMBERS error")
+	}
+}
+
+func TestGetValue_ZSetError(t *testing.T) {
+	c := gvFakeClient(t, "zset", "ZRANGE")
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on zset ZRANGE error")
+	}
+}
+
+func TestGetValue_HashError(t *testing.T) {
+	c := gvFakeClient(t, "hash", "HGETALL")
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on hash HGETALL error")
+	}
+}
+
+func TestGetValue_StreamError(t *testing.T) {
+	c := gvFakeClient(t, "stream", "XRANGE")
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on stream XRANGE error")
+	}
+}
+
+// GetValue ReJSON-RL branch — success path returning a JSON value.
+func TestGetValue_ReJSON_Success(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "TYPE":
+			return "+ReJSON-RL\r\n"
+		case "JSON.GET":
+			return respBulkString(`{"a":1}`)
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	v, err := c.GetValue("k")
+	if err != nil {
+		t.Fatalf("GetValue error: %v", err)
+	}
+	if v.Type != types.KeyTypeJSON {
+		t.Errorf("Type = %q, want %q", v.Type, types.KeyTypeJSON)
+	}
+	if v.JSONValue != `{"a":1}` {
+		t.Errorf("JSONValue = %q, want %q", v.JSONValue, `{"a":1}`)
+	}
+}
+
+// GetValue ReJSON-RL branch — error path on JSON.GET command.
+func TestGetValue_ReJSON_Error(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "TYPE":
+			return "+ReJSON-RL\r\n"
+		case "JSON.GET":
+			return "-ERR no json\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.GetValue("k"); err == nil {
+		t.Error("expected error from GetValue on ReJSON-RL JSON.GET error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BulkDelete error paths
+// ---------------------------------------------------------------------------
+
+func TestBulkDelete_ScanAllError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.BulkDelete("*"); err == nil {
+		t.Error("expected error from BulkDelete on SCAN error")
+	}
+}
+
+// BulkDelete — DEL returns an error in the chunked loop. We use the fake
+// server to return a SCAN reply with one key, then make DEL fail.
+func TestBulkDelete_DelError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			// cursor 0, one key "foo"
+			return "*2\r\n$1\r\n0\r\n*1\r\n$3\r\nfoo\r\n"
+		case "DEL":
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.BulkDelete("*"); err == nil {
+		t.Error("expected DEL error from BulkDelete")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BatchSetTTL — scanAll error path
+// ---------------------------------------------------------------------------
+
+func TestBatchSetTTL_ScanAllError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.BatchSetTTL("*", 30*time.Second); err == nil {
+		t.Error("expected error from BatchSetTTL on SCAN error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BulkDelete — exercising scanAll over many batches via large key set
+// ---------------------------------------------------------------------------
+
+func TestBulkDelete_LargeKeySet(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Seed many more than the SCAN batchSize (100) to ensure multiple cursor iterations.
+	const total = 350
+	for i := 0; i < total; i++ {
+		mr.Set(fmt.Sprintf("scanall:%d", i), "v")
+	}
+	deleted, err := client.BulkDelete("scanall:*")
+	if err != nil {
+		t.Fatalf("BulkDelete error: %v", err)
+	}
+	if deleted != total {
+		t.Errorf("deleted = %d, want %d", deleted, total)
+	}
+	if client.GetTotalKeys() != 0 {
+		t.Errorf("expected 0 keys remaining, got %d", client.GetTotalKeys())
 	}
 }

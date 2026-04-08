@@ -185,6 +185,22 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 	})
 }
 
+func TestMockRedisClient_DisconnectSuccess(t *testing.T) {
+	m := NewMockRedisClient()
+	if err := m.Connect("localhost", 6379, "", 0); err != nil {
+		t.Fatalf("Connect failed: %v", err)
+	}
+	if !m.IsConnected() {
+		t.Fatal("expected connected after Connect")
+	}
+	if err := m.Disconnect(); err != nil {
+		t.Fatalf("Disconnect failed: %v", err)
+	}
+	if m.IsConnected() {
+		t.Error("expected disconnected after Disconnect")
+	}
+}
+
 func TestMockRedisClient_TTLStored(t *testing.T) {
 	m := NewMockRedisClient()
 	_ = m.Connect("localhost", 6379, "", 0)

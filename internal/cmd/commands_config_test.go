@@ -9,24 +9,44 @@ import (
 )
 
 func TestLoadFavorites(t *testing.T) {
-	cfg := testutil.NewTestConfig(t)
-	cmds := NewCommands(cfg, nil)
-	msg := cmds.LoadFavorites(1)()
-	result := msg.(types.FavoritesLoadedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
+	t.Run("success", func(t *testing.T) {
+		cfg := testutil.NewTestConfig(t)
+		cmds := NewCommands(cfg, nil)
+		msg := cmds.LoadFavorites(1)()
+		result := msg.(types.FavoritesLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil config", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.LoadFavorites(1)()
+		if _, ok := msg.(types.FavoritesLoadedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestAddFavorite(t *testing.T) {
-	cfg := testutil.NewTestConfig(t)
-	testutil.MustAddConnection(t, cfg, "test", "localhost", 6379, "", 0)
-	cmds := NewCommands(cfg, nil)
-	msg := cmds.AddFavorite(1, "mykey", "My Key")()
-	result := msg.(types.FavoriteAddedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
+	t.Run("success", func(t *testing.T) {
+		cfg := testutil.NewTestConfig(t)
+		testutil.MustAddConnection(t, cfg, "test", "localhost", 6379, "", 0)
+		cmds := NewCommands(cfg, nil)
+		msg := cmds.AddFavorite(1, "mykey", "My Key")()
+		result := msg.(types.FavoriteAddedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil config", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.AddFavorite(1, "k", "label")()
+		if _, ok := msg.(types.FavoriteAddedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestRemoveFavorite(t *testing.T) {
@@ -53,12 +73,36 @@ func TestRemoveFavorite(t *testing.T) {
 }
 
 func TestLoadRecentKeys(t *testing.T) {
-	cfg := testutil.NewTestConfig(t)
-	cmds := NewCommands(cfg, nil)
-	msg := cmds.LoadRecentKeys(1)()
-	result := msg.(types.RecentKeysLoadedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
+	t.Run("success", func(t *testing.T) {
+		cfg := testutil.NewTestConfig(t)
+		cmds := NewCommands(cfg, nil)
+		msg := cmds.LoadRecentKeys(1)()
+		result := msg.(types.RecentKeysLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil config", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.LoadRecentKeys(1)()
+		if _, ok := msg.(types.RecentKeysLoadedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
+}
+
+func TestAddRecentKeyNilConfig(t *testing.T) {
+	cmds := NewCommands(nil, nil)
+	if msg := cmds.AddRecentKey(1, "k", types.KeyTypeString)(); msg != nil {
+		t.Errorf("expected nil, got %T", msg)
+	}
+}
+
+func TestSaveValueHistoryNilConfig(t *testing.T) {
+	cmds := NewCommands(nil, nil)
+	if msg := cmds.SaveValueHistory("k", types.RedisValue{StringValue: "v"}, "set")(); msg != nil {
+		t.Errorf("expected nil, got %T", msg)
 	}
 }
 
@@ -73,23 +117,43 @@ func TestAddRecentKey(t *testing.T) {
 }
 
 func TestLoadTemplates(t *testing.T) {
-	cfg := testutil.NewTestConfig(t)
-	cmds := NewCommands(cfg, nil)
-	msg := cmds.LoadTemplates()()
-	result := msg.(types.TemplatesLoadedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
+	t.Run("success", func(t *testing.T) {
+		cfg := testutil.NewTestConfig(t)
+		cmds := NewCommands(cfg, nil)
+		msg := cmds.LoadTemplates()()
+		result := msg.(types.TemplatesLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil config", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.LoadTemplates()()
+		if _, ok := msg.(types.TemplatesLoadedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestLoadValueHistory(t *testing.T) {
-	cfg := testutil.NewTestConfig(t)
-	cmds := NewCommands(cfg, nil)
-	msg := cmds.LoadValueHistory("mykey")()
-	result := msg.(types.ValueHistoryMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
+	t.Run("success", func(t *testing.T) {
+		cfg := testutil.NewTestConfig(t)
+		cmds := NewCommands(cfg, nil)
+		msg := cmds.LoadValueHistory("mykey")()
+		result := msg.(types.ValueHistoryMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil config", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.LoadValueHistory("k")()
+		if _, ok := msg.(types.ValueHistoryMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestSaveValueHistory(t *testing.T) {

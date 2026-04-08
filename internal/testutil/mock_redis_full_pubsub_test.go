@@ -73,6 +73,46 @@ func TestFullMockRedisClient_SubscribeKeyspace(t *testing.T) {
 			t.Errorf("expected errTest, got %v", err)
 		}
 	})
+
+	t.Run("invokes handler for each configured event in order", func(t *testing.T) {
+		m := NewFullMockRedisClient()
+		m.SubscribeKeyspaceEvents = []types.KeyspaceEvent{
+			{Key: "k1", Event: "set"},
+			{Key: "k2", Event: "del"},
+			{Key: "k3", Event: "expire"},
+		}
+		var received []types.KeyspaceEvent
+		err := m.SubscribeKeyspace("*", func(e types.KeyspaceEvent) {
+			received = append(received, e)
+		})
+		AssertNoError(t, err, "SubscribeKeyspace")
+		AssertSliceLen(t, received, 3, "received events")
+		AssertEqual(t, received[0].Key, "k1", "event 0 key")
+		AssertEqual(t, received[0].Event, "set", "event 0 event")
+		AssertEqual(t, received[1].Key, "k2", "event 1 key")
+		AssertEqual(t, received[2].Key, "k3", "event 2 key")
+	})
+
+	t.Run("returns configured error after invoking handler", func(t *testing.T) {
+		m := NewFullMockRedisClient()
+		m.SubscribeKeyspaceEvents = []types.KeyspaceEvent{{Key: "k", Event: "set"}}
+		m.SubscribeKeyspaceError = errTest
+		var calls int
+		err := m.SubscribeKeyspace("*", func(_ types.KeyspaceEvent) {
+			calls++
+		})
+		if !errors.Is(err, errTest) {
+			t.Errorf("expected errTest, got %v", err)
+		}
+		AssertEqual(t, calls, 1, "handler invocations")
+	})
+
+	t.Run("nil handler is tolerated", func(t *testing.T) {
+		m := NewFullMockRedisClient()
+		m.SubscribeKeyspaceEvents = []types.KeyspaceEvent{{Key: "k", Event: "set"}}
+		err := m.SubscribeKeyspace("*", nil)
+		AssertNoError(t, err, "SubscribeKeyspace nil handler")
+	})
 }
 
 func TestFullMockRedisClient_UnsubscribeKeyspace(t *testing.T) {

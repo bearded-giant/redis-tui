@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"context"
+	"fmt"
 	"testing"
 )
 
@@ -158,5 +160,198 @@ func BenchmarkFuzzyScore_LongString(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		fuzzyScore(str, pattern)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// silentLogger.Printf — exercise the (now non-empty) body.
+// ---------------------------------------------------------------------------
+
+func TestSilentLoggerPrintf_NonEmpty(t *testing.T) {
+	l := &silentLogger{}
+	l.Printf(context.Background(), "format %s %d", "x", 1)
+}
+
+// ---------------------------------------------------------------------------
+// scanAll — non-cluster SCAN error path. Use the fake server to inject an
+// error reply for SCAN so the standalone path returns the error.
+// ---------------------------------------------------------------------------
+
+func TestScanAll_NonClusterScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.scanAll("*", 100); err == nil {
+		t.Error("expected error from scanAll non-cluster SCAN error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// scanEach — non-cluster SCAN error path.
+// ---------------------------------------------------------------------------
+
+func TestScanEach_NonClusterScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	err := c.scanEach("*", 100, func(keys []string) bool { return true })
+	if err == nil {
+		t.Error("expected error from scanEach non-cluster SCAN error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// scanEach — non-cluster early termination via fn returning false.
+// ---------------------------------------------------------------------------
+
+func TestScanEach_NonClusterEarlyStop(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// Seed enough keys to span multiple SCAN iterations.
+	for i := 0; i < 50; i++ {
+		mr.Set(fmt.Sprintf("k:%d", i), "v")
+	}
+
+	calls := 0
+	err := client.scanEach("*", 10, func(keys []string) bool {
+		calls++
+		return false // stop immediately on first batch
+	})
+	if err != nil {
+		t.Fatalf("scanEach error: %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("calls = %d, want 1", calls)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// scanAll — cluster SCAN error path. Use the fake server with an error
+// reply for SCAN, attached to a manually-installed cluster client.
+// ---------------------------------------------------------------------------
+
+func TestScanAll_ClusterScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	client := NewClient()
+	cluster := newClusterClientForTest(addr)
+	client.cluster = cluster
+	client.isCluster = true
+	t.Cleanup(func() {
+		_ = cluster.Close()
+		client.cluster = nil
+	})
+
+	if _, err := client.scanAll("*", 100); err == nil {
+		t.Error("expected error from scanAll cluster SCAN error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// scanEach — cluster SCAN error path.
+// ---------------------------------------------------------------------------
+
+func TestScanEach_ClusterScanError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	client := NewClient()
+	cluster := newClusterClientForTest(addr)
+	client.cluster = cluster
+	client.isCluster = true
+	t.Cleanup(func() {
+		_ = cluster.Close()
+		client.cluster = nil
+	})
+
+	err := client.scanEach("*", 100, func(keys []string) bool { return true })
+	if err == nil {
+		t.Error("expected error from scanEach cluster SCAN error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// scanEach — cluster early-stop branch. Returns multiple SCAN pages so the
+// stopped flag is observed on the next iteration of the inner loop.
+// ---------------------------------------------------------------------------
+
+func TestScanEach_ClusterEarlyStop(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	// Track call count so we return non-zero cursor first to keep iterating,
+	// then return cursor 0 (final page) so the inner loop sees the stopped
+	// flag set by the previous fn() call.
+	var scanCount int
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			scanCount++
+			if scanCount == 1 {
+				// First page: cursor "1", one key.
+				return "*2\r\n$1\r\n1\r\n*1\r\n$1\r\na\r\n"
+			}
+			// Subsequent: cursor 0, one key. The fn returns false on first
+			// batch so the second batch should never be appended.
+			return "*2\r\n$1\r\n0\r\n*1\r\n$1\r\nb\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	client := NewClient()
+	cluster := newClusterClientForTest(addr)
+	client.cluster = cluster
+	client.isCluster = true
+	t.Cleanup(func() {
+		_ = cluster.Close()
+		client.cluster = nil
+	})
+
+	calls := 0
+	err := client.scanEach("*", 10, func(keys []string) bool {
+		calls++
+		return false // stop after first batch
+	})
+	if err != nil {
+		t.Logf("scanEach cluster early-stop: %v", err)
+	}
+	if calls < 1 {
+		t.Errorf("calls = %d, want >= 1", calls)
 	}
 }

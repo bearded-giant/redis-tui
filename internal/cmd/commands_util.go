@@ -57,15 +57,18 @@ func (c *Commands) CopyToClipboard(content string) tea.Cmd {
 
 const githubRepo = "davidbudnick/redis-tui"
 
-var versionHTTPClient = &http.Client{Timeout: 10 * time.Second}
+var (
+	versionHTTPClient = &http.Client{Timeout: 10 * time.Second}
+	// githubReleaseURL is overridable in tests to cover the NewRequest error path.
+	githubReleaseURL = fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo)
+)
 
 type githubRelease struct {
 	TagName string `json:"tag_name"`
 }
 
 func fetchLatestTag() (string, error) {
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo)
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	req, err := http.NewRequest(http.MethodGet, githubReleaseURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -92,8 +95,11 @@ func fetchLatestTag() (string, error) {
 	return release.TagName, nil
 }
 
+// osExecutable indirection lets tests override executable path detection.
+var osExecutable = os.Executable
+
 func detectUpgradeCmd() string {
-	execPath, err := os.Executable()
+	execPath, err := osExecutable()
 	if err != nil {
 		return "redis-tui --update"
 	}

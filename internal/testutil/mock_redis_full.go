@@ -89,7 +89,8 @@ type FullMockRedisClient struct {
 	FuzzySearchError       error
 	CompareKeysError       error
 	KeyPrefixesError       error
-	SubscribeKeyspaceError error
+	SubscribeKeyspaceError  error
+	SubscribeKeyspaceEvents []types.KeyspaceEvent
 	UnsubscribeKSError     error
 	PFAddError             error
 	PFCountError           error
@@ -363,8 +364,13 @@ func (m *FullMockRedisClient) ConfigSet(_, _ string) error {
 
 // Keyspace events
 
-func (m *FullMockRedisClient) SubscribeKeyspace(_ string, _ func(types.KeyspaceEvent)) error {
+func (m *FullMockRedisClient) SubscribeKeyspace(_ string, handler func(types.KeyspaceEvent)) error {
 	m.Calls = append(m.Calls, "SubscribeKeyspace")
+	if handler != nil {
+		for _, e := range m.SubscribeKeyspaceEvents {
+			handler(e)
+		}
+	}
 	return m.SubscribeKeyspaceError
 }
 

@@ -93,6 +93,33 @@ func TestSubscribeKeyspace(t *testing.T) {
 		}
 	})
 
+	t.Run("forwards events via sendFunc", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.SubscribeKeyspaceEvents = []types.KeyspaceEvent{
+			{Key: "k1", Event: "set"},
+			{Key: "k2", Event: "del"},
+		}
+		var received []tea.Msg
+		sendFunc := func(msg tea.Msg) { received = append(received, msg) }
+		_ = cmds.SubscribeKeyspace("*", sendFunc)()
+		if len(received) != 2 {
+			t.Fatalf("expected 2 forwarded events, got %d", len(received))
+		}
+		ev, ok := received[0].(types.KeyspaceEventMsg)
+		if !ok {
+			t.Fatalf("expected KeyspaceEventMsg, got %T", received[0])
+		}
+		if ev.Event.Key != "k1" {
+			t.Errorf("Key = %q, want %q", ev.Event.Key, "k1")
+		}
+	})
+
+	t.Run("nil sendFunc is tolerated", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.SubscribeKeyspaceEvents = []types.KeyspaceEvent{{Key: "k", Event: "set"}}
+		_ = cmds.SubscribeKeyspace("*", nil)()
+	})
+
 	t.Run("error", func(t *testing.T) {
 		cmds, mock := newMockCmds()
 		mock.SubscribeKeyspaceError = errors.New("subscribe failed")

@@ -59,6 +59,7 @@ internal/
 - **Never suppress errors** — no `_, _ :=` or bare calls that return errors. Every error must be checked, even in test setup code. Use `t.Fatalf("... failed: %v", err)` for setup errors.
 - **Config persistence round-trip** — any new config feature must have a test that writes data, reloads from disk via `reloadConfig(t, cfg)`, and asserts every field survived the JSON round-trip. This catches broken JSON tags.
 - **Mocks simulate, never re-implement** — mock implementations should return configured values/errors. Never duplicate real business logic in mocks.
+- **Test files are exempt from file length limits** — keep all tests for a given source file in a single `*_test.go` file alongside the source (e.g., `operations.go` ↔ `operations_test.go`). Do not split tests across `_extra_test.go` or similarly suffixed files just to stay under a length threshold.
 
 ### Test helpers (`internal/db/config_test.go`)
 

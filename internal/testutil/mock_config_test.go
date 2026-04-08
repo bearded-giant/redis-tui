@@ -186,9 +186,10 @@ func TestMockConfigClient_IsFavorite(t *testing.T) {
 }
 
 func TestMockConfigClient_RecentKeys(t *testing.T) {
-	t.Run("AddRecentKey does not panic", func(t *testing.T) {
+	t.Run("AddRecentKey tracks calls", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.AddRecentKey(1, "key", types.KeyTypeString)
+		AssertEqual(t, m.AddRecentKeyCalls, 1, "AddRecentKey call count")
 	})
 
 	t.Run("ListRecentKeys with results", func(t *testing.T) {
@@ -207,16 +208,18 @@ func TestMockConfigClient_RecentKeys(t *testing.T) {
 		}
 	})
 
-	t.Run("ClearRecentKeys does not panic", func(t *testing.T) {
+	t.Run("ClearRecentKeys tracks calls", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.ClearRecentKeys(1)
+		AssertEqual(t, m.ClearRecentKeysCalls, 1, "ClearRecentKeys call count")
 	})
 }
 
 func TestMockConfigClient_ValueHistory(t *testing.T) {
-	t.Run("AddValueHistory does not panic", func(t *testing.T) {
+	t.Run("AddValueHistory tracks calls", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.AddValueHistory("key", types.RedisValue{StringValue: "val"}, "set")
+		AssertEqual(t, m.AddValueHistoryCalls, 1, "AddValueHistory call count")
 	})
 
 	t.Run("GetValueHistory with results", func(t *testing.T) {
@@ -235,9 +238,10 @@ func TestMockConfigClient_ValueHistory(t *testing.T) {
 		}
 	})
 
-	t.Run("ClearValueHistory does not panic", func(t *testing.T) {
+	t.Run("ClearValueHistory tracks calls", func(t *testing.T) {
 		m := NewMockConfigClient()
 		m.ClearValueHistory()
+		AssertEqual(t, m.ClearValueHistoryCalls, 1, "ClearValueHistory call count")
 	})
 }
 

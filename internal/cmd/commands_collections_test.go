@@ -270,6 +270,41 @@ func TestAddToGeo(t *testing.T) {
 	})
 }
 
+func TestCollectionNilRedisBranches(t *testing.T) {
+	cmds := NewCommands(nil, nil)
+	cases := []struct {
+		name string
+		fn   func() any
+	}{
+		{"AddToSet", func() any { return cmds.AddToSet("k", "m")() }},
+		{"AddToZSet", func() any { return cmds.AddToZSet("k", 1, "m")() }},
+		{"AddToHash", func() any { return cmds.AddToHash("k", "f", "v")() }},
+		{"AddToStream", func() any { return cmds.AddToStream("k", map[string]any{"f": "v"})() }},
+		{"RemoveFromList", func() any { return cmds.RemoveFromList("k", "v")() }},
+		{"RemoveFromSet", func() any { return cmds.RemoveFromSet("k", "m")() }},
+		{"RemoveFromZSet", func() any { return cmds.RemoveFromZSet("k", "m")() }},
+		{"RemoveFromHash", func() any { return cmds.RemoveFromHash("k", "f")() }},
+		{"RemoveFromStream", func() any { return cmds.RemoveFromStream("k", "1-0")() }},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			res := c.fn()
+			switch m := res.(type) {
+			case types.ItemAddedToCollectionMsg:
+				if m.Err != nil {
+					t.Errorf("nil redis should not error: %v", m.Err)
+				}
+			case types.ItemRemovedFromCollectionMsg:
+				if m.Err != nil {
+					t.Errorf("nil redis should not error: %v", m.Err)
+				}
+			default:
+				t.Errorf("unexpected msg type: %T", res)
+			}
+		})
+	}
+}
+
 func TestSetBit(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, _ := newMockCmds()

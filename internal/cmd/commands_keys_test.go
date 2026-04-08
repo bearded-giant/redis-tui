@@ -62,17 +62,27 @@ func TestLoadKeyValue(t *testing.T) {
 }
 
 func TestLoadKeyPreview(t *testing.T) {
-	cmds, mock := newMockCmds()
-	_ = mock.Connect("localhost", 6379, "", 0)
-	mock.SetKey("pk", types.RedisValue{Type: types.KeyTypeString, StringValue: "preview"}, types.KeyTypeString, 0)
-	msg := cmds.LoadKeyPreview("pk")()
-	result := msg.(types.KeyPreviewLoadedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
-	if result.Key != "pk" {
-		t.Errorf("Key = %q, want %q", result.Key, "pk")
-	}
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		_ = mock.Connect("localhost", 6379, "", 0)
+		mock.SetKey("pk", types.RedisValue{Type: types.KeyTypeString, StringValue: "preview"}, types.KeyTypeString, 0)
+		msg := cmds.LoadKeyPreview("pk")()
+		result := msg.(types.KeyPreviewLoadedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Key != "pk" {
+			t.Errorf("Key = %q, want %q", result.Key, "pk")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.LoadKeyPreview("pk")()
+		if _, ok := msg.(types.KeyPreviewLoadedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestDeleteKey(t *testing.T) {
@@ -200,6 +210,26 @@ func TestCreateKey(t *testing.T) {
 			t.Errorf("nil redis should not error: %v", result.Err)
 		}
 	})
+
+	t.Run("zset invalid score", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		_ = mock.Connect("localhost", 6379, "", 0)
+		msg := cmds.CreateKey("zk", types.KeyTypeZSet, "member", "not-a-number", 0)()
+		result := msg.(types.KeySetMsg)
+		if result.Err == nil {
+			t.Error("expected error for invalid zset score")
+		}
+	})
+
+	t.Run("json type", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		_ = mock.Connect("localhost", 6379, "", 0)
+		msg := cmds.CreateKey("jk", types.KeyTypeJSON, `{"a":1}`, "", 0)()
+		result := msg.(types.KeySetMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
 }
 
 func TestEditStringValue(t *testing.T) {
@@ -233,12 +263,22 @@ func TestEditStringValue(t *testing.T) {
 }
 
 func TestEditListElement(t *testing.T) {
-	cmds, _ := newMockCmds()
-	msg := cmds.EditListElement("list", 0, "newval")()
-	result := msg.(types.ValueEditedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
+	t.Run("success", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		msg := cmds.EditListElement("list", 0, "newval")()
+		result := msg.(types.ValueEditedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.EditListElement("list", 0, "v")()
+		if _, ok := msg.(types.ValueEditedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestEditJSONValue(t *testing.T) {
@@ -272,12 +312,22 @@ func TestEditJSONValue(t *testing.T) {
 }
 
 func TestEditHashField(t *testing.T) {
-	cmds, _ := newMockCmds()
-	msg := cmds.EditHashField("hash", "field", "val")()
-	result := msg.(types.ValueEditedMsg)
-	if result.Err != nil {
-		t.Errorf("unexpected error: %v", result.Err)
-	}
+	t.Run("success", func(t *testing.T) {
+		cmds, _ := newMockCmds()
+		msg := cmds.EditHashField("hash", "field", "val")()
+		result := msg.(types.ValueEditedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.EditHashField("h", "f", "v")()
+		if _, ok := msg.(types.ValueEditedMsg); !ok {
+			t.Errorf("unexpected msg type: %T", msg)
+		}
+	})
 }
 
 func TestRenameKey(t *testing.T) {

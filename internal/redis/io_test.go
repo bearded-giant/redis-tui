@@ -1,7 +1,9 @@
 package redis
 
 import (
+	"fmt"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 )
@@ -592,6 +594,214 @@ func TestExportImportRoundTrip(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// ExportKeys — error path: scanAll fails on the underlying SCAN.
+// ---------------------------------------------------------------------------
+
+func TestExportKeys_ScanAllError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "SCAN" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, err := c.ExportKeys("*"); err == nil {
+		t.Error("expected error from ExportKeys when SCAN fails")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExportKeys — exercise every "continue" branch in the value-fetch switch by
+// returning a specific TYPE for each key and an error reply for the matching
+// value command. Also exercises the ReJSON-RL queue branch.
+// ---------------------------------------------------------------------------
+
+func TestExportKeys_AllValueFetchErrors(t *testing.T) {
+	keyTypes := map[string]string{
+		"kstr":    "string",
+		"klist":   "list",
+		"kset":    "set",
+		"kzset":   "zset",
+		"khash":   "hash",
+		"kstream": "stream",
+		"kjson":   "ReJSON-RL",
+	}
+	keys := []string{"kstr", "klist", "kset", "kzset", "khash", "kstream", "kjson"}
+
+	srv := newFakeRedisServer(t)
+	var mu sync.Mutex
+	scanCalls := 0
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			mu.Lock()
+			scanCalls++
+			mu.Unlock()
+			// Cursor 0, 7 keys.
+			out := fmt.Sprintf("*2\r\n$1\r\n0\r\n*%d\r\n", len(keys))
+			for _, k := range keys {
+				out += fmt.Sprintf("$%d\r\n%s\r\n", len(k), k)
+			}
+			return out
+		case "TYPE":
+			if len(argv) < 2 {
+				return "+none\r\n"
+			}
+			if kt, ok := keyTypes[argv[1]]; ok {
+				return "+" + kt + "\r\n"
+			}
+			return "+none\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		case "GET", "LRANGE", "SMEMBERS", "ZRANGE", "HGETALL", "XRANGE", "JSON.GET":
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	result, err := c.ExportKeys("*")
+	if err != nil {
+		t.Fatalf("ExportKeys error: %v", err)
+	}
+	// Every value fetch returned an error so every key should have been
+	// skipped via the "continue" branch — result should be empty.
+	if len(result) != 0 {
+		t.Errorf("ExportKeys returned %d entries, want 0 (all errors)", len(result))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExportKeys — unknown type triggers the default-continue branch in the
+// value-fetch queue switch (and the same in the result-collect switch).
+// ---------------------------------------------------------------------------
+
+func TestExportKeys_UnknownType_DefaultContinue(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$5\r\nweird\r\n"
+		case "TYPE":
+			return "+weirdtype\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	result, err := c.ExportKeys("*")
+	if err != nil {
+		t.Fatalf("ExportKeys error: %v", err)
+	}
+	// Unknown type is skipped via default branch.
+	if _, ok := result["weird"]; ok {
+		t.Errorf("expected weird key to be skipped, got %v", result["weird"])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExportKeys — ReJSON-RL where the JSON.GET reply succeeds at the pipeline
+// layer (returns *redis.Cmd, no top-level error) but the inner cmd.Text()
+// fails because the reply payload is not a string. We return an integer
+// reply to drive that branch.
+// ---------------------------------------------------------------------------
+
+func TestExportKeys_ReJSON_TextError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$5\r\nkjson\r\n"
+		case "TYPE":
+			return "+ReJSON-RL\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		case "JSON.GET":
+			// Integer reply — Text() will fail with redis.Nil or type error.
+			return ":42\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	result, err := c.ExportKeys("*")
+	if err != nil {
+		t.Fatalf("ExportKeys error: %v", err)
+	}
+	// Text() error => key skipped via continue.
+	if _, ok := result["kjson"]; ok {
+		t.Errorf("expected kjson skipped on Text() error, got %v", result["kjson"])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExportKeys — ReJSON-RL success path: exercises the JSON.GET extraction
+// branch including the cmd.Text() success leg (line 135-137).
+// ---------------------------------------------------------------------------
+
+func TestExportKeys_ReJSON_Success(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		switch argv[0] {
+		case "SCAN":
+			return "*2\r\n$1\r\n0\r\n*1\r\n$5\r\nkjson\r\n"
+		case "TYPE":
+			return "+ReJSON-RL\r\n"
+		case "TTL":
+			return ":-1\r\n"
+		case "JSON.GET":
+			return respBulkString(`{"a":1}`)
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	result, err := c.ExportKeys("*")
+	if err != nil {
+		t.Fatalf("ExportKeys error: %v", err)
+	}
+	entry, ok := result["kjson"].(map[string]any)
+	if !ok {
+		t.Fatalf("kjson missing or wrong shape: %T", result["kjson"])
+	}
+	if entry["type"] != "ReJSON-RL" {
+		t.Errorf("type = %v, want ReJSON-RL", entry["type"])
+	}
+	if entry["value"] != `{"a":1}` {
+		t.Errorf("value = %v, want %q", entry["value"], `{"a":1}`)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // CompareKeys tests
 // ---------------------------------------------------------------------------
 
@@ -645,5 +855,272 @@ func TestCompareKeys_MissingKey(t *testing.T) {
 	}
 	if val2.Type != "none" {
 		t.Errorf("val2.Type = %q, want %q for missing key", val2.Type, "none")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ExportKeys — exercise the stream extraction path
+// ---------------------------------------------------------------------------
+
+func TestExportKeys_Stream(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	id, err := client.XAdd("estream", map[string]any{"field": "value"})
+	if err != nil {
+		t.Fatalf("XAdd error: %v", err)
+	}
+	if id == "" {
+		t.Fatal("expected non-empty stream ID")
+	}
+
+	result, err := client.ExportKeys("estream")
+	if err != nil {
+		t.Fatalf("ExportKeys error: %v", err)
+	}
+
+	streamData, ok := result["estream"].(map[string]any)
+	if !ok {
+		t.Fatalf("estream not found or wrong type in export, got %T", result["estream"])
+	}
+	if streamData["type"] != "stream" {
+		t.Errorf("estream type = %v, want stream", streamData["type"])
+	}
+
+	entries, ok := streamData["value"].([]map[string]any)
+	if !ok {
+		t.Fatalf("estream value is not []map[string]any, got %T", streamData["value"])
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if entries[0]["id"] != id {
+		t.Errorf("entry id = %v, want %v", entries[0]["id"], id)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ImportKeys — TTL branches for collection types
+// ---------------------------------------------------------------------------
+
+func TestImportKeys_CollectionTTLBranches(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	data := map[string]any{
+		"il": map[string]any{
+			"type":  "list",
+			"value": []any{"a", "b"},
+			"ttl":   float64(60),
+		},
+		"is": map[string]any{
+			"type":  "set",
+			"value": []any{"x", "y"},
+			"ttl":   float64(60),
+		},
+		"iz": map[string]any{
+			"type": "zset",
+			"value": []any{
+				map[string]any{"member": "alpha", "score": float64(1.0)},
+			},
+			"ttl": float64(60),
+		},
+		"ih": map[string]any{
+			"type": "hash",
+			"value": map[string]any{
+				"field": "val",
+			},
+			"ttl": float64(60),
+		},
+	}
+
+	count, err := client.ImportKeys(data)
+	if err != nil {
+		t.Fatalf("ImportKeys error: %v", err)
+	}
+	if count != 4 {
+		t.Errorf("count = %d, want 4", count)
+	}
+
+	for _, k := range []string{"il", "is", "iz", "ih"} {
+		ttl := mr.TTL(k)
+		if ttl < 50*time.Second || ttl > 70*time.Second {
+			t.Errorf("%s TTL = %v, want ~60s", k, ttl)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ImportKeys — ReJSON-RL branch (JSONSet will fail in miniredis but the
+// branch should still be exercised and counted).
+// ---------------------------------------------------------------------------
+
+func TestImportKeys_ReJSON(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	data := map[string]any{
+		"jsonkey": map[string]any{
+			"type":  "ReJSON-RL",
+			"value": `{"a":1}`,
+			"ttl":   float64(0),
+		},
+	}
+
+	count, err := client.ImportKeys(data)
+	if err != nil {
+		t.Fatalf("ImportKeys error: %v", err)
+	}
+	// Even though JSON.SET fails in miniredis, the count is still incremented
+	// because the code intentionally swallows the error.
+	if count != 1 {
+		t.Errorf("count = %d, want 1", count)
+	}
+}
+
+func TestImportKeys_ReJSONWithTTL(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	data := map[string]any{
+		"jsonttl": map[string]any{
+			"type":  "ReJSON-RL",
+			"value": `{"a":1}`,
+			"ttl":   float64(60),
+		},
+	}
+	_, err := client.ImportKeys(data)
+	if err != nil {
+		t.Fatalf("ImportKeys error: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// queueValueFetch / extractValue — direct call with ReJSON-RL keyType
+// ---------------------------------------------------------------------------
+
+func TestQueueValueFetch_ReJSON(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	pipe := client.pipeline()
+	cmds := queueValueFetch(pipe, client.ctx, "jsonkey", "ReJSON-RL")
+	_, _ = pipe.Exec(client.ctx)
+
+	if cmds.jsonCmd == nil {
+		t.Error("expected jsonCmd to be set for ReJSON-RL keyType")
+	}
+
+	// extractValue should walk the ReJSON-RL branch (Text() will return an
+	// error from miniredis but the branch is still exercised).
+	val := extractValue("ReJSON-RL", cmds)
+	if val.Type != "ReJSON-RL" {
+		t.Errorf("Type = %q, want ReJSON-RL", val.Type)
+	}
+}
+
+func TestExtractValue_AllTypes(t *testing.T) {
+	// Empty fetch cmds — verifies the nil-check branches in each case arm.
+	for _, kt := range []string{"string", "list", "set", "zset", "hash", "stream", "ReJSON-RL"} {
+		val := extractValue(kt, valueFetchCmds{})
+		if string(val.Type) != kt {
+			t.Errorf("Type = %q, want %q", val.Type, kt)
+		}
+	}
+
+	// Default branch — unknown type just sets Type and returns.
+	val := extractValue("unknown", valueFetchCmds{})
+	if string(val.Type) != "unknown" {
+		t.Errorf("Type = %q, want unknown", val.Type)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// CompareKeys — TYPE pipeline error path. Use the fake server to make TYPE
+// return an error so the pipeline Exec returns a non-nil, non-redis.Nil err.
+// ---------------------------------------------------------------------------
+
+func TestCompareKeys_TypeExecError(t *testing.T) {
+	srv := newFakeRedisServer(t)
+	srv.setHandler(func(argv []string) string {
+		if argv[0] == "TYPE" {
+			return "-ERR injected\r\n"
+		}
+		return ""
+	})
+	host, port := srv.addr()
+	c := NewClient()
+	if err := c.Connect(host, port, "", 0); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if _, _, err := c.CompareKeys("a", "b"); err == nil {
+		t.Error("expected error from CompareKeys when TYPE pipeline errors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// CompareKeys — exercise non-string types so queueValueFetch and extractValue
+// take their list/set/zset/hash/stream branches.
+// ---------------------------------------------------------------------------
+
+func TestCompareKeys_AllTypes(t *testing.T) {
+	client, mr := setupTestClient(t)
+
+	// list vs list
+	mr.RPush("l1", "a", "b")
+	mr.RPush("l2", "c", "d", "e")
+
+	v1, v2, err := client.CompareKeys("l1", "l2")
+	if err != nil {
+		t.Fatalf("CompareKeys list error: %v", err)
+	}
+	if len(v1.ListValue) != 2 || len(v2.ListValue) != 3 {
+		t.Errorf("list compare lengths = %d/%d, want 2/3", len(v1.ListValue), len(v2.ListValue))
+	}
+
+	// set vs set
+	mr.SAdd("s1", "x", "y")
+	mr.SAdd("s2", "p")
+	v1, v2, err = client.CompareKeys("s1", "s2")
+	if err != nil {
+		t.Fatalf("CompareKeys set error: %v", err)
+	}
+	if len(v1.SetValue) != 2 || len(v2.SetValue) != 1 {
+		t.Errorf("set compare lengths = %d/%d, want 2/1", len(v1.SetValue), len(v2.SetValue))
+	}
+
+	// zset vs zset
+	mr.ZAdd("z1", 1.0, "a")
+	mr.ZAdd("z2", 2.0, "b")
+	v1, v2, err = client.CompareKeys("z1", "z2")
+	if err != nil {
+		t.Fatalf("CompareKeys zset error: %v", err)
+	}
+	if len(v1.ZSetValue) != 1 || len(v2.ZSetValue) != 1 {
+		t.Errorf("zset compare lengths = %d/%d, want 1/1", len(v1.ZSetValue), len(v2.ZSetValue))
+	}
+
+	// hash vs hash
+	mr.HSet("h1", "k", "v")
+	mr.HSet("h2", "k1", "v1")
+	mr.HSet("h2", "k2", "v2")
+	v1, v2, err = client.CompareKeys("h1", "h2")
+	if err != nil {
+		t.Fatalf("CompareKeys hash error: %v", err)
+	}
+	if len(v1.HashValue) != 1 || len(v2.HashValue) != 2 {
+		t.Errorf("hash compare lengths = %d/%d, want 1/2", len(v1.HashValue), len(v2.HashValue))
+	}
+
+	// stream vs stream
+	if _, err := client.XAdd("st1", map[string]any{"a": "1"}); err != nil {
+		t.Fatalf("XAdd st1 error: %v", err)
+	}
+	if _, err := client.XAdd("st2", map[string]any{"b": "2"}); err != nil {
+		t.Fatalf("XAdd st2 error: %v", err)
+	}
+	v1, v2, err = client.CompareKeys("st1", "st2")
+	if err != nil {
+		t.Fatalf("CompareKeys stream error: %v", err)
+	}
+	if len(v1.StreamValue) != 1 || len(v2.StreamValue) != 1 {
+		t.Errorf("stream compare lengths = %d/%d, want 1/1", len(v1.StreamValue), len(v2.StreamValue))
 	}
 }

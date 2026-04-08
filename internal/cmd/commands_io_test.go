@@ -60,6 +60,19 @@ func TestExportKeys(t *testing.T) {
 		}
 	})
 
+	t.Run("marshal error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		// channel values cannot be JSON-marshaled
+		mock.ExportResult = map[string]any{"bad": make(chan int)}
+		dir := t.TempDir()
+		filename := dir + "/export.json"
+		msg := cmds.ExportKeys("*", filename)()
+		result := msg.(types.ExportCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected marshal error")
+		}
+	})
+
 	t.Run("nil redis", func(t *testing.T) {
 		cmds := NewCommands(nil, nil)
 		msg := cmds.ExportKeys("*", "file.json")()
