@@ -25,7 +25,7 @@ func TestConnectionErrorPaths(t *testing.T) {
 		mc := testutil.NewMockConfigClient()
 		mc.AddConnectionError = errors.New("add failed")
 		cmds := NewCommands(mc, nil)
-		msg := cmds.AddConnection("n", "h", 1, "", 0, false)()
+		msg := cmds.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionAddedMsg)
 		if result.Err == nil {
 			t.Error("expected error")
@@ -36,7 +36,7 @@ func TestConnectionErrorPaths(t *testing.T) {
 		mc := testutil.NewMockConfigClient()
 		mc.UpdateConnectionError = errors.New("update failed")
 		cmds := NewCommands(mc, nil)
-		msg := cmds.UpdateConnection(1, "n", "h", 1, "", 0, false)()
+		msg := cmds.UpdateConnection(types.Connection{ID: 1, Name: "n", Host: "h", Port: 1, Password: "p", DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionUpdatedMsg)
 		if result.Err == nil {
 			t.Error("expected error")

@@ -242,7 +242,7 @@ func TestConnectCluster_UnreachableAddr(t *testing.T) {
 	client := NewClient()
 
 	// Address with default port and host that should not be listening.
-	err := client.ConnectCluster([]string{"127.0.0.1:1"}, "")
+	err := client.ConnectCluster([]string{"127.0.0.1:1"}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 1, DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("ConnectCluster expected error for unreachable addr, got nil")
@@ -269,7 +269,7 @@ func TestConnectCluster_EmptyAddrs(t *testing.T) {
 	client := NewClient()
 
 	// No addresses — should still construct the cluster client and fail on Ping.
-	err := client.ConnectCluster([]string{}, "")
+	err := client.ConnectCluster([]string{}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("ConnectCluster expected error for empty addrs, got nil")
@@ -320,7 +320,7 @@ func TestDisconnect_ClusterCloseBranch(t *testing.T) {
 	client := NewClient()
 
 	// Use unreachable addr — Ping fails but cluster client is still attached.
-	err := client.ConnectCluster([]string{"127.0.0.1:1"}, "")
+	err := client.ConnectCluster([]string{"127.0.0.1:1"}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("ConnectCluster expected error, got nil")
@@ -382,7 +382,7 @@ func TestConnectCluster_DialerSplitHostPortError(t *testing.T) {
 
 	// "no-port" has no colon — net.SplitHostPort returns an error from the
 	// Dialer closure, which exercises the err-return branch.
-	err := client.ConnectCluster([]string{"no-port"}, "")
+	err := client.ConnectCluster([]string{"no-port"}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
 	if err == nil {
 		t.Fatal("expected error from ConnectCluster with addr lacking a port")
 	}
@@ -403,7 +403,7 @@ func TestSelectDB_SelectError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })

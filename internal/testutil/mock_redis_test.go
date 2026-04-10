@@ -187,7 +187,7 @@ func TestMockRedisClient_ConfigurableErrors(t *testing.T) {
 
 func TestMockRedisClient_DisconnectSuccess(t *testing.T) {
 	m := NewMockRedisClient()
-	if err := m.Connect("localhost", 6379, "", 0); err != nil {
+	if err := m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect failed: %v", err)
 	}
 	if !m.IsConnected() {

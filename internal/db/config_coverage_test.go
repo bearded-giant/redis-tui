@@ -20,7 +20,7 @@ func TestNewConfig_MkdirError(t *testing.T) {
 	// Create a file where a directory is expected to force MkdirAll to fail.
 	dir := t.TempDir()
 	blocker := filepath.Join(dir, "blocker")
-	if err := os.WriteFile(blocker, []byte("x"), 0600); err != nil {
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	// configPath points to a file nested under the blocker file — MkdirAll
@@ -35,7 +35,7 @@ func TestNewConfig_LoadError(t *testing.T) {
 	// Write an invalid JSON file so load() returns a non-IsNotExist error.
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.json")
-	if err := os.WriteFile(configPath, []byte("not json at all"), 0600); err != nil {
+	if err := os.WriteFile(configPath, []byte("not json at all"), 0o600); err != nil {
 		t.Fatalf("setup failed: %v", err)
 	}
 	if _, err := NewConfig(configPath); err == nil {
@@ -159,14 +159,14 @@ func TestConfig_SaveRollback(t *testing.T) {
 
 	// Replace the config path with a directory so subsequent save()s fail.
 	badPath := filepath.Join(dir, "nowdir")
-	if err := os.Mkdir(badPath, 0750); err != nil {
+	if err := os.Mkdir(badPath, 0o750); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 	cfg.path = badPath
 
 	t.Run("AddConnection rollback", func(t *testing.T) {
 		before := len(cfg.Connections)
-		if _, err := cfg.AddConnection("x", "h", 1, "", 0, false); err == nil {
+		if _, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false}); err == nil {
 			t.Error("expected save error")
 		}
 		if got := len(cfg.Connections); got != before {
@@ -193,19 +193,25 @@ func TestConfig_UpdateConnection_SaveError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewConfig failed: %v", err)
 	}
-	conn, err := cfg.AddConnection("orig", "h", 1, "", 0, false)
+	conn, err := cfg.AddConnection(types.Connection{Name: "orig", Host: "h", Port: 1, DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
 
 	// Break save() by pointing path to a directory.
 	badPath := filepath.Join(dir, "blocked")
-	if err := os.Mkdir(badPath, 0750); err != nil {
+	if err := os.Mkdir(badPath, 0o750); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 	cfg.path = badPath
 
-	if _, err := cfg.UpdateConnection(conn.ID, "new", "h2", 2, "", 0, false); err == nil {
+	conn.Name = "new"
+	conn.Host = "h2"
+	conn.Port = 2
+	conn.DB = 0
+	conn.UseCluster = false
+
+	if _, err := cfg.UpdateConnection(conn); err == nil {
 		t.Error("expected save error")
 	}
 	if cfg.Connections[0].Name != "orig" {

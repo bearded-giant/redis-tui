@@ -741,7 +741,7 @@ func TestGetValue_HyperLogLog_PFCountSuccess(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -773,7 +773,7 @@ func TestGetValue_TypeError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -800,7 +800,7 @@ func gvFakeClient(t *testing.T, keyType string, valueCmd string) *Client {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -863,7 +863,7 @@ func TestGetValue_ReJSON_Success(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -894,7 +894,7 @@ func TestGetValue_ReJSON_Error(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -918,7 +918,7 @@ func TestBulkDelete_ScanAllError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -944,7 +944,7 @@ func TestBulkDelete_DelError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -968,7 +968,7 @@ func TestBatchSetTTL_ScanAllError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })

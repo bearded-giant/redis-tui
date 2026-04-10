@@ -64,7 +64,7 @@ func TestLoadKeyValue(t *testing.T) {
 func TestLoadKeyPreview(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		mock.SetKey("pk", types.RedisValue{Type: types.KeyTypeString, StringValue: "preview"}, types.KeyTypeString, 0)
 		msg := cmds.LoadKeyPreview("pk")()
 		result := msg.(types.KeyPreviewLoadedMsg)
@@ -213,7 +213,7 @@ func TestCreateKey(t *testing.T) {
 
 	t.Run("zset invalid score", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		msg := cmds.CreateKey("zk", types.KeyTypeZSet, "member", "not-a-number", 0)()
 		result := msg.(types.KeySetMsg)
 		if result.Err == nil {
@@ -223,7 +223,7 @@ func TestCreateKey(t *testing.T) {
 
 	t.Run("json type", func(t *testing.T) {
 		cmds, mock := newMockCmds()
-		_ = mock.Connect("localhost", 6379, "", 0)
+		_ = mock.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		msg := cmds.CreateKey("jk", types.KeyTypeJSON, `{"a":1}`, "", 0)()
 		result := msg.(types.KeySetMsg)
 		if result.Err != nil {

@@ -31,7 +31,7 @@ func TestLoadFavorites(t *testing.T) {
 func TestAddFavorite(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cfg := testutil.NewTestConfig(t)
-		testutil.MustAddConnection(t, cfg, "test", "localhost", 6379, "", 0)
+		testutil.MustAddConnection(t, cfg, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0})
 		cmds := NewCommands(cfg, nil)
 		msg := cmds.AddFavorite(1, "mykey", "My Key")()
 		result := msg.(types.FavoriteAddedMsg)

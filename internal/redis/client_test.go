@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
 func TestFuzzyScore(t *testing.T) {
@@ -187,7 +189,7 @@ func TestScanAll_NonClusterScanError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -211,7 +213,7 @@ func TestScanEach_NonClusterScanError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(host, port, "", 0); err != nil {
+	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })

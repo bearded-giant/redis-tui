@@ -122,7 +122,7 @@ func TestAssertConnectionExists_NotFound(t *testing.T) {
 
 func TestAssertConnectionNotExists_FoundFails(t *testing.T) {
 	cfg := NewTestConfig(t)
-	conn := MustAddConnection(t, cfg, "name", "localhost", 6379, "", 0)
+	conn := MustAddConnection(t, cfg, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	f := runWithFakeTB(t, func(tb testing.TB) {
 		AssertConnectionNotExists(tb, cfg, conn.ID)
 	})
@@ -188,20 +188,19 @@ func TestMustAddConnection_Failure(t *testing.T) {
 		t.Fatalf("NewConfig: %v", err)
 	}
 	// Make the directory read-only so save() fails on AddConnection.
-	if err := os.Chmod(dir, 0500); err != nil {
+	if err := os.Chmod(dir, 0o500); err != nil {
 		t.Fatalf("chmod dir: %v", err)
 	}
 	t.Cleanup(func() {
-		if err := os.Chmod(dir, 0700); err != nil {
+		if err := os.Chmod(dir, 0o700); err != nil {
 			t.Logf("restore dir perms: %v", err)
 		}
 	})
 
 	f := runWithFakeTB(t, func(tb testing.TB) {
-		MustAddConnection(tb, cfg, "name", "localhost", 6379, "", 0)
+		MustAddConnection(tb, cfg, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	})
 	if !f.didFail() {
 		t.Error("expected MustAddConnection to fail when save errors")
 	}
 }
-

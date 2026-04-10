@@ -39,7 +39,7 @@ func NewTestConfig(t testing.TB) *db.Config {
 }
 
 // MustAddConnection adds a connection to the config or fails the test.
-func MustAddConnection(t *testing.T, cfg *db.Config, conn types.Connection) types.Connection {
+func MustAddConnection(t testing.TB, cfg *db.Config, conn types.Connection) types.Connection {
 	t.Helper()
 	conn, err := cfg.AddConnection(conn)
 	if err != nil {
