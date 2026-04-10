@@ -64,11 +64,11 @@ func (c *Client) Connect(conn types.Connection) error {
 		if conn.TLSConfig == nil {
 			return fmt.Errorf("TLS requested but TLS configuration is missing")
 		}
-		tslCfg, err := conn.TLSConfig.BuildTLSConfig()
+		tlsCfg, err := conn.TLSConfig.BuildTLSConfig()
 		if err != nil {
 			return err
 		}
-		opts.TLSConfig = tslCfg
+		opts.TLSConfig = tlsCfg
 	}
 	client := redis.NewClient(opts)
 
@@ -235,11 +235,11 @@ func (c *Client) TestConnection(conn types.Connection) (time.Duration, error) {
 		if conn.TLSConfig == nil {
 			return 0, fmt.Errorf("TLS requested but TLS configuration is missing")
 		}
-		tslCfg, err := conn.TLSConfig.BuildTLSConfig()
+		tlsCfg, err := conn.TLSConfig.BuildTLSConfig()
 		if err != nil {
 			return 0, err
 		}
-		opts.TLSConfig = tslCfg
+		opts.TLSConfig = tlsCfg
 	}
 	testClient := redis.NewClient(opts)
 	defer testClient.Close()
