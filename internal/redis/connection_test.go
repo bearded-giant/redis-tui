@@ -85,6 +85,40 @@ func TestConnect_WrongPassword(t *testing.T) {
 	}
 }
 
+func TestConnect_EmptyHostError(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+
+	client := NewClient()
+	port, _ := strconv.Atoi(mr.Port())
+
+	err = client.Connect(types.Connection{Name: "test", Host: "", Port: port, Password: "wrong-password", DB: 0, UseCluster: false})
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("expected error when connecting with empty host")
+	}
+}
+
+func TestConnect_EmptyPortError(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+
+	client := NewClient()
+	port := 0
+
+	err = client.Connect(types.Connection{Name: "", Host: mr.Host(), Port: port, Password: "wrong-password", DB: 0, UseCluster: false})
+	if err == nil {
+		_ = client.Disconnect()
+		t.Fatal("expected error when connecting with empty port")
+	}
+}
+
 func TestConnect_CorrectPassword(t *testing.T) {
 	mr, err := miniredis.Run()
 	if err != nil {

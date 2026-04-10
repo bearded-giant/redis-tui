@@ -23,7 +23,14 @@ const (
 	defaultPingTimeout  = 5 * time.Second
 )
 
-func defaultOptions(conn types.Connection) *redis.Options {
+func defaultOptions(conn types.Connection) (*redis.Options, error) {
+	if conn.Host == "" {
+		return nil, errors.New("host is required")
+	}
+	if conn.Port == 0 {
+		return nil, errors.New("port is required")
+	}
+
 	return &redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", conn.Host, conn.Port),
 		Password:     conn.Password,
@@ -34,7 +41,7 @@ func defaultOptions(conn types.Connection) *redis.Options {
 		PoolSize:     defaultPoolSize,
 		MinIdleConns: defaultMinIdleConns,
 		MaxRetries:   defaultMaxRetries,
-	}
+	}, nil
 }
 
 // cleanup closes existing connections before establishing a new one
@@ -48,7 +55,11 @@ func (c *Client) cleanup() {
 func (c *Client) Connect(conn types.Connection) error {
 	c.cleanup()
 
-	opts := defaultOptions(conn)
+	opts, optErr := defaultOptions(conn)
+	if optErr != nil {
+		return optErr
+	}
+
 	if conn.UseTLS {
 		if conn.TLSConfig == nil {
 			return fmt.Errorf("TLS requested but TLS configuration is missing")
@@ -215,7 +226,11 @@ func (c *Client) SelectDB(db int) error {
 
 // TestConnection tests a connection
 func (c *Client) TestConnection(conn types.Connection) (time.Duration, error) {
-	opts := defaultOptions(conn)
+	opts, optErr := defaultOptions(conn)
+	if optErr != nil {
+		return 0, optErr
+	}
+
 	if conn.UseTLS {
 		if conn.TLSConfig == nil {
 			return 0, fmt.Errorf("TLS requested but TLS configuration is missing")

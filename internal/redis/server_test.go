@@ -283,6 +283,48 @@ func TestTestConnection(t *testing.T) {
 		}
 	})
 
+	t.Run("empty host returns error", func(t *testing.T) {
+		// Start a separate miniredis so we have a valid client context
+		mr, err := miniredis.Run()
+		if err != nil {
+			t.Fatalf("failed to start miniredis: %v", err)
+		}
+		t.Cleanup(mr.Close)
+
+		c := NewClient()
+		port, _ := strconv.Atoi(mr.Port())
+		if err := c.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		t.Cleanup(func() { _ = c.Disconnect() })
+
+		_, err = c.TestConnection(types.Connection{Name: "test", Host: "", Port: 6379, Password: "", DB: 0, UseCluster: false})
+		if err == nil {
+			t.Fatal("TestConnection() expected error for empty host, got nil")
+		}
+	})
+
+	t.Run("empty port returns error", func(t *testing.T) {
+		// Start a separate miniredis so we have a valid client context
+		mr, err := miniredis.Run()
+		if err != nil {
+			t.Fatalf("failed to start miniredis: %v", err)
+		}
+		t.Cleanup(mr.Close)
+
+		c := NewClient()
+		port, _ := strconv.Atoi(mr.Port())
+		if err := c.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		t.Cleanup(func() { _ = c.Disconnect() })
+
+		_, err = c.TestConnection(types.Connection{Name: "test", Host: "192.168.0.1", Port: 0, Password: "", DB: 0, UseCluster: false})
+		if err == nil {
+			t.Fatal("TestConnection() expected error for empty port, got nil")
+		}
+	})
+
 	t.Run("successful connection with TLS returns latency", func(t *testing.T) {
 		serverCert := testutil.GenerateEphemeralCert(t)
 
