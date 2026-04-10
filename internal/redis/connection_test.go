@@ -100,6 +100,22 @@ func TestConnect_CorrectPassword(t *testing.T) {
 	t.Cleanup(func() { _ = client.Disconnect() })
 }
 
+func TestConnect_NilConnection(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+
+	client := NewClient()
+	connErr := client.Connect(nil)
+
+	if connErr == nil {
+		_ = client.Disconnect()
+		t.Error("expected error when connecting with nil connection")
+	}
+}
+
 func TestDisconnect(t *testing.T) {
 	t.Run("disconnect after connect", func(t *testing.T) {
 		mr, err := miniredis.Run()
@@ -228,6 +244,21 @@ func TestReconnectCycle(t *testing.T) {
 	}
 	if got != "reconnectval" {
 		t.Errorf("Get = %q, want %q", got, "reconnectval")
+	}
+}
+
+func TestConnectCluster_NilConnectionError(t *testing.T) {
+	dummyAddrs := []string{"127.0.0.1:7000"}
+	client := NewClient()
+
+	err := client.ConnectCluster(dummyAddrs, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	expectedErr := "connection is nil"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
 	}
 }
 

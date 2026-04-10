@@ -279,6 +279,23 @@ func TestTestConnection(t *testing.T) {
 			t.Fatal("TestConnection() expected error for unreachable host, got nil")
 		}
 	})
+
+	t.Run("nil conn", func(t *testing.T) {
+		mr, err := miniredis.Run()
+		if err != nil {
+			t.Fatalf("failed to start miniredis: %v", err)
+		}
+		t.Cleanup(mr.Close)
+
+		client := NewClient()
+		_, connErr := client.TestConnection(nil)
+
+		if connErr == nil {
+			_ = client.Disconnect()
+			t.Error("expected error when connecting with nil connection")
+		}
+	})
+
 }
 
 // ---------------------------------------------------------------------------

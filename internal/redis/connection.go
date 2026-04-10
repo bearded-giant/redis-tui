@@ -24,6 +24,9 @@ const (
 )
 
 func defaultOptions(conn *types.Connection) *redis.Options {
+	if conn == nil {
+		return nil
+	}
 	return &redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", conn.Host, conn.Port),
 		Password:     conn.Password,
@@ -47,6 +50,10 @@ func (c *Client) cleanup() {
 // Connect establishes a connection to Redis
 func (c *Client) Connect(conn *types.Connection) error {
 	c.cleanup()
+
+	if conn == nil {
+		return fmt.Errorf("connection is nil")
+	}
 
 	opts := defaultOptions(conn)
 	if conn.UseTLS {
@@ -80,6 +87,10 @@ func (c *Client) Connect(conn *types.Connection) error {
 // ConnectCluster establishes a connection to a Redis cluster
 func (c *Client) ConnectCluster(addrs []string, conn *types.Connection) error {
 	c.cleanup()
+
+	if conn == nil {
+		return fmt.Errorf("connection is nil")
+	}
 
 	// Parse first address for display purposes
 	seedHost := "127.0.0.1"
@@ -203,6 +214,9 @@ func (c *Client) SelectDB(db int) error {
 // TestConnection tests a connection
 func (c *Client) TestConnection(conn *types.Connection) (time.Duration, error) {
 	testClient := redis.NewClient(defaultOptions(conn))
+	if conn == nil {
+		return 0, fmt.Errorf("connection is nil")
+	}
 	defer testClient.Close()
 
 	start := time.Now()
