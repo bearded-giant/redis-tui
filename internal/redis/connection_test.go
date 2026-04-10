@@ -1,10 +1,13 @@
 package redis
 
 import (
+	"crypto/tls"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/davidbudnick/redis-tui/internal/testutil"
 	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
@@ -114,6 +117,94 @@ func TestConnect_NilConnection(t *testing.T) {
 		_ = client.Disconnect()
 		t.Error("expected error when connecting with nil connection")
 	}
+}
+
+func TestConnect_WithTLS(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		serverCert := testutil.GenerateEphemeralCert(t)
+
+		serverTLSConfig := &tls.Config{
+			Certificates: []tls.Certificate{serverCert},
+		}
+
+		mr, err := miniredis.RunTLS(serverTLSConfig)
+		if err != nil {
+			t.Fatalf("failed to start miniredis with TLS: %v", err)
+		}
+		t.Cleanup(mr.Close)
+
+		client := NewClient()
+		port, _ := strconv.Atoi(mr.Port())
+
+		conn := &types.Connection{
+			Name:   "tls-test",
+			Host:   mr.Host(),
+			Port:   port,
+			UseTLS: true,
+			TLSConfig: &types.TLSConfig{
+				InsecureSkipVerify: true,
+			},
+		}
+		if err := client.Connect(conn); err != nil {
+			t.Fatalf("Connect() with TLS returned error: %v", err)
+		}
+		t.Cleanup(func() { _ = client.Disconnect() })
+
+		// Verify the client is usable by setting and getting a key
+		mr.Set("tlskey", "tlsval")
+		got, err := client.client.Get(client.ctx, "tlskey").Result()
+		if err != nil {
+			t.Fatalf("Get after TLS Connect failed: %v", err)
+		}
+		if got != "tlsval" {
+			t.Errorf("Get = %q, want %q", got, "tlsval")
+		}
+	})
+	t.Run("TLS requested but config is missing", func(t *testing.T) {
+		client := NewClient()
+
+		conn := &types.Connection{
+			Name:   "tls-missing-config",
+			Host:   "localhost",
+			Port:   6379,
+			UseTLS: true,
+			// TLSConfig is intentionally left nil
+		}
+
+		err := client.Connect(conn)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		expectedErr := "TLS requested but TLS configuration is missing"
+		if err.Error() != expectedErr {
+			t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+		}
+	})
+	t.Run("failed to build TLS config", func(t *testing.T) {
+		client := NewClient()
+
+		conn := &types.Connection{
+			Name:   "tls-build-error",
+			Host:   "localhost",
+			Port:   6379,
+			UseTLS: true,
+			TLSConfig: &types.TLSConfig{
+				CertFile: "/path/to/nowhere/cert.pem",
+				KeyFile:  "/path/to/nowhere/key.pem",
+			},
+		}
+
+		err := client.Connect(conn)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		if !strings.Contains(err.Error(), "failed to build TLS config") &&
+			!strings.Contains(err.Error(), "failed to load TLS key pair") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
 }
 
 func TestDisconnect(t *testing.T) {
