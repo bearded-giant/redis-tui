@@ -262,6 +262,59 @@ func TestConnectCluster_NilConnectionError(t *testing.T) {
 	}
 }
 
+func TestConnectCluster_WithTLSErrors(t *testing.T) {
+	t.Run("TLS requested but config is missing", func(t *testing.T) {
+		dummyAddrs := []string{"127.0.0.1:7000"}
+		client := NewClient()
+
+		conn := &types.Connection{
+			Name:   "cluster-tls-missing-config",
+			Host:   "127.0.0.1",
+			Port:   7000,
+			UseTLS: true,
+			// TLSConfig is intentionally nil
+		}
+
+		err := client.ConnectCluster(dummyAddrs, conn)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		expectedErr := "TLS requested but TLS configuration is missing"
+		if err.Error() != expectedErr {
+			t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+		}
+	})
+
+	t.Run("failed to build TLS config", func(t *testing.T) {
+		dummyAddrs := []string{"127.0.0.1:7000"}
+		client := NewClient()
+
+		conn := &types.Connection{
+			Name:   "cluster-tls-build-error",
+			Host:   "127.0.0.1",
+			Port:   7000,
+			UseTLS: true,
+			TLSConfig: &types.TLSConfig{
+				// Providing invalid paths will trigger a file system read error
+				CertFile: "/invalid/path/cert.pem",
+				KeyFile:  "/invalid/path/key.pem",
+			},
+		}
+
+		err := client.ConnectCluster(dummyAddrs, conn)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		// Use substring matching to account for OS-specific underlying errors
+		if !strings.Contains(err.Error(), "failed to build TLS config") &&
+			!strings.Contains(err.Error(), "failed to load TLS key pair") {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+}
+
 // ---------------------------------------------------------------------------
 // ConnectCluster — exercises the ClusterClient setup and Ping failure path.
 // We pass an unreachable address so the Ping returns an error, but the

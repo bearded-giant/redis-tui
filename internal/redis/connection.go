@@ -101,7 +101,7 @@ func (c *Client) ConnectCluster(addrs []string, conn *types.Connection) error {
 		seedHost = host
 	}
 
-	cluster := redis.NewClusterClient(&redis.ClusterOptions{
+	opts := &redis.ClusterOptions{
 		Addrs:        addrs,
 		Password:     conn.Password,
 		DialTimeout:  defaultDialTimeout,
@@ -111,17 +111,30 @@ func (c *Client) ConnectCluster(addrs []string, conn *types.Connection) error {
 		MinIdleConns: defaultMinIdleConns,
 		MaxRetries:   defaultMaxRetries,
 		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			_, port, err := net.SplitHostPort(addr)
+			_, p, err := net.SplitHostPort(addr)
 			if err != nil {
 				return nil, err
 			}
-			return net.DialTimeout(network, net.JoinHostPort(seedHost, port), defaultDialTimeout)
+			return net.DialTimeout(network, net.JoinHostPort(seedHost, p), defaultDialTimeout)
 		},
-	})
+	}
+
+	if conn.UseTLS {
+		if conn.TLSConfig == nil {
+			return fmt.Errorf("TLS requested but TLS configuration is missing")
+		}
+		tlsCfg, err := conn.TLSConfig.BuildTLSConfig()
+		if err != nil {
+			return fmt.Errorf("failed to build TLS config: %w", err)
+		}
+		opts.TLSConfig = tlsCfg
+	}
+
+	cluster := redis.NewClusterClient(opts)
 
 	c.mu.Lock()
 	c.isCluster = true
-	c.password = conn.Password // ClusterClient does not support passwords
+	c.password = conn.Password
 	c.host = host
 	c.port = port
 	c.cluster = cluster
@@ -213,10 +226,22 @@ func (c *Client) SelectDB(db int) error {
 
 // TestConnection tests a connection
 func (c *Client) TestConnection(conn *types.Connection) (time.Duration, error) {
-	testClient := redis.NewClient(defaultOptions(conn))
 	if conn == nil {
 		return 0, fmt.Errorf("connection is nil")
 	}
+
+	opts := defaultOptions(conn)
+	if conn.UseTLS {
+		if conn.TLSConfig == nil {
+			return 0, fmt.Errorf("TLS requested but TLS configuration is missing")
+		}
+		tslCfg, err := conn.TLSConfig.BuildTLSConfig()
+		if err != nil {
+			return 0, err
+		}
+		opts.TLSConfig = tslCfg
+	}
+	testClient := redis.NewClient(opts)
 	defer testClient.Close()
 
 	start := time.Now()
