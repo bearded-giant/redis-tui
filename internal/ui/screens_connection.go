@@ -25,7 +25,7 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Loading = true
 			m.StatusMsg = "Connecting..."
 			m.ConnectionError = "" // Clear any previous connection error
-			return m, m.Cmds.Connect(m.CurrentConn)
+			return m, m.Cmds.Connect(conn)
 		}
 	case "a", "n":
 		m.Screen = types.ScreenAddConnection
@@ -92,7 +92,7 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenTestConnection
 		conn := m.convertCurrentInputsToConnection(m.ConnInputs, "test")
 		return m, m.Cmds.TestConnection(
-			&conn,
+			conn,
 		)
 	case "esc":
 		m.Screen = types.ScreenConnections

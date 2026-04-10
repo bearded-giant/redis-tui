@@ -51,7 +51,7 @@ func TestConnect(t *testing.T) {
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
 
-	if err := client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect() returned error: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -78,7 +78,7 @@ func TestConnect_WrongPassword(t *testing.T) {
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
 
-	err = client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "wrong-password", DB: 0, UseCluster: false})
+	err = client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "wrong-password", DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("expected error when connecting with wrong password")
@@ -96,27 +96,11 @@ func TestConnect_CorrectPassword(t *testing.T) {
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
 
-	err = client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "correct-password", DB: 0, UseCluster: false})
+	err = client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "correct-password", DB: 0, UseCluster: false})
 	if err != nil {
 		t.Fatalf("Connect() with correct password returned error: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
-}
-
-func TestConnect_NilConnection(t *testing.T) {
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatalf("failed to start miniredis: %v", err)
-	}
-	t.Cleanup(mr.Close)
-
-	client := NewClient()
-	connErr := client.Connect(nil)
-
-	if connErr == nil {
-		_ = client.Disconnect()
-		t.Error("expected error when connecting with nil connection")
-	}
 }
 
 func TestConnect_WithTLS(t *testing.T) {
@@ -136,7 +120,7 @@ func TestConnect_WithTLS(t *testing.T) {
 		client := NewClient()
 		port, _ := strconv.Atoi(mr.Port())
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "tls-test",
 			Host:   mr.Host(),
 			Port:   port,
@@ -163,7 +147,7 @@ func TestConnect_WithTLS(t *testing.T) {
 	t.Run("TLS requested but config is missing", func(t *testing.T) {
 		client := NewClient()
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "tls-missing-config",
 			Host:   "localhost",
 			Port:   6379,
@@ -184,7 +168,7 @@ func TestConnect_WithTLS(t *testing.T) {
 	t.Run("failed to build TLS config", func(t *testing.T) {
 		client := NewClient()
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "tls-build-error",
 			Host:   "localhost",
 			Port:   6379,
@@ -218,7 +202,7 @@ func TestDisconnect(t *testing.T) {
 		client := NewClient()
 		port, _ := strconv.Atoi(mr.Port())
 
-		if err := client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+		if err := client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 			t.Fatalf("Connect() returned error: %v", err)
 		}
 
@@ -290,7 +274,7 @@ func TestCleanup(t *testing.T) {
 	client := NewClient()
 	port, _ := strconv.Atoi(mr.Port())
 
-	if err := client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect() returned error: %v", err)
 	}
 
@@ -312,7 +296,7 @@ func TestReconnectCycle(t *testing.T) {
 	port, _ := strconv.Atoi(mr.Port())
 
 	// First connect
-	if err := client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("first Connect() returned error: %v", err)
 	}
 
@@ -322,7 +306,7 @@ func TestReconnectCycle(t *testing.T) {
 	}
 
 	// Reconnect
-	if err := client.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("second Connect() returned error: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -338,27 +322,12 @@ func TestReconnectCycle(t *testing.T) {
 	}
 }
 
-func TestConnectCluster_NilConnectionError(t *testing.T) {
-	dummyAddrs := []string{"127.0.0.1:7000"}
-	client := NewClient()
-
-	err := client.ConnectCluster(dummyAddrs, nil)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	expectedErr := "connection is nil"
-	if err.Error() != expectedErr {
-		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
-	}
-}
-
 func TestConnectCluster_WithTLSErrors(t *testing.T) {
 	t.Run("TLS requested but config is missing", func(t *testing.T) {
 		dummyAddrs := []string{"127.0.0.1:7000"}
 		client := NewClient()
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "cluster-tls-missing-config",
 			Host:   "127.0.0.1",
 			Port:   7000,
@@ -381,7 +350,7 @@ func TestConnectCluster_WithTLSErrors(t *testing.T) {
 		dummyAddrs := []string{"127.0.0.1:7000"}
 		client := NewClient()
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "cluster-tls-build-error",
 			Host:   "127.0.0.1",
 			Port:   7000,
@@ -417,7 +386,7 @@ func TestConnectCluster_UnreachableAddr(t *testing.T) {
 	client := NewClient()
 
 	// Address with default port and host that should not be listening.
-	err := client.ConnectCluster([]string{"127.0.0.1:1"}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 1, DB: 0, UseCluster: false})
+	err := client.ConnectCluster([]string{"127.0.0.1:1"}, types.Connection{Name: "test", Host: "127.0.0.1", Port: 1, DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("ConnectCluster expected error for unreachable addr, got nil")
@@ -444,7 +413,7 @@ func TestConnectCluster_EmptyAddrs(t *testing.T) {
 	client := NewClient()
 
 	// No addresses — should still construct the cluster client and fail on Ping.
-	err := client.ConnectCluster([]string{}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
+	err := client.ConnectCluster([]string{}, types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("ConnectCluster expected error for empty addrs, got nil")
@@ -495,7 +464,7 @@ func TestDisconnect_ClusterCloseBranch(t *testing.T) {
 	client := NewClient()
 
 	// Use unreachable addr — Ping fails but cluster client is still attached.
-	err := client.ConnectCluster([]string{"127.0.0.1:1"}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
+	err := client.ConnectCluster([]string{"127.0.0.1:1"}, types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
 	if err == nil {
 		_ = client.Disconnect()
 		t.Fatal("ConnectCluster expected error, got nil")
@@ -557,7 +526,7 @@ func TestConnectCluster_DialerSplitHostPortError(t *testing.T) {
 
 	// "no-port" has no colon — net.SplitHostPort returns an error from the
 	// Dialer closure, which exercises the err-return branch.
-	err := client.ConnectCluster([]string{"no-port"}, &types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
+	err := client.ConnectCluster([]string{"no-port"}, types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
 	if err == nil {
 		t.Fatal("expected error from ConnectCluster with addr lacking a port")
 	}
@@ -578,7 +547,7 @@ func TestSelectDB_SelectError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })

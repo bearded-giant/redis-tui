@@ -162,7 +162,7 @@ func TestDeleteConnection(t *testing.T) {
 func TestConnect(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, _ := newMockCmds()
-		msg := cmds.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectedMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
@@ -172,7 +172,7 @@ func TestConnect(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		cmds, mock := newMockCmds()
 		mock.ConnectError = errors.New("connection refused")
-		msg := cmds.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectedMsg)
 		if result.Err == nil {
 			t.Error("expected error")
@@ -181,7 +181,7 @@ func TestConnect(t *testing.T) {
 
 	t.Run("cluster mode", func(t *testing.T) {
 		cmds, _ := newMockCmds()
-		msg := cmds.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 7000, DB: 0, UseCluster: true})()
+		msg := cmds.Connect(types.Connection{Name: "test", Host: "localhost", Port: 7000, DB: 0, UseCluster: true})()
 		result := msg.(types.ConnectedMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
@@ -190,16 +190,7 @@ func TestConnect(t *testing.T) {
 
 	t.Run("nil redis", func(t *testing.T) {
 		cmds := NewCommands(nil, nil)
-		msg := cmds.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
-		result := msg.(types.ConnectedMsg)
-		if result.Err != nil {
-			t.Errorf("nil redis should not error: %v", result.Err)
-		}
-	})
-
-	t.Run("nil conn", func(t *testing.T) {
-		cmds := NewCommands(nil, nil)
-		msg := cmds.Connect(nil)()
+		msg := cmds.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectedMsg)
 		if result.Err != nil {
 			t.Errorf("nil redis should not error: %v", result.Err)
@@ -229,7 +220,7 @@ func TestTestConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()
 		mock.TestConnectionLatency = 5 * time.Millisecond
-		msg := cmds.TestConnection(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionTestMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
@@ -245,7 +236,7 @@ func TestTestConnection(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		cmds, mock := newMockCmds()
 		mock.TestConnectionError = errors.New("connection failed")
-		msg := cmds.TestConnection(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionTestMsg)
 		if result.Err == nil {
 			t.Error("expected error")
@@ -257,16 +248,7 @@ func TestTestConnection(t *testing.T) {
 
 	t.Run("nil redis", func(t *testing.T) {
 		cmds := NewCommands(nil, nil)
-		msg := cmds.TestConnection(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
-		result := msg.(types.ConnectionTestMsg)
-		if result.Err != nil {
-			t.Errorf("nil redis should not error: %v", result.Err)
-		}
-	})
-
-	t.Run("nil conn", func(t *testing.T) {
-		cmds := NewCommands(nil, nil)
-		msg := cmds.TestConnection(nil)()
+		msg := cmds.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionTestMsg)
 		if result.Err != nil {
 			t.Errorf("nil redis should not error: %v", result.Err)

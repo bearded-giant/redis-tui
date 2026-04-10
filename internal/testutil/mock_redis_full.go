@@ -116,7 +116,7 @@ func NewFullMockRedisClient() *FullMockRedisClient {
 
 // Connection management
 
-func (m *FullMockRedisClient) Connect(conn *types.Connection) error {
+func (m *FullMockRedisClient) Connect(conn types.Connection) error {
 	m.Calls = append(m.Calls, "Connect")
 
 	if m.ConnectWithTLSError != nil {
@@ -126,20 +126,20 @@ func (m *FullMockRedisClient) Connect(conn *types.Connection) error {
 	return m.MockRedisClient.Connect(conn)
 }
 
-func (m *FullMockRedisClient) ConnectCluster(_ []string, _ *types.Connection) error {
+func (m *FullMockRedisClient) ConnectCluster(_ []string, _ types.Connection) error {
 	m.Calls = append(m.Calls, "ConnectCluster")
 	if m.ConnectClusterError != nil {
 		return m.ConnectClusterError
 	}
 	conn := types.Connection{Name: "", Host: "", Port: 0, UseCluster: true}
-	return m.MockRedisClient.Connect(&conn)
+	return m.MockRedisClient.Connect(conn)
 }
 
 func (m *FullMockRedisClient) IsCluster() bool {
 	return m.IsClusterResult
 }
 
-func (m *FullMockRedisClient) TestConnection(_ *types.Connection) (time.Duration, error) {
+func (m *FullMockRedisClient) TestConnection(_ types.Connection) (time.Duration, error) {
 	m.Calls = append(m.Calls, "TestConnection")
 	return m.TestConnectionLatency, m.TestConnectionError
 }

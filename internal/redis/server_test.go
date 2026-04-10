@@ -243,7 +243,7 @@ func TestTestConnection(t *testing.T) {
 			t.Fatalf("failed to parse port: %v", err)
 		}
 
-		latency, err := client.TestConnection(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false})
+		latency, err := client.TestConnection(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false})
 		if err != nil {
 			t.Fatalf("TestConnection() error = %v", err)
 		}
@@ -256,7 +256,7 @@ func TestTestConnection(t *testing.T) {
 		client, _ := setupTestClient(t)
 
 		// Use a port that is almost certainly not listening
-		_, err := client.TestConnection(&types.Connection{Name: "test", Host: "127.0.0.1", Port: 1, Password: "", DB: 0, UseCluster: false})
+		_, err := client.TestConnection(types.Connection{Name: "test", Host: "127.0.0.1", Port: 1, Password: "", DB: 0, UseCluster: false})
 		if err == nil {
 			t.Fatal("TestConnection() expected error for wrong port, got nil")
 		}
@@ -272,30 +272,14 @@ func TestTestConnection(t *testing.T) {
 
 		c := NewClient()
 		port, _ := strconv.Atoi(mr.Port())
-		if err := c.Connect(&types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
+		if err := c.Connect(types.Connection{Name: "test", Host: mr.Host(), Port: port, Password: "", DB: 0, UseCluster: false}); err != nil {
 			t.Fatalf("Connect() error = %v", err)
 		}
 		t.Cleanup(func() { _ = c.Disconnect() })
 
-		_, err = c.TestConnection(&types.Connection{Name: "test", Host: "192.0.2.1", Port: 6379, Password: "", DB: 0, UseCluster: false})
+		_, err = c.TestConnection(types.Connection{Name: "test", Host: "192.0.2.1", Port: 6379, Password: "", DB: 0, UseCluster: false})
 		if err == nil {
 			t.Fatal("TestConnection() expected error for unreachable host, got nil")
-		}
-	})
-
-	t.Run("nil conn", func(t *testing.T) {
-		mr, err := miniredis.Run()
-		if err != nil {
-			t.Fatalf("failed to start miniredis: %v", err)
-		}
-		t.Cleanup(mr.Close)
-
-		client := NewClient()
-		_, connErr := client.TestConnection(nil)
-
-		if connErr == nil {
-			_ = client.Disconnect()
-			t.Error("expected error when connecting with nil connection")
 		}
 	})
 
@@ -315,7 +299,7 @@ func TestTestConnection(t *testing.T) {
 		client := NewClient()
 		port, _ := strconv.Atoi(mr.Port())
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "tls-test",
 			Host:   mr.Host(),
 			Port:   port,
@@ -337,7 +321,7 @@ func TestTestConnection(t *testing.T) {
 	t.Run("TLS requested but config is missing", func(t *testing.T) {
 		client := NewClient()
 
-		conn := &types.Connection{
+		conn := types.Connection{
 			Name:   "tls-missing-config",
 			Host:   "localhost",
 			Port:   6379,
@@ -360,7 +344,7 @@ func TestTestConnection(t *testing.T) {
 	})
 	client := NewClient()
 
-	conn := &types.Connection{
+	conn := types.Connection{
 		Name:   "tls-build-error",
 		Host:   "localhost",
 		Port:   6379,
@@ -590,7 +574,7 @@ func TestGetServerInfo_InfoError(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -612,7 +596,7 @@ func TestGetServerInfo_MalformedLine(t *testing.T) {
 
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -650,7 +634,7 @@ func TestGetTopKeysByMemory_MemErrorContinues(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -673,7 +657,7 @@ func TestClientList_MalformedField(t *testing.T) {
 
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -704,7 +688,7 @@ func TestClusterNodes_Error(t *testing.T) {
 	})
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })
@@ -755,7 +739,7 @@ func TestGetLiveMetrics_MalformedLine(t *testing.T) {
 
 	host, port := srv.addr()
 	c := NewClient()
-	if err := c.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := c.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
 	t.Cleanup(func() { _ = c.Disconnect() })

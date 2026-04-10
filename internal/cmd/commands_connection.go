@@ -58,13 +58,10 @@ func (c *Commands) DeleteConnection(id int64) tea.Cmd {
 	}
 }
 
-func (c *Commands) Connect(conn *types.Connection) tea.Cmd {
+func (c *Commands) Connect(conn types.Connection) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {
 			return types.ConnectedMsg{Err: nil}
-		}
-		if conn == nil {
-			return types.ConnectedMsg{Err: fmt.Errorf("connection is nil")}
 		}
 		var err error
 		if conn.UseCluster {
@@ -88,13 +85,10 @@ func (c *Commands) Disconnect() tea.Cmd {
 	}
 }
 
-func (c *Commands) TestConnection(conn *types.Connection) tea.Cmd {
+func (c *Commands) TestConnection(conn types.Connection) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {
 			return types.ConnectionTestMsg{Success: false, Err: nil}
-		}
-		if conn == nil {
-			return types.ConnectionTestMsg{Success: false, Err: fmt.Errorf("connection is nil")}
 		}
 
 		latency, err := c.redis.TestConnection(conn)

@@ -36,7 +36,7 @@ func NewMockRedisClient() *MockRedisClient {
 }
 
 // Connect simulates connecting to Redis.
-func (m *MockRedisClient) Connect(conn *types.Connection) error {
+func (m *MockRedisClient) Connect(conn types.Connection) error {
 	if m.ConnectError != nil {
 		return m.ConnectError
 	}

@@ -58,11 +58,11 @@ type ConfigService interface {
 // RedisService defines the interface for Redis operations.
 type RedisService interface {
 	// Connection management
-	Connect(conn *types.Connection) error
-	ConnectCluster(addrs []string, conn *types.Connection) error
+	Connect(conn types.Connection) error
+	ConnectCluster(addrs []string, conn types.Connection) error
 	Disconnect() error
 	IsCluster() bool
-	TestConnection(conn *types.Connection) (time.Duration, error)
+	TestConnection(conn types.Connection) (time.Duration, error)
 
 	// Key operations
 	GetTotalKeys() int64

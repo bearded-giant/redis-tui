@@ -23,10 +23,7 @@ const (
 	defaultPingTimeout  = 5 * time.Second
 )
 
-func defaultOptions(conn *types.Connection) *redis.Options {
-	if conn == nil {
-		return nil
-	}
+func defaultOptions(conn types.Connection) *redis.Options {
 	return &redis.Options{
 		Addr:         fmt.Sprintf("%s:%d", conn.Host, conn.Port),
 		Password:     conn.Password,
@@ -48,12 +45,8 @@ func (c *Client) cleanup() {
 }
 
 // Connect establishes a connection to Redis
-func (c *Client) Connect(conn *types.Connection) error {
+func (c *Client) Connect(conn types.Connection) error {
 	c.cleanup()
-
-	if conn == nil {
-		return fmt.Errorf("connection is nil")
-	}
 
 	opts := defaultOptions(conn)
 	if conn.UseTLS {
@@ -85,12 +78,8 @@ func (c *Client) Connect(conn *types.Connection) error {
 }
 
 // ConnectCluster establishes a connection to a Redis cluster
-func (c *Client) ConnectCluster(addrs []string, conn *types.Connection) error {
+func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 	c.cleanup()
-
-	if conn == nil {
-		return fmt.Errorf("connection is nil")
-	}
 
 	// Parse first address for display purposes
 	seedHost := "127.0.0.1"
@@ -225,11 +214,7 @@ func (c *Client) SelectDB(db int) error {
 }
 
 // TestConnection tests a connection
-func (c *Client) TestConnection(conn *types.Connection) (time.Duration, error) {
-	if conn == nil {
-		return 0, fmt.Errorf("connection is nil")
-	}
-
+func (c *Client) TestConnection(conn types.Connection) (time.Duration, error) {
 	opts := defaultOptions(conn)
 	if conn.UseTLS {
 		if conn.TLSConfig == nil {

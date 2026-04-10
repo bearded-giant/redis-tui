@@ -30,7 +30,7 @@ func TestFullMockRedisClient_NewDefaults(t *testing.T) {
 
 func TestFullMockRedisClient_CallTracking(t *testing.T) {
 	m := NewFullMockRedisClient()
-	_ = m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+	_ = m.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 	m.SetIncludeTypes(true)
 	_ = m.FlushDB()
 	_ = m.SelectDB(0)
@@ -47,7 +47,7 @@ func TestFullMockRedisClient_CallTracking(t *testing.T) {
 func TestFullMockRedisClient_Connect(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := NewFullMockRedisClient()
-		err := m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		err := m.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		AssertNoError(t, err, "Connect")
 		AssertSliceLen(t, m.Calls, 1, "Calls after Connect")
 		AssertEqual(t, m.Calls[0], "Connect", "call name")
@@ -59,7 +59,7 @@ func TestFullMockRedisClient_Connect(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		m := NewFullMockRedisClient()
 		m.ConnectError = errTest
-		err := m.Connect(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		err := m.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		if !errors.Is(err, errTest) {
 			t.Errorf("expected errTest, got %v", err)
 		}
@@ -69,7 +69,7 @@ func TestFullMockRedisClient_Connect(t *testing.T) {
 func TestFullMockRedisClient_ConnectCluster(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := NewFullMockRedisClient()
-		err := m.ConnectCluster([]string{"localhost:6379"}, &types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		err := m.ConnectCluster([]string{"localhost:6379"}, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		AssertNoError(t, err, "ConnectCluster")
 		AssertEqual(t, m.Calls[0], "ConnectCluster", "call name")
 		if !m.IsConnected() {
@@ -80,7 +80,7 @@ func TestFullMockRedisClient_ConnectCluster(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		m := NewFullMockRedisClient()
 		m.ConnectClusterError = errTest
-		err := m.ConnectCluster([]string{"localhost:6379"}, &types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		err := m.ConnectCluster([]string{"localhost:6379"}, types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		if !errors.Is(err, errTest) {
 			t.Errorf("expected errTest, got %v", err)
 		}
@@ -98,7 +98,7 @@ func TestFullMockRedisClient_TestConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := NewFullMockRedisClient()
 		m.TestConnectionLatency = 42 * time.Millisecond
-		latency, err := m.TestConnection(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		latency, err := m.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		AssertNoError(t, err, "TestConnection")
 		AssertEqual(t, latency, 42*time.Millisecond, "latency")
 		AssertEqual(t, m.Calls[0], "TestConnection", "call name")
@@ -107,7 +107,7 @@ func TestFullMockRedisClient_TestConnection(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		m := NewFullMockRedisClient()
 		m.TestConnectionError = errTest
-		_, err := m.TestConnection(&types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		_, err := m.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
 		if !errors.Is(err, errTest) {
 			t.Errorf("expected errTest, got %v", err)
 		}

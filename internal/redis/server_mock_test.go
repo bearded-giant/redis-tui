@@ -273,7 +273,7 @@ func TestGetServerInfo_FullInfoParsing(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -342,7 +342,7 @@ func TestGetMemoryStats_FullInfoParsing(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -401,7 +401,7 @@ func TestGetLiveMetrics_FullInfoParsing(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -467,7 +467,7 @@ func TestClientList_FullParsing(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -522,7 +522,7 @@ func TestClusterInfo_FakeReply(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -550,7 +550,7 @@ func TestClusterNodes_FakeReply(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
@@ -777,7 +777,7 @@ func TestSlowLogGet_NonEmpty(t *testing.T) {
 
 	host, port := srv.addr()
 	client := NewClient()
-	if err := client.Connect(&types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
+	if err := client.Connect(types.Connection{Name: "test", Host: host, Port: port, DB: 0, UseCluster: false}); err != nil {
 		t.Fatalf("Connect to fake server: %v", err)
 	}
 	t.Cleanup(func() { _ = client.Disconnect() })
