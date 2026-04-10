@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
@@ -47,59 +46,59 @@ type FullMockRedisClient struct {
 	BitCountResult        int64
 
 	// Configurable errors (one per method)
-	ConnectClusterError    error
-	ConnectWithTLSError    error
-	TestConnectionError    error
-	SetStringError         error
-	SetTTLError            error
-	BatchSetTTLError       error
-	RPushError             error
-	LSetError              error
-	LRemError              error
-	SAddError              error
-	SRemError              error
-	ZAddError              error
-	ZRemError              error
-	HSetError              error
-	HDelError              error
-	XAddError              error
-	XDelError              error
-	SelectDBError          error
-	FlushDBError           error
-	ServerInfoError        error
-	MemStatsError          error
-	MemUsageError          error
-	SlowLogError           error
-	ClientListError        error
-	ClusterNodesError      error
-	ClusterInfoError       error
-	EvalError              error
-	PublishError           error
-	PubSubChannelsError    error
-	ConfigGetError         error
-	ConfigSetError         error
-	ExportError            error
-	ImportError            error
-	RenameError            error
-	CopyError              error
-	DeleteKeysError        error
-	BulkDeleteError        error
-	SearchByValueError     error
-	RegexSearchError       error
-	FuzzySearchError       error
-	CompareKeysError       error
-	KeyPrefixesError       error
+	ConnectClusterError     error
+	ConnectWithTLSError     error
+	TestConnectionError     error
+	SetStringError          error
+	SetTTLError             error
+	BatchSetTTLError        error
+	RPushError              error
+	LSetError               error
+	LRemError               error
+	SAddError               error
+	SRemError               error
+	ZAddError               error
+	ZRemError               error
+	HSetError               error
+	HDelError               error
+	XAddError               error
+	XDelError               error
+	SelectDBError           error
+	FlushDBError            error
+	ServerInfoError         error
+	MemStatsError           error
+	MemUsageError           error
+	SlowLogError            error
+	ClientListError         error
+	ClusterNodesError       error
+	ClusterInfoError        error
+	EvalError               error
+	PublishError            error
+	PubSubChannelsError     error
+	ConfigGetError          error
+	ConfigSetError          error
+	ExportError             error
+	ImportError             error
+	RenameError             error
+	CopyError               error
+	DeleteKeysError         error
+	BulkDeleteError         error
+	SearchByValueError      error
+	RegexSearchError        error
+	FuzzySearchError        error
+	CompareKeysError        error
+	KeyPrefixesError        error
 	SubscribeKeyspaceError  error
 	SubscribeKeyspaceEvents []types.KeyspaceEvent
-	UnsubscribeKSError     error
-	PFAddError             error
-	PFCountError           error
-	SetBitError            error
-	GetBitError            error
-	BitCountError          error
-	GeoAddError            error
-	GeoPosResult           []*redis.GeoPos
-	GeoPosError            error
+	UnsubscribeKSError      error
+	PFAddError              error
+	PFCountError            error
+	SetBitError             error
+	GetBitError             error
+	BitCountError           error
+	GeoAddError             error
+	GeoPosResult            []*redis.GeoPos
+	GeoPosError             error
 
 	// Call tracking
 	Calls []string
@@ -122,17 +121,6 @@ func (m *FullMockRedisClient) Connect(conn *types.Connection) error {
 
 	if m.ConnectWithTLSError != nil {
 		return m.ConnectWithTLSError
-	}
-
-	if conn.UseTLS {
-		if conn.TLSConfig == nil {
-			return fmt.Errorf("TLS requested but TLS configuration is missing")
-		}
-		_, err := conn.TLSConfig.BuildTLSConfig()
-		if err != nil {
-			return err
-		}
-		m.UsedTLS = true
 	}
 
 	return m.MockRedisClient.Connect(conn)
