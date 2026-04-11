@@ -22,21 +22,25 @@ func main() {
 	flush := flag.Bool("flush", false, "Flush all data before seeding")
 	flag.Parse()
 
+	run(*addr, *cluster, *flush)
+}
+
+func run(addr string, cluster, flush bool) {
 	ctx := context.Background()
 
 	var rdb redis.Cmdable
-	if *cluster {
-		rdb = newClusterClient(ctx, *addr)
+	if cluster {
+		rdb = makeClusterClient(ctx, addr)
 	} else {
-		rdb = redis.NewClient(&redis.Options{Addr: *addr})
+		rdb = redis.NewClient(&redis.Options{Addr: addr})
 	}
 
 	if err := rdb.(interface{ Ping(context.Context) *redis.StatusCmd }).Ping(ctx).Err(); err != nil {
-		logFatalf("cannot connect to %s: %v", *addr, err)
+		logFatalf("cannot connect to %s: %v", addr, err)
 	}
-	fmt.Printf("Connected to %s\n", *addr)
+	fmt.Printf("Connected to %s\n", addr)
 
-	if *flush {
+	if flush {
 		flushAll(ctx, rdb)
 	}
 
@@ -72,7 +76,7 @@ func runSeeds(ctx context.Context, rdb redis.Cmdable) {
 	seedTTLKeys(ctx, rdb)
 	seedNestedKeys(ctx, rdb)
 	seedJSONStrings(ctx, rdb)
-	if hasJSONModule(ctx, rdb) {
+	if checkJSON(ctx, rdb) {
 		seedJSON(ctx, rdb)
 	} else {
 		fmt.Println("  json (native): skipped — RedisJSON module not available")
@@ -353,8 +357,12 @@ func seedJSON(ctx context.Context, rdb redis.Cmdable) {
 	fmt.Printf("  json (native): %d keys\n", len(jsons))
 }
 
-// logFatalf is overridable in tests to avoid os.Exit.
-var logFatalf = log.Fatalf
+// Overridable in tests.
+var (
+	logFatalf         = log.Fatalf
+	makeClusterClient = newClusterClient
+	checkJSON         = hasJSONModule
+)
 
 func must(cmd interface{ Err() error }) {
 	if cmd.Err() != nil {
