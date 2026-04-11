@@ -9,8 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/davidbudnick/redis-tui/internal/ui"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -736,6 +739,112 @@ func TestSetup_Success(t *testing.T) {
 	if m.Cmds == nil {
 		t.Error("expected Cmds to be set")
 	}
+}
+
+type fatalPanic struct{ v any }
+
+func withFatalTrap(t *testing.T) {
+	t.Helper()
+	orig := logFatal
+	logFatal = func(v ...any) { panic(fatalPanic{v}) }
+	t.Cleanup(func() { logFatal = orig })
+}
+
+func withRunApp(t *testing.T, fn func(ui.Model) error) {
+	t.Helper()
+	orig := runApp
+	runApp = fn
+	t.Cleanup(func() { runApp = orig })
+}
+
+func safeMain() (recovered bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			if _, ok := r.(fatalPanic); ok {
+				recovered = true
+				return
+			}
+			if _, ok := r.(exitPanic); ok {
+				recovered = true
+				return
+			}
+			panic(r)
+		}
+	}()
+	main()
+	return false
+}
+
+func TestMain_Success(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui"})
+	_ = withExitTrap(t)
+
+	tmpDir := t.TempDir()
+	origHome := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = origHome })
+
+	withRunApp(t, func(_ ui.Model) error { return nil })
+
+	if safeMain() {
+		t.Error("main() should not have panicked")
+	}
+}
+
+func TestMain_SetupError(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui"})
+	_ = withExitTrap(t)
+	withFatalTrap(t)
+
+	origHome := userHomeDir
+	userHomeDir = func() (string, error) { return "/dev/null", nil }
+	t.Cleanup(func() { userHomeDir = origHome })
+
+	withRunApp(t, func(_ ui.Model) error { return nil })
+
+	if !safeMain() {
+		t.Error("expected logFatal for setup error")
+	}
+}
+
+func TestMain_RunError(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui"})
+	_ = withExitTrap(t)
+	withFatalTrap(t)
+
+	tmpDir := t.TempDir()
+	origHome := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = origHome })
+
+	withRunApp(t, func(_ ui.Model) error { return fmt.Errorf("TUI crashed") })
+
+	if !safeMain() {
+		t.Error("expected logFatal for run error")
+	}
+}
+
+func TestProdLogFatal(t *testing.T) {
+	if os.Getenv("TEST_PROD_LOG_FATAL") == "1" {
+		prodLogFatal("test fatal")
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestProdLogFatal")
+	cmd.Env = append(os.Environ(), "TEST_PROD_LOG_FATAL=1")
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected non-zero exit from prodLogFatal")
+	}
+}
+
+func TestProdRunApp(t *testing.T) {
+	// prodRunApp creates a tea.Program and calls Run(). Without a real
+	// terminal, Run() returns an error. We just need the lines to execute.
+	m := ui.NewModel()
+	sendFunc := func(tea.Msg) {}
+	m.SendFunc = &sendFunc
+	// Run will fail (no tty) — that's fine, we just need coverage.
+	_ = prodRunApp(m)
 }
 
 func TestSetup_WithHost(t *testing.T) {

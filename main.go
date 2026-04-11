@@ -24,18 +24,30 @@ var (
 	date    = "unknown"
 )
 
-// osExit is overridable in tests.
-var osExit = os.Exit
+// Overridable in tests.
+var (
+	osExit   = os.Exit
+	logFatal = prodLogFatal
+	runApp   = prodRunApp
+)
+
+func prodLogFatal(v ...any) { log.Fatal(v...) }
+
+func prodRunApp(m ui.Model) error {
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	*m.SendFunc = p.Send
+	_, err := p.Run()
+	return err
+}
 
 func main() {
 	m, err := setup()
 	if err != nil {
-		log.Fatal(err)
+		logFatal(err)
+		return
 	}
-	p := tea.NewProgram(m, tea.WithAltScreen())
-	*m.SendFunc = p.Send
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
+	if err := runApp(m); err != nil {
+		logFatal(err)
 	}
 }
 
