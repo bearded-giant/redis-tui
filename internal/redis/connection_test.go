@@ -547,6 +547,21 @@ func TestDisconnect_ClusterCloseBranch(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// ConnectCluster — invalid address (no port separator) drives the Dialer's
+// SplitHostPort error path.
+// ---------------------------------------------------------------------------
+
+func TestConnectCluster_DialerSplitHostPortError(t *testing.T) {
+	client := NewClient()
+	t.Cleanup(func() { _ = client.Disconnect() })
+
+	err := client.ConnectCluster([]string{"no-port"}, types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
+	if err == nil {
+		t.Fatal("expected error from ConnectCluster with addr lacking a port")
+	}
+}
+
 func TestDisconnect_AfterSubscribeKeyspace(t *testing.T) {
 	client, _ := setupTestClient(t)
 

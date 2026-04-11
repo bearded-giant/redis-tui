@@ -92,11 +92,13 @@ func (c *Client) Connect(conn types.Connection) error {
 func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 	c.cleanup()
 
-	// Parse first address for display purposes
-	host := "127.0.0.1"
+	// Parse first address for display purposes and for the Dialer below.
+	seedHost := "127.0.0.1"
+	host := seedHost
 	port := 6379
 	if len(addrs) > 0 {
 		host, port = parseAddr(addrs[0])
+		seedHost = host
 	}
 
 	opts := &redis.ClusterOptions{
@@ -108,6 +110,17 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 		PoolSize:     defaultPoolSize,
 		MinIdleConns: defaultMinIdleConns,
 		MaxRetries:   defaultMaxRetries,
+		// Remap cluster node addresses to the seed host. Cluster nodes
+		// (especially in Docker) advertise internal IPs that may not be
+		// reachable from the client. Keep the port from each node but
+		// route through the original host.
+		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			_, p, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			return net.DialTimeout(network, net.JoinHostPort(seedHost, p), defaultDialTimeout)
+		},
 	}
 
 	if conn.UseTLS {
