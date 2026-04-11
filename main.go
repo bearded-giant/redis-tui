@@ -24,42 +24,14 @@ var (
 	date    = "unknown"
 )
 
+// osExit is overridable in tests to avoid actually exiting.
+var osExit = os.Exit
+
 func main() {
-	opts := parseCLIFlags()
-
-	// Minimal setup before starting UI
-	logWriter := types.NewLogWriter()
-
-	// Start the UI immediately for perceived speed
-	m := ui.NewModel()
-	m.Logs = logWriter
-
-	// If CLI connection flags were provided, set up auto-connect
-	if opts != nil {
-		m.CLIConnection = opts
-	}
-
-	sendFunc := func(msg tea.Msg) {}
-	m.SendFunc = &sendFunc
-
-	// Initialize logger
-	handler := slog.NewJSONHandler(logWriter, nil)
-	slog.SetDefault(slog.New(handler))
-
-	// Load config synchronously for now to ensure it's available for connection operations
-	config, err := initConfig()
+	m, err := setup()
 	if err != nil {
-		log.Fatalf("Failed to initialize config: %v", err)
+		log.Fatal(err)
 	}
-
-	// Set up dependency injection
-	redisClient := redis.NewClient()
-	redisClient.SetIncludeTypes(cmd.GetIncludeTypes())
-	container := &service.Container{Config: config, Redis: redisClient}
-	m.Cmds = cmd.NewCommandsFromContainer(container)
-	m.ScanSize = cmd.GetScanSize()
-	m.Version = version
-
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	*m.SendFunc = p.Send
 	if _, err := p.Run(); err != nil {
@@ -67,24 +39,57 @@ func main() {
 	}
 }
 
+func setup() (ui.Model, error) {
+	opts := parseCLIFlags()
+
+	logWriter := types.NewLogWriter()
+
+	m := ui.NewModel()
+	m.Logs = logWriter
+
+	if opts != nil {
+		m.CLIConnection = opts
+	}
+
+	sendFunc := func(msg tea.Msg) {}
+	m.SendFunc = &sendFunc
+
+	handler := slog.NewJSONHandler(logWriter, nil)
+	slog.SetDefault(slog.New(handler))
+
+	config, err := initConfig()
+	if err != nil {
+		return m, fmt.Errorf("failed to initialize config: %w", err)
+	}
+
+	redisClient := redis.NewClient()
+	redisClient.SetIncludeTypes(cmd.GetIncludeTypes())
+	container := &service.Container{Config: config, Redis: redisClient}
+	m.Cmds = cmd.NewCommandsFromContainer(container)
+	m.ScanSize = cmd.GetScanSize()
+	m.Version = version
+
+	return m, nil
+}
+
 func parseCLIFlags() *types.Connection {
 	conn, showVersion, doUpdate, scanSize, includeTypes, err := parseFlags(os.Args[1:])
 	if err != nil {
 		if err == flag.ErrHelp {
-			os.Exit(0)
+			osExit(0)
 		}
-		os.Exit(2)
+		osExit(2)
 	}
 	if showVersion {
 		fmt.Printf("redis-tui %s (commit: %s, built: %s)\n", version, commit, date)
-		os.Exit(0)
+		osExit(0)
 	}
 	if doUpdate {
 		if err := runUpdate(version); err != nil {
 			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
-			os.Exit(1)
+			osExit(1)
 		}
-		os.Exit(0)
+		osExit(0)
 	}
 	cmd.SetScanSize(scanSize)
 	cmd.SetIncludeTypes(includeTypes)
@@ -191,8 +196,11 @@ func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpda
 	return conn, false, false, *scanSizeFlag, *includeTypesFlag, nil
 }
 
+// userHomeDir is overridable in tests.
+var userHomeDir = os.UserHomeDir
+
 func initConfig() (*db.Config, error) {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := userHomeDir()
 	if err != nil {
 		homeDir = os.TempDir()
 	}

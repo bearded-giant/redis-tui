@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"log/slog"
 	"os"
+
+	"github.com/davidbudnick/redis-tui/internal/types"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -403,6 +406,363 @@ func TestInitConfig_LegacyMigration_InvalidJSON(t *testing.T) {
 	if err := json.Unmarshal(data, &cfg); err == nil {
 		t.Error("expected JSON parse error for invalid config")
 	}
+}
+
+// --- initConfig tests ---
+
+func TestInitConfig_Fresh(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	cfg, err := initConfig()
+	if err != nil {
+		t.Fatalf("initConfig failed: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("expected non-nil config")
+	}
+	_ = cfg.Close()
+
+	// Verify the config directory was created.
+	configDir := filepath.Join(tmpDir, ".config", "redis-tui")
+	info, err := os.Stat(configDir)
+	if err != nil {
+		t.Fatalf("config dir not created: %v", err)
+	}
+	if !info.IsDir() {
+		t.Error("expected config dir to be a directory")
+	}
+}
+
+func TestInitConfig_HomeDirError(t *testing.T) {
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return "", os.ErrNotExist }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	// Falls back to os.TempDir() — should still succeed.
+	cfg, err := initConfig()
+	if err != nil {
+		t.Fatalf("initConfig failed: %v", err)
+	}
+	_ = cfg.Close()
+}
+
+func TestInitConfig_LegacyMigration_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create valid legacy config.
+	legacyDir := filepath.Join(tmpDir, ".redis")
+	if err := os.MkdirAll(legacyDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	legacyData := `{"connections":[],"tree_separator":":"}`
+	if err := os.WriteFile(filepath.Join(legacyDir, "config.json"), []byte(legacyData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	// Silence slog output during test.
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError + 1})))
+
+	cfg, err := initConfig()
+	if err != nil {
+		t.Fatalf("initConfig failed: %v", err)
+	}
+	_ = cfg.Close()
+
+	// Verify the new config file was created.
+	configPath := filepath.Join(tmpDir, ".config", "redis-tui", "config.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Error("expected migrated config file")
+	}
+}
+
+func TestInitConfig_LegacyMigration_ParseError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	legacyDir := filepath.Join(tmpDir, ".redis")
+	if err := os.MkdirAll(legacyDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Invalid JSON — migration should be skipped gracefully.
+	if err := os.WriteFile(filepath.Join(legacyDir, "config.json"), []byte("{{{bad"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError + 1})))
+
+	// Should still return a valid config (fresh, not migrated).
+	cfg, err := initConfig()
+	if err != nil {
+		t.Fatalf("initConfig failed: %v", err)
+	}
+	_ = cfg.Close()
+}
+
+// --- parseCLIFlags tests ---
+
+func withOsArgs(t *testing.T, args []string) {
+	t.Helper()
+	orig := os.Args
+	os.Args = args
+	t.Cleanup(func() { os.Args = orig })
+}
+
+// exitPanic is used to halt execution in parseCLIFlags when osExit is called.
+type exitPanic int
+
+func withExitTrap(t *testing.T) *int {
+	t.Helper()
+	var exitCode int
+	orig := osExit
+	osExit = func(code int) {
+		exitCode = code
+		panic(exitPanic(code))
+	}
+	t.Cleanup(func() { osExit = orig })
+	return &exitCode
+}
+
+// callParseCLIFlags calls parseCLIFlags and recovers the exitPanic.
+func callParseCLIFlags() (conn interface{}, code int, panicked bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			if ep, ok := r.(exitPanic); ok {
+				code = int(ep)
+				panicked = true
+				return
+			}
+			panic(r) // re-panic if not our sentinel
+		}
+	}()
+	c := parseCLIFlags()
+	return c, 0, false
+}
+
+func TestParseCLIFlags_NoArgs(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui"})
+	_ = withExitTrap(t)
+
+	result, _, panicked := callParseCLIFlags()
+	if panicked {
+		t.Error("did not expect exit for no args")
+	}
+	// nil *types.Connection wrapped in interface{} is not == nil,
+	// so check via type assertion.
+	if result != (*types.Connection)(nil) {
+		t.Error("expected nil connection")
+	}
+}
+
+func TestParseCLIFlags_Version(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui", "--version"})
+	code := withExitTrap(t)
+
+	_, _, panicked := callParseCLIFlags()
+	if !panicked {
+		t.Error("expected exit for --version")
+	}
+	if *code != 0 {
+		t.Errorf("exit code = %d, want 0", *code)
+	}
+}
+
+func TestParseCLIFlags_InvalidFlag(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui", "--bogus"})
+	code := withExitTrap(t)
+
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	_, _, panicked := callParseCLIFlags()
+	_ = w.Close()
+	_, _ = new(bytes.Buffer).ReadFrom(r)
+	os.Stderr = oldStderr
+
+	if !panicked {
+		t.Error("expected exit for invalid flag")
+	}
+	if *code != 2 {
+		t.Errorf("exit code = %d, want 2", *code)
+	}
+}
+
+func TestParseCLIFlags_Help(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui", "--help"})
+	code := withExitTrap(t)
+
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	_, _, panicked := callParseCLIFlags()
+	_ = w.Close()
+	_, _ = new(bytes.Buffer).ReadFrom(r)
+	os.Stderr = oldStderr
+
+	if !panicked {
+		t.Error("expected exit for --help")
+	}
+	if *code != 0 {
+		t.Errorf("exit code = %d, want 0", *code)
+	}
+}
+
+func TestParseCLIFlags_Update(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui", "--update"})
+	code := withExitTrap(t)
+
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	_, _, panicked := callParseCLIFlags()
+	_ = w.Close()
+	_, _ = new(bytes.Buffer).ReadFrom(r)
+	os.Stderr = oldStderr
+
+	if !panicked {
+		t.Error("expected exit for --update")
+	}
+	// version is "dev" → runUpdate fails → exit 1
+	if *code != 1 {
+		t.Errorf("exit code = %d, want 1", *code)
+	}
+}
+
+func TestParseCLIFlags_WithHost(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui", "--host", "myhost"})
+	_ = withExitTrap(t)
+
+	result, _, panicked := callParseCLIFlags()
+	if panicked {
+		t.Error("did not expect exit for --host")
+	}
+	if result == nil {
+		t.Fatal("expected non-nil connection")
+	}
+}
+
+// --- setup tests ---
+
+func TestSetup_Success(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui"})
+	_ = withExitTrap(t)
+
+	tmpDir := t.TempDir()
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	m, err := setup()
+	if err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	if m.Cmds == nil {
+		t.Error("expected Cmds to be set")
+	}
+}
+
+func TestSetup_ConfigError(t *testing.T) {
+	withOsArgs(t, []string{"redis-tui"})
+	_ = withExitTrap(t)
+
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return "/dev/null", nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	_, err := setup()
+	if err == nil {
+		t.Fatal("expected error when config dir is not creatable")
+	}
+}
+
+func TestInitConfig_MkdirError(t *testing.T) {
+	orig := userHomeDir
+	// Use a file (not dir) as home — MkdirAll will fail.
+	f, err := os.CreateTemp("", "home")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	t.Cleanup(func() { os.Remove(f.Name()) })
+
+	userHomeDir = func() (string, error) { return f.Name(), nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	_, err = initConfig()
+	if err == nil {
+		t.Fatal("expected MkdirAll error")
+	}
+}
+
+func TestInitConfig_LegacyMigration_WriteError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create valid legacy config.
+	legacyDir := filepath.Join(tmpDir, ".redis")
+	if err := os.MkdirAll(legacyDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "config.json"), []byte(`{"connections":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the config dir but make it read-only so WriteFile fails.
+	configDir := filepath.Join(tmpDir, ".config", "redis-tui")
+	if err := os.MkdirAll(configDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(configDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(configDir, 0o750) })
+
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError + 1})))
+
+	// initConfig should still succeed — migration failure is logged, not fatal.
+	cfg, err := initConfig()
+	if err != nil {
+		t.Fatalf("initConfig failed: %v", err)
+	}
+	_ = cfg.Close()
+}
+
+func TestInitConfig_LegacyMigration_UnsafePermsSkipped(t *testing.T) {
+	tmpDir := t.TempDir()
+	legacyDir := filepath.Join(tmpDir, ".redis")
+	if err := os.MkdirAll(legacyDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "config.json"), []byte(`{"connections":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(legacyDir, "config.json"), 0o666); err != nil {
+		t.Fatal(err)
+	}
+
+	orig := userHomeDir
+	userHomeDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { userHomeDir = orig })
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError + 1})))
+
+	cfg, err := initConfig()
+	if err != nil {
+		t.Fatalf("initConfig failed: %v", err)
+	}
+	_ = cfg.Close()
 }
 
 func TestParseFlags_PasswordWarning(t *testing.T) {

@@ -21,6 +21,9 @@ var githubAPIBase = "https://api.github.com"
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}
 
+// osExecutable is overridable in tests to control the executable path.
+var osExecutable = os.Executable
+
 const githubRepo = "davidbudnick/redis-tui"
 
 // maxDownloadSize is the maximum allowed download size (256 MB).
@@ -38,7 +41,7 @@ func runUpdate(currentVersion string) error {
 		return fmt.Errorf("cannot self-update a development build (version=%q); use the install script instead:\n  curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash", currentVersion)
 	}
 
-	execPath, err := os.Executable()
+	execPath, err := osExecutable()
 	if err != nil {
 		return fmt.Errorf("could not determine executable path: %w", err)
 	}
