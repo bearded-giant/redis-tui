@@ -273,11 +273,9 @@ func renderLineChart(title string, data []float64, width, height int, color lipg
 				// This row is fully filled
 				b.WriteString(chartStyle.Render("█"))
 			} else if totalSubRows > fullRowsBelow {
-				// This row is partially filled
+				// This row is partially filled. partialFill is bounded to [0,7]
+				// because the branch above guards totalSubRows >= fullRowsBelow+8.
 				partialFill := int(totalSubRows - fullRowsBelow)
-				if partialFill > 7 {
-					partialFill = 7
-				}
 				b.WriteString(chartStyle.Render(string(blocks[partialFill])))
 			} else {
 				// This row is empty
@@ -301,32 +299,19 @@ func resampleData(data []float64, targetWidth int) []float64 {
 		return data
 	}
 	if len(data) <= targetWidth {
-		// Pad with the same values
+		// Pad/upsample: idx is always < len(data) because i < targetWidth and len(data) <= targetWidth.
 		result := make([]float64, targetWidth)
 		for i := range result {
-			idx := i * len(data) / targetWidth
-			if idx >= len(data) {
-				idx = len(data) - 1
-			}
-			result[i] = data[idx]
+			result[i] = data[i*len(data)/targetWidth]
 		}
 		return result
 	}
 
-	// Downsample
+	// Downsample: len(data) > targetWidth guarantees endIdx > startIdx and both in [0,len(data)].
 	result := make([]float64, targetWidth)
 	for i := range result {
 		startIdx := i * len(data) / targetWidth
 		endIdx := (i + 1) * len(data) / targetWidth
-		if endIdx > len(data) {
-			endIdx = len(data)
-		}
-		if startIdx >= endIdx {
-			startIdx = endIdx - 1
-		}
-		if startIdx < 0 {
-			startIdx = 0
-		}
 
 		// Average the values in this bucket
 		sum := 0.0

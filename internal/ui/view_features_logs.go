@@ -102,12 +102,9 @@ func (m Model) viewLogDetail(logLine string) string {
 	if err := json.Unmarshal([]byte(logLine), &data); err != nil {
 		b.WriteString(normalStyle.Render(logLine))
 	} else {
-		prettyJSON, err := json.MarshalIndent(data, "", "  ")
-		if err != nil {
-			b.WriteString(normalStyle.Render(logLine))
-		} else {
-			b.WriteString(normalStyle.Render(string(prettyJSON)))
-		}
+		// Re-marshaling Unmarshal'd data can't fail — it only contains JSON-compatible types.
+		prettyJSON, _ := json.MarshalIndent(data, "", "  ")
+		b.WriteString(normalStyle.Render(string(prettyJSON)))
 	}
 
 	b.WriteString("\n\n")

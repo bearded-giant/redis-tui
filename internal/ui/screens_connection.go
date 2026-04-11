@@ -68,10 +68,6 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		if m.ConnFocusIdx == 4 {
 			m.ConnClusterMode = !m.ConnClusterMode
-			// If cluster mode just turned on and we're past the DB field, adjust
-			if m.ConnClusterMode && m.ConnFocusIdx >= m.connFieldCount() {
-				m.ConnFocusIdx = m.connFieldCount() - 1
-			}
 			return m, nil
 		}
 		return m.updateConnInputs(msg)
@@ -159,9 +155,6 @@ func (m Model) handleEditConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		if m.ConnFocusIdx == 4 {
 			m.ConnClusterMode = !m.ConnClusterMode
-			if m.ConnClusterMode && m.ConnFocusIdx >= m.connFieldCount() {
-				m.ConnFocusIdx = m.connFieldCount() - 1
-			}
 			return m, nil
 		}
 		return m.updateConnInputs(msg)

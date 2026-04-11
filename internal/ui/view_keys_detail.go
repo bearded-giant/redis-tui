@@ -184,9 +184,6 @@ func (m Model) viewKeyDetail() string {
 			m.DetailScroll = 0
 		}
 		end := m.DetailScroll + maxVisible
-		if end > len(valueLines) {
-			end = len(valueLines)
-		}
 		visible := valueLines[m.DetailScroll:end]
 		var scrollInfo string
 		if m.DetailScroll > 0 {
