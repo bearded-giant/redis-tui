@@ -14,7 +14,7 @@ type Connection struct {
 	Name       string     `json:"name"`
 	Host       string     `json:"host"`
 	Port       int        `json:"port"`
-	Username   string     `json:"username,omitempty"`
+	Username   string     `json:"username"`
 	Password   string     `json:"password,omitempty"` // #nosec G117 -- stored in local user config.
 	DB         int        `json:"db"`
 	Group      string     `json:"group,omitempty"`
