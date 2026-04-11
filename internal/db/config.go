@@ -11,6 +11,9 @@ import (
 	"github.com/davidbudnick/redis-tui/internal/types"
 )
 
+// jsonMarshalIndent is overridable in tests to simulate marshal errors.
+var jsonMarshalIndent = json.MarshalIndent
+
 // Config stores all application configuration
 type Config struct {
 	Connections     []types.Connection        `json:"connections"`
@@ -144,7 +147,7 @@ func (c *Config) save() error {
 		WatchInterval:   c.WatchInterval,
 	}
 
-	data, err := json.MarshalIndent(safeCfg, "", "  ")
+	data, err := jsonMarshalIndent(safeCfg, "", "  ")
 	if err != nil {
 		return err
 	}

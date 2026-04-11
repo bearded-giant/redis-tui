@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -224,11 +225,21 @@ func TestConfig_UpdateConnection_SaveError(t *testing.T) {
 func TestConfig_Save_MarshalError(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	// Inject an unmarshalable value via Favorites (NaN float in a struct
-	// that IS serialized, unlike ValueHistory which uses json:"-").
-	// We abuse the KeyTemplate DefaultTTL which is a time.Duration (int64)
-	// — that always marshals fine, so instead we force an error by making
-	// the config path unwritable.
+	// Inject a failing marshal function to exercise the error branch.
+	orig := jsonMarshalIndent
+	jsonMarshalIndent = func(_ any, _ string, _ string) ([]byte, error) {
+		return nil, fmt.Errorf("simulated marshal error")
+	}
+	t.Cleanup(func() { jsonMarshalIndent = orig })
+
+	if err := cfg.SetTreeSeparator("/"); err == nil {
+		t.Error("expected save to fail with marshal error")
+	}
+}
+
+func TestConfig_Save_WriteError(t *testing.T) {
+	cfg := newTestConfig(t)
+
 	cfg.mu.Lock()
 	cfg.path = filepath.Join(t.TempDir(), "no-such-dir", "config.json")
 	cfg.mu.Unlock()
