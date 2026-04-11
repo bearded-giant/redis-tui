@@ -89,13 +89,28 @@ func TestAddConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cfg := testutil.NewTestConfig(t)
 		cmds := NewCommands(cfg, nil)
-		msg := cmds.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.AddConnection(types.Connection{Name: "test", Host: "localhost", Username: "default", Password: "password", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionAddedMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
 		}
 		if result.Connection.Name != "test" {
 			t.Errorf("Name = %q, want %q", result.Connection.Name, "test")
+		}
+		if result.Connection.Host != "localhost" {
+			t.Errorf("Host = %q, want %q", result.Connection.Host, "localhost")
+		}
+		if result.Connection.Port != 6379 {
+			t.Errorf("Port = %d, want %d", result.Connection.Port, 6379)
+		}
+		if result.Connection.Username != "default" {
+			t.Errorf("Username = %q, want %q", result.Connection.Username, "default")
+		}
+		if result.Connection.Password != "password" {
+			t.Errorf("Password = %q, want %q", result.Connection.Password, "password")
+		}
+		if result.Connection.DB != 0 {
+			t.Errorf("DB = %d, want %d", result.Connection.DB, 0)
 		}
 	})
 
@@ -112,15 +127,30 @@ func TestAddConnection(t *testing.T) {
 func TestUpdateConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cfg := testutil.NewTestConfig(t)
-		conn := testutil.MustAddConnection(t, cfg, types.Connection{Name: "old", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		conn := testutil.MustAddConnection(t, cfg, types.Connection{Name: "old", Host: "localhost", Username: "default", Password: "newpass", Port: 6379, DB: 0, UseCluster: false})
 		cmds := NewCommands(cfg, nil)
-		msg := cmds.UpdateConnection(types.Connection{ID: conn.ID, Name: "new", Host: "localhost", Port: 6380, Password: "pass", DB: 1, UseCluster: false})()
+		msg := cmds.UpdateConnection(types.Connection{ID: conn.ID, Name: "new", Host: "localhost", Port: 6380, Username: "newuser", Password: "pass", DB: 1, UseCluster: false})()
 		result := msg.(types.ConnectionUpdatedMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
 		}
 		if result.Connection.Name != "new" {
 			t.Errorf("Name = %q, want %q", result.Connection.Name, "new")
+		}
+		if result.Connection.Host != "localhost" {
+			t.Errorf("Host = %q, want %q", result.Connection.Host, "localhost")
+		}
+		if result.Connection.Port != 6380 {
+			t.Errorf("Port = %d, want %d", result.Connection.Port, 6380)
+		}
+		if result.Connection.Username != "newuser" {
+			t.Errorf("Username = %q, want %q", result.Connection.Username, "newuser")
+		}
+		if result.Connection.Password != "pass" {
+			t.Errorf("Password = %q, want %q", result.Connection.Password, "pass")
+		}
+		if result.Connection.DB != 1 {
+			t.Errorf("DB = %d, want %d", result.Connection.DB, 1)
 		}
 	})
 
@@ -162,7 +192,7 @@ func TestDeleteConnection(t *testing.T) {
 func TestConnect(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, _ := newMockCmds()
-		msg := cmds.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.Connect(types.Connection{Name: "test", Host: "localhost", Username: "default", Password: "password", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectedMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
@@ -220,7 +250,7 @@ func TestTestConnection(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		cmds, mock := newMockCmds()
 		mock.TestConnectionLatency = 5 * time.Millisecond
-		msg := cmds.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
+		msg := cmds.TestConnection(types.Connection{Name: "test", Host: "localhost", Username: "default", Password: "password", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionTestMsg)
 		if result.Err != nil {
 			t.Errorf("unexpected error: %v", result.Err)
