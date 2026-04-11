@@ -26,6 +26,10 @@ func TestParseAddr(t *testing.T) {
 		{"ip without port", "192.168.1.1", "192.168.1.1", 6379},
 		{"port 0", "host:0", "host", 0},
 		{"non-numeric port uses default", "host:abc", "host", 6379},
+		{"ipv6 with port", "[::1]:6379", "::1", 6379},
+		{"ipv6 with custom port", "[2001:db8::1]:7000", "2001:db8::1", 7000},
+		{"ipv6 without port", "::1", "::1", 6379},
+		{"ipv6 bracketed without port", "[::1]", "[::1]", 6379},
 	}
 
 	for _, tt := range tests {

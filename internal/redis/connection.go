@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -139,15 +140,16 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 }
 
 func parseAddr(addr string) (string, int) {
-	host := addr
-	port := 6379
-	if i := strings.LastIndex(addr, ":"); i >= 0 {
-		host = addr[:i]
-		if p, err := strconv.Atoi(addr[i+1:]); err == nil {
-			port = p
-		}
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		// No port separator or invalid format — treat whole string as host.
+		return strings.TrimSpace(addr), 6379
 	}
-	return host, port
+	p, err := strconv.Atoi(portStr)
+	if err != nil {
+		return host, 6379
+	}
+	return host, p
 }
 
 // Disconnect closes the Redis connection
