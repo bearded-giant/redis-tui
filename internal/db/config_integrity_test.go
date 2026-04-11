@@ -18,7 +18,7 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	// Step 1: Add a connection with all features
-	conn, err := cfg.AddConnection(types.Connection{Name: "prod", Host: "redis.example.com", Port: 6380, DB: 2, UseCluster: true})
+	conn, err := cfg.AddConnection(types.Connection{Name: "prod", Host: "redis.example.com", Username: "default", Password: "secret", Port: 6380, DB: 2, UseCluster: true})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 		t.Fatalf("expected 1 connection after first reload, got %d", len(connections))
 	}
 	got := connections[0]
-	if got.Name != "prod" || got.Host != "redis.example.com" || got.Port != 6380 || got.DB != 2 || !got.UseCluster {
+	if got.Name != "prod" || got.Host != "redis.example.com" || got.Port != 6380 || got.Username != "default" || got.DB != 2 || !got.UseCluster {
 		t.Errorf("basic fields corrupted after reload: %+v", got)
 	}
 	if !got.UseSSH || got.SSHConfig == nil || got.SSHConfig.Host != "bastion.example.com" {
@@ -104,6 +104,7 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 	got.Name = "prod-updated"
 	got.Host = "redis2.example.com"
 	got.Port = 6381
+	got.Username = "admin"
 	got.DB = 3
 	got.UseCluster = false
 	updated, err := cfg2.UpdateConnection(got)
@@ -112,6 +113,21 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 	}
 	if updated.Name != "prod-updated" {
 		t.Errorf("Name not updated: %q", updated.Name)
+	}
+	if updated.Host != "redis2.example.com" {
+		t.Errorf("Host not updated: %q", updated.Host)
+	}
+	if updated.Port != 6381 {
+		t.Errorf("Port not updated: %d", updated.Port)
+	}
+	if updated.Username != "admin" {
+		t.Errorf("Username not updated: %q", updated.Username)
+	}
+	if updated.DB != 3 {
+		t.Errorf("DB not updated: %d", updated.DB)
+	}
+	if updated.UseCluster {
+		t.Error("UseCluster should have been updated to false")
 	}
 	if !updated.UseSSH || updated.SSHConfig == nil {
 		t.Error("SSH config lost after update")
@@ -126,7 +142,7 @@ func TestConfig_Integration_FullConnectionLifecycle(t *testing.T) {
 	if errList3 != nil {
 		t.Fatalf("ListConnections failed: %v", errList3)
 	}
-	if connections3[0].Name != "prod-updated" || connections3[0].Host != "redis2.example.com" {
+	if connections3[0].Name != "prod-updated" || connections3[0].Host != "redis2.example.com" || connections3[0].Port != 6381 || connections3[0].Username != "admin" || connections3[0].DB != 3 || connections3[0].UseCluster {
 		t.Error("update not persisted after reload")
 	}
 	if !connections3[0].UseSSH || !connections3[0].UseTLS {

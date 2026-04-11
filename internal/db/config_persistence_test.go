@@ -14,7 +14,7 @@ import (
 func TestConfig_Persistence_AllConnectionFields(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	conn, err := cfg.AddConnection(types.Connection{Name: "prod-redis", Host: "redis.example.com", Port: 6380, DB: 2, UseCluster: true})
+	conn, err := cfg.AddConnection(types.Connection{Name: "prod-redis", Host: "redis.example.com", Username: "default", Port: 6380, DB: 2, UseCluster: true})
 	if err != nil {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
@@ -40,6 +40,9 @@ func TestConfig_Persistence_AllConnectionFields(t *testing.T) {
 	}
 	if got.Port != 6380 {
 		t.Errorf("Port = %d, want %d", got.Port, 6380)
+	}
+	if got.Username != "default" {
+		t.Errorf("Username = %q, want %q", got.Username, "default")
 	}
 	if got.DB != 2 {
 		t.Errorf("DB = %d, want %d", got.DB, 2)

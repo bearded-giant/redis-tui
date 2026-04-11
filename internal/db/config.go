@@ -210,6 +210,7 @@ func (c *Config) UpdateConnection(conn types.Connection) (types.Connection, erro
 				Name:       conn.Name,
 				Host:       conn.Host,
 				Port:       conn.Port,
+				Username:   conn.Username,
 				Password:   conn.Password,
 				DB:         conn.DB,
 				Group:      toUpdateConn.Group,
