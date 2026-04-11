@@ -141,3 +141,13 @@ func TestSampleFavorite(t *testing.T) {
 		t.Errorf("Label = %q, want %q", fav.Label, "Test Favorite")
 	}
 }
+
+func TestGenerateEphemeralCert(t *testing.T) {
+	cert := GenerateEphemeralCert(t)
+	if len(cert.Certificate) == 0 {
+		t.Fatal("expected at least one certificate in chain")
+	}
+	if cert.PrivateKey == nil {
+		t.Fatal("expected non-nil private key")
+	}
+}

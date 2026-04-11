@@ -64,6 +64,15 @@ func TestFullMockRedisClient_Connect(t *testing.T) {
 			t.Errorf("expected errTest, got %v", err)
 		}
 	})
+
+	t.Run("tls error", func(t *testing.T) {
+		m := NewFullMockRedisClient()
+		m.ConnectWithTLSError = errTest
+		err := m.Connect(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		if !errors.Is(err, errTest) {
+			t.Errorf("expected errTest from ConnectWithTLSError, got %v", err)
+		}
+	})
 }
 
 func TestFullMockRedisClient_ConnectCluster(t *testing.T) {
