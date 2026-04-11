@@ -268,9 +268,6 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.Screen == types.ScreenConnections {
 			return m, tea.Quit
 		}
-		if m.Screen == types.ScreenKeys {
-			return m, tea.Quit
-		}
 	case "?":
 		if m.Screen != types.ScreenHelp && m.Screen != types.ScreenAddConnection &&
 			m.Screen != types.ScreenEditConnection && m.Screen != types.ScreenAddKey &&

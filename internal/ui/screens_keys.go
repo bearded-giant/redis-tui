@@ -274,7 +274,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.ExpiringKeys = expiring
 		m.Screen = types.ScreenExpiringKeys
-	case "esc":
+	case "esc", "q":
 		if m.KeyPattern != "" {
 			m.PatternInput.SetValue("")
 			m.KeyPattern = ""
