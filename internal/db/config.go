@@ -20,7 +20,7 @@ type Config struct {
 	Templates       []types.KeyTemplate       `json:"templates,omitempty"`
 	KeyBindings     types.KeyBindings         `json:"key_bindings"`
 	TreeSeparator   string                    `json:"tree_separator"`
-	ValueHistory    []types.ValueHistoryEntry `json:"value_history,omitempty"`
+	ValueHistory    []types.ValueHistoryEntry `json:"-"` // In-memory only — Redis values may contain secrets.
 	MaxRecentKeys   int                       `json:"max_recent_keys"`
 	MaxValueHistory int                       `json:"max_value_history"`
 	WatchInterval   int                       `json:"watch_interval_ms"`

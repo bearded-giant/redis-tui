@@ -647,7 +647,9 @@ func TestConfig_Persistence_TreeSeparator(t *testing.T) {
 	}
 }
 
-func TestConfig_Persistence_ValueHistory(t *testing.T) {
+func TestConfig_Persistence_ValueHistory_NotPersisted(t *testing.T) {
+	// ValueHistory uses json:"-" so Redis values (which may contain secrets)
+	// are never written to disk. History is in-memory only.
 	cfg := newTestConfig(t)
 
 	value := types.RedisValue{
@@ -656,24 +658,16 @@ func TestConfig_Persistence_ValueHistory(t *testing.T) {
 	}
 	cfg.AddValueHistory("user:123", value, "set")
 
-	cfg2 := reloadConfig(t, cfg)
-	history := cfg2.GetValueHistory("user:123")
-	if len(history) != 1 {
-		t.Fatalf("expected 1 history entry after reload, got %d", len(history))
+	// Verify it exists in memory.
+	if len(cfg.GetValueHistory("user:123")) != 1 {
+		t.Fatal("expected 1 history entry in memory")
 	}
 
-	got := history[0]
-	if got.Key != "user:123" {
-		t.Errorf("Key = %q, want %q", got.Key, "user:123")
-	}
-	if got.Action != "set" {
-		t.Errorf("Action = %q, want %q", got.Action, "set")
-	}
-	if got.Value.StringValue != "hello world" {
-		t.Errorf("Value.StringValue = %q, want %q", got.Value.StringValue, "hello world")
-	}
-	if got.Timestamp.IsZero() {
-		t.Error("Timestamp should not be zero after reload")
+	// After reload, history must be gone.
+	cfg2 := reloadConfig(t, cfg)
+	history := cfg2.GetValueHistory("user:123")
+	if len(history) != 0 {
+		t.Errorf("expected 0 history entries after reload (json:\"-\"), got %d", len(history))
 	}
 }
 
