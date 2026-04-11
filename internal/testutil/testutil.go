@@ -8,6 +8,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -16,6 +18,12 @@ import (
 
 	"github.com/davidbudnick/redis-tui/internal/db"
 	"github.com/davidbudnick/redis-tui/internal/types"
+)
+
+// Injectable for tests to simulate crypto failures.
+var (
+	ecdsaGenerateKey     = ecdsa.GenerateKey
+	x509CreateCertificate = x509.CreateCertificate
 )
 
 // Indirections so tests can cover the failure branches of helpers that would
@@ -154,12 +162,10 @@ func SampleFavorite(connID int64, key string) types.Favorite {
 	}
 }
 
-// GenerateEphemeralCert generates an ephemeral TLS certificate for testing.
-func GenerateEphemeralCert(t testing.TB) tls.Certificate {
-	t.Helper()
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+func generateEphemeralCertOrError(r io.Reader) (tls.Certificate, error) {
+	priv, err := ecdsaGenerateKey(elliptic.P256(), r)
 	if err != nil {
-		t.Fatalf("failed to generate ephemeral TLS certificate: %v", err)
+		return tls.Certificate{}, fmt.Errorf("generate key: %w", err)
 	}
 
 	template := x509.Certificate{
@@ -174,13 +180,23 @@ func GenerateEphemeralCert(t testing.TB) tls.Certificate {
 		BasicConstraintsValid: true,
 	}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	derBytes, err := x509CreateCertificate(r, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		t.Fatalf("failed to generate ephemeral TLS certificate: %v", err)
+		return tls.Certificate{}, fmt.Errorf("create certificate: %w", err)
 	}
 
 	return tls.Certificate{
 		Certificate: [][]byte{derBytes},
 		PrivateKey:  priv,
+	}, nil
+}
+
+// GenerateEphemeralCert generates an ephemeral TLS certificate for testing.
+func GenerateEphemeralCert(t testing.TB) tls.Certificate {
+	t.Helper()
+	cert, err := generateEphemeralCertOrError(rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate ephemeral TLS certificate: %v", err)
 	}
+	return cert
 }

@@ -1,9 +1,15 @@
 package testutil
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/davidbudnick/redis-tui/internal/types"
@@ -151,3 +157,60 @@ func TestGenerateEphemeralCert(t *testing.T) {
 		t.Fatal("expected non-nil private key")
 	}
 }
+
+func TestGenerateEphemeralCert_KeyError(t *testing.T) {
+	orig := ecdsaGenerateKey
+	ecdsaGenerateKey = func(elliptic.Curve, io.Reader) (*ecdsa.PrivateKey, error) {
+		return nil, errors.New("injected key error")
+	}
+	t.Cleanup(func() { ecdsaGenerateKey = orig })
+
+	_, err := generateEphemeralCertOrError(rand.Reader)
+	if err == nil {
+		t.Fatal("expected error from injected key failure")
+	}
+}
+
+func TestGenerateEphemeralCert_CertError(t *testing.T) {
+	orig := x509CreateCertificate
+	x509CreateCertificate = func(io.Reader, *x509.Certificate, *x509.Certificate, any, any) ([]byte, error) {
+		return nil, errors.New("injected cert error")
+	}
+	t.Cleanup(func() { x509CreateCertificate = orig })
+
+	_, err := generateEphemeralCertOrError(rand.Reader)
+	if err == nil {
+		t.Fatal("expected error from injected cert failure")
+	}
+}
+
+func TestGenerateEphemeralCert_Fatalf(t *testing.T) {
+	orig := ecdsaGenerateKey
+	ecdsaGenerateKey = func(elliptic.Curve, io.Reader) (*ecdsa.PrivateKey, error) {
+		return nil, errors.New("injected")
+	}
+	t.Cleanup(func() { ecdsaGenerateKey = orig })
+
+	// GenerateEphemeralCert calls t.Fatalf on error, which calls
+	// runtime.Goexit. Run it in a goroutine to catch the exit.
+	var ft fatalTracker
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		GenerateEphemeralCert(&ft)
+	}()
+	<-done
+
+	if !ft.failed {
+		t.Fatal("expected Fatalf to be called")
+	}
+}
+
+// fatalTracker implements testing.TB enough to capture Fatalf calls.
+type fatalTracker struct {
+	testing.TB
+	failed bool
+}
+
+func (f *fatalTracker) Helper()                          {}
+func (f *fatalTracker) Fatalf(string, ...any) { f.failed = true; runtime.Goexit() }
