@@ -548,25 +548,6 @@ func TestDisconnect_AfterSubscribeKeyspace(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// ConnectCluster — invalid address (no port separator) drives the Dialer's
-// SplitHostPort error path. The cluster client will eventually try to dial
-// the configured Addrs entry; SplitHostPort fails for an addr like "no-port"
-// and the Dialer returns the error.
-// ---------------------------------------------------------------------------
-
-func TestConnectCluster_DialerSplitHostPortError(t *testing.T) {
-	client := NewClient()
-	t.Cleanup(func() { _ = client.Disconnect() })
-
-	// "no-port" has no colon — net.SplitHostPort returns an error from the
-	// Dialer closure, which exercises the err-return branch.
-	err := client.ConnectCluster([]string{"no-port"}, types.Connection{Name: "test", Host: "127.0.0.1", Port: 6379, DB: 0, UseCluster: false})
-	if err == nil {
-		t.Fatal("expected error from ConnectCluster with addr lacking a port")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // SelectDB — SELECT command error path. Use the fake server to make SELECT
 // return an error.
 // ---------------------------------------------------------------------------

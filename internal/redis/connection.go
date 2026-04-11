@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -93,12 +92,10 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 	c.cleanup()
 
 	// Parse first address for display purposes
-	seedHost := "127.0.0.1"
-	host := seedHost
+	host := "127.0.0.1"
 	port := 6379
 	if len(addrs) > 0 {
 		host, port = parseAddr(addrs[0])
-		seedHost = host
 	}
 
 	opts := &redis.ClusterOptions{
@@ -110,13 +107,6 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 		PoolSize:     defaultPoolSize,
 		MinIdleConns: defaultMinIdleConns,
 		MaxRetries:   defaultMaxRetries,
-		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			_, p, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, err
-			}
-			return net.DialTimeout(network, net.JoinHostPort(seedHost, p), defaultDialTimeout)
-		},
 	}
 
 	if conn.UseTLS {
