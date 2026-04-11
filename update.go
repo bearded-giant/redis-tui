@@ -21,8 +21,15 @@ var githubAPIBase = "https://api.github.com"
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}
 
-// osExecutable is overridable in tests to control the executable path.
-var osExecutable = os.Executable
+// Overridable in tests.
+var (
+	osExecutable  = os.Executable
+	osMkdirTemp   = os.MkdirTemp
+	osUserHomeDir = os.UserHomeDir
+	ioCopy        = io.Copy
+	osOpenFile    = os.OpenFile
+	osCreateTemp  = os.CreateTemp
+)
 
 const githubRepo = "davidbudnick/redis-tui"
 
@@ -55,7 +62,7 @@ func runUpdate(currentVersion string) error {
 	}
 
 	if err := checkWriteAccess(execPath); err != nil {
-		home, homeErr := os.UserHomeDir()
+		home, homeErr := osUserHomeDir()
 		if homeErr != nil {
 			return fmt.Errorf("cannot write to %s and could not determine home directory: %w", execPath, homeErr)
 		}
@@ -83,7 +90,7 @@ func runUpdate(currentVersion string) error {
 	archiveURL := baseURL + "/" + archive
 	checksumURL := baseURL + "/checksums.txt"
 
-	tmpDir, err := os.MkdirTemp("", "redis-tui-update-*")
+	tmpDir, err := osMkdirTemp("", "redis-tui-update-*")
 	if err != nil {
 		return fmt.Errorf("could not create temp directory: %w", err)
 	}
@@ -220,7 +227,7 @@ func verifyChecksum(archivePath, checksumPath, archiveFilename string) error {
 	defer f.Close()
 
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
+	if _, err := ioCopy(h, f); err != nil {
 		return fmt.Errorf("could not hash archive: %w", err)
 	}
 
@@ -258,7 +265,7 @@ func extractBinary(archivePath, destPath string) error {
 
 		if filepath.Base(hdr.Name) == "redis-tui" && hdr.Typeflag == tar.TypeReg {
 			cleanDestPath := filepath.Clean(destPath)
-			out, err := os.OpenFile(cleanDestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0700) // #nosec G302 - binary must be executable
+			out, err := osOpenFile(cleanDestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0700) // #nosec G302 - binary must be executable
 			if err != nil {
 				return fmt.Errorf("could not create binary: %w", err)
 			}
@@ -312,7 +319,7 @@ func isHomebrew(path string) bool {
 
 func checkWriteAccess(path string) error {
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".redis-tui-write-check-*")
+	tmp, err := osCreateTemp(dir, ".redis-tui-write-check-*")
 	if err != nil {
 		return err
 	}

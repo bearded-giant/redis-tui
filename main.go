@@ -24,7 +24,7 @@ var (
 	date    = "unknown"
 )
 
-// osExit is overridable in tests to avoid actually exiting.
+// osExit is overridable in tests.
 var osExit = os.Exit
 
 func main() {
@@ -196,8 +196,11 @@ func parseFlags(args []string) (conn *types.Connection, showVersion bool, doUpda
 	return conn, false, false, *scanSizeFlag, *includeTypesFlag, nil
 }
 
-// userHomeDir is overridable in tests.
-var userHomeDir = os.UserHomeDir
+// Overridable in tests.
+var (
+	userHomeDir = os.UserHomeDir
+	osReadFile  = os.ReadFile
+)
 
 func initConfig() (*db.Config, error) {
 	homeDir, err := userHomeDir()
@@ -228,7 +231,7 @@ func initConfig() (*db.Config, error) {
 				} else {
 					_ = legacyCfg.Close()
 					// Re-read the validated, password-stripped output that NewConfig wrote.
-					validatedData, readErr := os.ReadFile(legacyPath) // #nosec G304 -- path from homeDir + hardcoded strings
+					validatedData, readErr := osReadFile(legacyPath) // #nosec G304 -- path from homeDir + hardcoded strings
 					if readErr != nil {
 						slog.Warn("Failed to read validated legacy config", "path", legacyPath, "error", readErr)
 					} else if writeErr := os.WriteFile(configPath, validatedData, 0o600); writeErr != nil {
