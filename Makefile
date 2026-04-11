@@ -6,7 +6,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: all build install clean test lint run release snapshot \
+.PHONY: all build install clean test test-cover test-cover-check lint run release snapshot \
 	docker-up docker-down docker-seed \
 	docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack \
 	docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack \
@@ -35,6 +35,21 @@ test:
 test-cover:
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
+
+## Run tests and fail if any package is below 100% coverage
+test-cover-check:
+	@go test -race -coverprofile=coverage.out ./... && \
+	go tool cover -func=coverage.out | while IFS= read -r line; do \
+		pkg=$$(echo "$$line" | awk '{print $$1}'); \
+		func=$$(echo "$$line" | awk '{print $$NF}' | tr -d '%'); \
+		name=$$(echo "$$line" | awk '{print $$2}'); \
+		if [ "$$name" = "(statements)" ] && [ "$$pkg" != "total:" ]; then \
+			if [ "$$(echo "$$func < 100.0" | bc -l)" = "1" ]; then \
+				echo "FAIL: $$pkg coverage is $${func}%, required 100%"; \
+				exit 1; \
+			fi; \
+		fi; \
+	done && echo "All packages at 100% coverage"
 
 ## Run linter
 lint:
@@ -139,7 +154,8 @@ help:
 	@echo "    install     - Install to GOPATH/bin"
 	@echo "    clean       - Clean build artifacts"
 	@echo "    test        - Run tests"
-	@echo "    test-cover  - Run tests with coverage"
+	@echo "    test-cover        - Run tests with coverage"
+	@echo "    test-cover-check  - Fail if any package < 100%%"
 	@echo "    lint        - Run linter"
 	@echo "    fmt         - Format code"
 	@echo "    run         - Run the application"

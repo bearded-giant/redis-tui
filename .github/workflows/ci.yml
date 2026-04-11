@@ -29,6 +29,21 @@ jobs:
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
 
+      - name: Enforce 100% coverage
+        run: |
+          go tool cover -func=coverage.out | while IFS= read -r line; do
+            pkg=$(echo "$line" | awk '{print $1}')
+            func=$(echo "$line" | awk '{print $2}')
+            pct=$(echo "$line" | awk '{print $NF}' | tr -d '%')
+            if [ "$func" = "(statements)" ] && [ "$pkg" != "total:" ]; then
+              if [ "$(echo "$pct < 100.0" | bc -l)" = "1" ]; then
+                echo "FAIL: $pkg coverage is ${pct}%, required 100%"
+                exit 1
+              fi
+            fi
+          done
+          echo "All packages at 100% coverage"
+
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:

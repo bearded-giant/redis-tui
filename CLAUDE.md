@@ -13,10 +13,11 @@ make test-cover   # Tests with coverage report
 make lint         # Run go vet
 make fmt          # Format code with go fmt
 make run          # Run the application
-make dev-deps     # Install goreleaser
+make dev-deps         # Install goreleaser
+make test-cover-check # Tests + fail if any package < 100% coverage
 ```
 
-CI runs `go test -v -race -coverprofile=coverage.out ./...` — always ensure tests pass with `-race`.
+CI runs `go test -v -race -coverprofile=coverage.out ./...` — always ensure tests pass with `-race`. CI enforces **100% statement coverage** per package — any new code must include tests.
 
 ## Architecture
 
