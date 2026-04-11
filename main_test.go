@@ -77,7 +77,7 @@ func TestParseFlags_ShortFlags(t *testing.T) {
 }
 
 func TestParseFlags_LongFlags(t *testing.T) {
-	conn, _, _, _, _, err := parseFlags([]string{"--host", "10.0.0.1", "--port", "7000", "--password", "pass", "--db", "3"})
+	conn, _, _, _, _, err := parseFlags([]string{"--host", "10.0.0.1", "--port", "7000", "--user", "user", "--password", "pass", "--db", "3"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -89,6 +89,9 @@ func TestParseFlags_LongFlags(t *testing.T) {
 	}
 	if conn.Port != 7000 {
 		t.Errorf("Port = %d, want %d", conn.Port, 7000)
+	}
+	if conn.Username != "user" {
+		t.Errorf("Username = %q, want %q", conn.Username, "user")
 	}
 	if conn.Password != "pass" {
 		t.Errorf("Password = %q, want %q", conn.Password, "pass")
@@ -205,6 +208,7 @@ func TestParseFlags_AllOptions(t *testing.T) {
 	conn, _, _, _, _, err := parseFlags([]string{
 		"--host", "redis.prod.com",
 		"--port", "6380",
+		"--user", "admin",
 		"--password", "s3cret",
 		"--db", "7",
 		"--name", "Prod Redis",
@@ -226,6 +230,9 @@ func TestParseFlags_AllOptions(t *testing.T) {
 	}
 	if conn.Port != 6380 {
 		t.Errorf("Port = %d", conn.Port)
+	}
+	if conn.Username != "admin" {
+		t.Errorf("Username = %q", conn.Username)
 	}
 	if conn.Password != "s3cret" {
 		t.Errorf("Password = %q", conn.Password)

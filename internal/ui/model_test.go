@@ -359,10 +359,12 @@ func TestModel_CLIConnection_Nil(t *testing.T) {
 func TestModel_HandleAutoConnectMsg(t *testing.T) {
 	m := NewModel()
 	conn := types.Connection{
-		Name: "test",
-		Host: "redis.example.com",
-		Port: 6380,
-		DB:   2,
+		Name:     "test",
+		Host:     "redis.example.com",
+		Port:     6380,
+		Username: "default",
+		Password: "password",
+		DB:       2,
 	}
 	msg := types.AutoConnectMsg{Connection: conn}
 
@@ -377,6 +379,12 @@ func TestModel_HandleAutoConnectMsg(t *testing.T) {
 	}
 	if model.CurrentConn.Port != 6380 {
 		t.Errorf("Port = %d, want %d", model.CurrentConn.Port, 6380)
+	}
+	if model.CurrentConn.Username != "default" {
+		t.Errorf("Username = %q, want %q", model.CurrentConn.Username, "default")
+	}
+	if model.CurrentConn.Password != "password" {
+		t.Errorf("Password = %q, want %q", model.CurrentConn.Password, "password")
 	}
 	if model.CurrentConn.DB != 2 {
 		t.Errorf("DB = %d, want %d", model.CurrentConn.DB, 2)
