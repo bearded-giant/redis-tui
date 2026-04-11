@@ -50,7 +50,7 @@ go install github.com/davidbudnick/redis-tui@latest
 
 ### Connections and Security
 
-- **CLI quick connect** — pass `--host`, `--port`, `--username`, `--password`, etc. to connect without a config file
+- **CLI quick connect** — pass `--host`, `--port`, `--user`, `--password`, etc. to connect without a config file
 - **Connection manager** — save and switch between multiple Redis instances
 - **TLS/SSL** encryption support
 - **SSH tunneling** for secure remote access
@@ -151,7 +151,7 @@ Press `?` inside the app to view the full help screen.
 | `--port`            | `-p`  | Redis server port                                   | 6379        |
 | `--password`        | `-a`  | Redis password                                      |             |
 | `--db`              | `-n`  | Database number (0-15)                              | 0           |
-| `--user`            |       | Redis username (For ACL enabled servers)            | default     |
+| `--user`            |       | Redis username (For ACL enabled servers)            |             |
 | `--name`            |       | Connection display name                             | `host:port` |
 | `--cluster`         |       | Enable cluster mode                                 | false       |
 | `--tls`             |       | Enable TLS/SSL                                      | false       |
@@ -410,6 +410,7 @@ Configuration is stored in `~/.config/redis-tui/config.json`.
 | `port`                            | Redis server port (default: 6379)           |
 | `password`                        | Redis password (never saved to disk)        |
 | `db`                              | Redis database number (0-15)                |
+| `username`                        | Redis ACL username (optional)               |
 | `group`                           | Connection group name (optional)            |
 | `color`                           | Display color for the connection (optional) |
 | `use_tls`                         | Enable TLS/SSL connection                   |

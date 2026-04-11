@@ -320,7 +320,7 @@ func (m Model) renderConnForm() string {
 		b.WriteString("\n\n")
 	}
 
-	// Field 4: Cluster toggle
+	// Field 5: Cluster toggle
 	clusterLabelStyle := keyStyle
 	if m.ConnFocusIdx == len(textLabels) {
 		clusterLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
@@ -338,7 +338,7 @@ func (m Model) renderConnForm() string {
 	b.WriteString(checkboxStyle.Render(checkbox))
 	b.WriteString("\n\n")
 
-	// Field 5: Database (only when not in cluster mode)
+	// Field 6: Database (only when not in cluster mode)
 	if !m.ConnClusterMode {
 		dbLabelStyle := keyStyle
 		if m.ConnFocusIdx == len(textLabels)+1 {
