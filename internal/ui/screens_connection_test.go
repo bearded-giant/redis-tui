@@ -130,13 +130,13 @@ func TestHandleAddConnectionScreen(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		result, _ := m.handleAddConnectionScreen(tea.KeyMsg{Type: tea.KeyShiftTab})
 		model := result.(Model)
-		if model.ConnFocusIdx != 5 {
-			t.Errorf("expected ConnFocusIdx=5, got %d", model.ConnFocusIdx)
+		if model.ConnFocusIdx != 6 {
+			t.Errorf("expected ConnFocusIdx=6, got %d", model.ConnFocusIdx)
 		}
 	})
 	t.Run("space on cluster toggle", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ConnFocusIdx = 4
+		m.ConnFocusIdx = 5
 		result, _ := m.handleAddConnectionScreen(tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}})
 		model := result.(Model)
 		if !model.ConnClusterMode {
@@ -145,7 +145,7 @@ func TestHandleAddConnectionScreen(t *testing.T) {
 	})
 	t.Run("space on cluster toggle adjusts focus", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ConnFocusIdx = 4
+		m.ConnFocusIdx = 5
 		m.ConnClusterMode = false
 		// Force an out-of-range focus scenario by pre-setting then toggling
 		_, _ = m.handleAddConnectionScreen(tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}})
@@ -156,7 +156,7 @@ func TestHandleAddConnectionScreen(t *testing.T) {
 	})
 	t.Run("enter on cluster toggle", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ConnFocusIdx = 4
+		m.ConnFocusIdx = 5
 		result, _ := m.handleAddConnectionScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		model := result.(Model)
 		if !model.ConnClusterMode {
@@ -213,13 +213,13 @@ func TestHandleEditConnectionScreen(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		result, _ := m.handleEditConnectionScreen(tea.KeyMsg{Type: tea.KeyShiftTab})
 		model := result.(Model)
-		if model.ConnFocusIdx != 5 {
+		if model.ConnFocusIdx != 6 {
 			t.Errorf("expected ConnFocusIdx=5, got %d", model.ConnFocusIdx)
 		}
 	})
 	t.Run("space on cluster", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ConnFocusIdx = 4
+		m.ConnFocusIdx = 5
 		result, _ := m.handleEditConnectionScreen(tea.KeyMsg{Type: tea.KeySpace, Runes: []rune{' '}})
 		model := result.(Model)
 		if !model.ConnClusterMode {
@@ -232,7 +232,7 @@ func TestHandleEditConnectionScreen(t *testing.T) {
 	})
 	t.Run("enter on cluster toggle", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ConnFocusIdx = 4
+		m.ConnFocusIdx = 5
 		result, _ := m.handleEditConnectionScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		model := result.(Model)
 		if !model.ConnClusterMode {
@@ -298,9 +298,13 @@ func TestConnInputIndex(t *testing.T) {
 		focus    int
 		expected int
 	}{
-		{0, 0}, {1, 1}, {2, 2}, {3, 3},
-		{4, -1}, // cluster toggle
-		{5, 4},  // DB maps to input 4
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, -1}, // cluster toggle
+		{6, 5},  // DB maps to input 5
 	}
 	for _, tt := range tests {
 		if got := connInputIndex(tt.focus); got != tt.expected {
