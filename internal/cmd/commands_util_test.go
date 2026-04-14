@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -248,6 +249,31 @@ func TestCopyToClipboard(t *testing.T) {
 			t.Error("expected error when no clipboard utility is found")
 		}
 	})
+}
+
+func TestClipboardCmd_Linux_Xclip(t *testing.T) {
+	origOS := detectedOS
+	detectedOS = "linux"
+	defer func() { detectedOS = origOS }()
+
+	origLookPath := lookPath
+	defer func() { lookPath = origLookPath }()
+
+	lookPath = func(file string) (string, error) {
+		if file == "xclip" {
+			return "/usr/bin/xclip", nil
+		}
+		return "", errors.New("executable file not found in $PATH")
+	}
+
+	cmd, args := clipboardCmd()
+
+	if cmd != "/usr/bin/xclip" {
+		t.Errorf("expected /usr/bin/xclip, got %s", cmd)
+	}
+	if len(args) == 0 || args[0] != "-selection" {
+		t.Errorf("unexpected args: %v", args)
+	}
 }
 
 func TestClipboardCmd(t *testing.T) {
