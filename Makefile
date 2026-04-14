@@ -1,5 +1,5 @@
 # Redis TUI Manager Makefile
-
+SHELL := /bin/bash
 APP_NAME := redis-tui
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -36,20 +36,27 @@ test-cover:
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
-## Run tests and fail if any package is below 100% coverage
+## Run tests and fail if any function is below 100% coverage
 test-cover-check:
-	@go test -race -coverprofile=coverage.out ./... && \
-	go tool cover -func=coverage.out | while IFS= read -r line; do \
-		pkg=$$(echo "$$line" | awk '{print $$1}'); \
-		func=$$(echo "$$line" | awk '{print $$NF}' | tr -d '%'); \
-		name=$$(echo "$$line" | awk '{print $$2}'); \
-		if [ "$$name" = "(statements)" ] && [ "$$pkg" != "total:" ]; then \
-			if [ "$$(echo "$$func < 100.0" | bc -l)" = "1" ]; then \
-				echo "FAIL: $$pkg coverage is $${func}%, required 100%"; \
-				exit 1; \
+	@go test -v -race -coverprofile=coverage.out ./... && \
+		set -euo pipefail; \
+		FAILED=0; \
+		while IFS= read -r line; do \
+			func=$$(echo "$$line" | awk '{print $$2}'); \
+			pct=$$(echo "$$line" | awk '{print $$NF}' | tr -d '%'); \
+			if [[ "$$func" == "(statements)" ]]; then \
+				continue; \
 			fi; \
+			if (( $$(echo "$$pct < 100.0" | bc -l) )); then \
+				location=$$(echo "$$line" | awk '{print $$1}'); \
+				echo "FAIL: Function $$func at $$location coverage is $${pct}%, required 100%"; \
+				FAILED=1; \
+			fi; \
+		done < <(go tool cover -func=coverage.out); \
+		if [[ $$FAILED -eq 1 ]]; then \
+			exit 1; \
 		fi; \
-	done && echo "All packages at 100% coverage"
+		echo "All functions at 100% coverage"
 
 ## Run linter
 lint:
@@ -155,7 +162,7 @@ help:
 	@echo "    clean       - Clean build artifacts"
 	@echo "    test        - Run tests"
 	@echo "    test-cover        - Run tests with coverage"
-	@echo "    test-cover-check  - Fail if any package < 100%%"
+	@echo "    test-cover-check  - Fail if any function < 100%%"
 	@echo "    lint        - Run linter"
 	@echo "    fmt         - Format code"
 	@echo "    run         - Run the application"
