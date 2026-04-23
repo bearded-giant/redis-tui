@@ -10,7 +10,7 @@ import (
 func TestHandleSearchValuesScreen(t *testing.T) {
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.SearchValueInput.SetValue("query")
+		m.Inputs.SearchValueInput.SetValue("query")
 		m.KeyPattern = "user:*"
 		_, cmd := m.handleSearchValuesScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
@@ -19,7 +19,7 @@ func TestHandleSearchValuesScreen(t *testing.T) {
 	})
 	t.Run("enter empty pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.SearchValueInput.SetValue("query")
+		m.Inputs.SearchValueInput.SetValue("query")
 		_, cmd := m.handleSearchValuesScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -45,7 +45,7 @@ func TestHandleSearchValuesScreen(t *testing.T) {
 func TestHandleRegexSearchScreen(t *testing.T) {
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.RegexSearchInput.SetValue("^foo.*")
+		m.Inputs.RegexSearchInput.SetValue("^foo.*")
 		_, cmd := m.handleRegexSearchScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -71,7 +71,7 @@ func TestHandleRegexSearchScreen(t *testing.T) {
 func TestHandleFuzzySearchScreen(t *testing.T) {
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.FuzzySearchInput.SetValue("foo")
+		m.Inputs.FuzzySearchInput.SetValue("foo")
 		_, cmd := m.handleFuzzySearchScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -113,8 +113,8 @@ func TestHandleCompareKeysScreen(t *testing.T) {
 	})
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.CompareKey1Input.SetValue("k1")
-		m.CompareKey2Input.SetValue("k2")
+		m.Inputs.CompareKey1Input.SetValue("k1")
+		m.Inputs.CompareKey2Input.SetValue("k2")
 		_, cmd := m.handleCompareKeysScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -151,7 +151,7 @@ func TestHandleJSONPathScreen(t *testing.T) {
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.CurrentKey = &types.RedisKey{Key: "foo"}
-		m.JSONPathInput.SetValue("$.a")
+		m.Inputs.JSONPathInput.SetValue("$.a")
 		_, cmd := m.handleJSONPathScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -167,7 +167,7 @@ func TestHandleJSONPathScreen(t *testing.T) {
 	})
 	t.Run("enter no key", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.JSONPathInput.SetValue("$.a")
+		m.Inputs.JSONPathInput.SetValue("$.a")
 		_, cmd := m.handleJSONPathScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd != nil {
 			t.Error("expected nil cmd")

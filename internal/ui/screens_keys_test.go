@@ -221,7 +221,7 @@ func TestHandleKeysScreen_Actions(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		result, _ := m.handleKeysScreen(keyMsg('/'))
 		model := result.(Model)
-		if !model.PatternInput.Focused() {
+		if !model.Inputs.PatternInput.Focused() {
 			t.Error("expected pattern focused")
 		}
 	})
@@ -488,8 +488,8 @@ func TestHandleKeysScreen_Actions(t *testing.T) {
 func TestHandleKeysScreen_PatternInput(t *testing.T) {
 	t.Run("enter wraps pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
-		m.PatternInput.SetValue("user")
+		m.Inputs.PatternInput.Focus()
+		m.Inputs.PatternInput.SetValue("user")
 		result, _ := m.handleKeysScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		model := result.(Model)
 		if model.KeyPattern != "*user*" {
@@ -498,8 +498,8 @@ func TestHandleKeysScreen_PatternInput(t *testing.T) {
 	})
 	t.Run("enter keeps wildcard pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
-		m.PatternInput.SetValue("user:*")
+		m.Inputs.PatternInput.Focus()
+		m.Inputs.PatternInput.SetValue("user:*")
 		result, _ := m.handleKeysScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		model := result.(Model)
 		if model.KeyPattern != "user:*" {
@@ -508,7 +508,7 @@ func TestHandleKeysScreen_PatternInput(t *testing.T) {
 	})
 	t.Run("enter empty", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
+		m.Inputs.PatternInput.Focus()
 		_, cmd := m.handleKeysScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected reload cmd")
@@ -516,8 +516,8 @@ func TestHandleKeysScreen_PatternInput(t *testing.T) {
 	})
 	t.Run("esc clears", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
-		m.PatternInput.SetValue("foo")
+		m.Inputs.PatternInput.Focus()
+		m.Inputs.PatternInput.SetValue("foo")
 		_, cmd := m.handleKeysScreen(tea.KeyMsg{Type: tea.KeyEsc})
 		if cmd == nil {
 			t.Error("expected reload cmd")
@@ -525,7 +525,7 @@ func TestHandleKeysScreen_PatternInput(t *testing.T) {
 	})
 	t.Run("default debounces", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
+		m.Inputs.PatternInput.Focus()
 		_, cmd := m.handleKeysScreen(keyMsg('x'))
 		if cmd == nil {
 			t.Error("expected debounce cmd")

@@ -15,7 +15,7 @@ func (m Model) viewSearchValues() string {
 
 	b.WriteString(keyStyle.Render("Search:"))
 	b.WriteString("\n")
-	b.WriteString(m.SearchValueInput.View())
+	b.WriteString(m.Inputs.SearchValueInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:search  esc:cancel"))
@@ -39,7 +39,7 @@ func (m Model) viewExport() string {
 
 	b.WriteString(keyStyle.Render("Filename:"))
 	b.WriteString("\n")
-	b.WriteString(m.ExportInput.View())
+	b.WriteString(m.Inputs.ExportInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:export  esc:cancel"))
@@ -58,7 +58,7 @@ func (m Model) viewImport() string {
 
 	b.WriteString(keyStyle.Render("Filename:"))
 	b.WriteString("\n")
-	b.WriteString(m.ImportInput.View())
+	b.WriteString(m.Inputs.ImportInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:import  esc:cancel"))

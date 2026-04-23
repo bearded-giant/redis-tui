@@ -183,7 +183,7 @@ func TestHandleTTLEditorScreen(t *testing.T) {
 	t.Run("enter valid ttl", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.CurrentKey = &types.RedisKey{Key: "foo"}
-		m.TTLInput.SetValue("30")
+		m.Inputs.TTLInput.SetValue("30")
 		_, cmd := m.handleTTLEditorScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -192,7 +192,7 @@ func TestHandleTTLEditorScreen(t *testing.T) {
 	t.Run("enter invalid ttl", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.CurrentKey = &types.RedisKey{Key: "foo"}
-		m.TTLInput.SetValue("abc")
+		m.Inputs.TTLInput.SetValue("abc")
 		result, _ := m.handleTTLEditorScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if result.(Model).StatusMsg == "" {
 			t.Error("expected error status")
@@ -513,7 +513,7 @@ func TestHandleRenameKeyScreen(t *testing.T) {
 	t.Run("enter valid rename", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.CurrentKey = &types.RedisKey{Key: "old"}
-		m.RenameInput.SetValue("new")
+		m.Inputs.RenameInput.SetValue("new")
 		_, cmd := m.handleRenameKeyScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -522,7 +522,7 @@ func TestHandleRenameKeyScreen(t *testing.T) {
 	t.Run("enter same name", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.CurrentKey = &types.RedisKey{Key: "foo"}
-		m.RenameInput.SetValue("foo")
+		m.Inputs.RenameInput.SetValue("foo")
 		_, cmd := m.handleRenameKeyScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd != nil {
 			t.Error("expected nil cmd for same name")
@@ -550,7 +550,7 @@ func TestHandleCopyKeyScreen(t *testing.T) {
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.CurrentKey = &types.RedisKey{Key: "foo"}
-		m.CopyInput.SetValue("foo_copy")
+		m.Inputs.CopyInput.SetValue("foo_copy")
 		_, cmd := m.handleCopyKeyScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -577,7 +577,7 @@ func TestHandleCopyKeyScreen(t *testing.T) {
 func TestHandleBulkDeleteScreen(t *testing.T) {
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BulkDeleteInput.SetValue("user:*")
+		m.Inputs.BulkDeleteInput.SetValue("user:*")
 		_, cmd := m.handleBulkDeleteScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -603,18 +603,18 @@ func TestHandleBulkDeleteScreen(t *testing.T) {
 func TestHandleBatchTTLScreen(t *testing.T) {
 	t.Run("tab toggles focus", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BatchTTLInput.Focus()
+		m.Inputs.BatchTTLInput.Focus()
 		_, _ = m.handleBatchTTLScreen(tea.KeyMsg{Type: tea.KeyTab})
 	})
 	t.Run("tab from pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BatchTTLPattern.Focus()
+		m.Inputs.BatchTTLPattern.Focus()
 		_, _ = m.handleBatchTTLScreen(tea.KeyMsg{Type: tea.KeyTab})
 	})
 	t.Run("enter valid", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BatchTTLInput.SetValue("30")
-		m.BatchTTLPattern.SetValue("user:*")
+		m.Inputs.BatchTTLInput.SetValue("30")
+		m.Inputs.BatchTTLPattern.SetValue("user:*")
 		_, cmd := m.handleBatchTTLScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")
@@ -622,8 +622,8 @@ func TestHandleBatchTTLScreen(t *testing.T) {
 	})
 	t.Run("enter invalid ttl", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BatchTTLInput.SetValue("bad")
-		m.BatchTTLPattern.SetValue("user:*")
+		m.Inputs.BatchTTLInput.SetValue("bad")
+		m.Inputs.BatchTTLPattern.SetValue("user:*")
 		_, cmd := m.handleBatchTTLScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd != nil {
 			t.Error("expected nil cmd")
@@ -642,12 +642,12 @@ func TestHandleBatchTTLScreen(t *testing.T) {
 	})
 	t.Run("default input to focused", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BatchTTLInput.Focus()
+		m.Inputs.BatchTTLInput.Focus()
 		_, _ = m.handleBatchTTLScreen(keyMsg('5'))
 	})
 	t.Run("default input to pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.BatchTTLPattern.Focus()
+		m.Inputs.BatchTTLPattern.Focus()
 		_, _ = m.handleBatchTTLScreen(keyMsg('a'))
 	})
 }

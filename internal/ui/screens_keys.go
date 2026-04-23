@@ -51,21 +51,21 @@ func createVimEditor(content string, width, height int, fileName string) vimtea.
 }
 
 func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.PatternInput.Focused() {
+	if m.Inputs.PatternInput.Focused() {
 		switch msg.String() {
 		case "enter":
-			pattern := m.PatternInput.Value()
+			pattern := m.Inputs.PatternInput.Value()
 			if pattern != "" && !strings.ContainsAny(pattern, "*?[]") {
 				pattern = "*" + pattern + "*"
 			}
 			m.KeyPattern = pattern
-			m.PatternInput.Blur()
+			m.Inputs.PatternInput.Blur()
 			m.KeyCursor = 0
 			m.Loading = true
 			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		case "esc":
-			m.PatternInput.Blur()
-			m.PatternInput.SetValue("")
+			m.Inputs.PatternInput.Blur()
+			m.Inputs.PatternInput.SetValue("")
 			m.KeyPattern = ""
 			m.KeyCursor = 0
 			m.SearchSeq++
@@ -73,7 +73,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		default:
 			var inputCmd tea.Cmd
-			m.PatternInput, inputCmd = m.PatternInput.Update(msg)
+			m.Inputs.PatternInput, inputCmd = m.Inputs.PatternInput.Update(msg)
 			m.SearchSeq++
 			seq := m.SearchSeq
 			debounceCmd := tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
@@ -156,7 +156,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "i":
 		return m, m.Cmds.LoadServerInfo()
 	case "/":
-		m.PatternInput.Focus()
+		m.Inputs.PatternInput.Focus()
 	case "f":
 		m.ConfirmType = "flushdb"
 		m.Screen = types.ScreenConfirmDelete
@@ -166,15 +166,15 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.SortAsc = !m.SortAsc
 		m.sortKeys()
 	case "v":
-		m.SearchValueInput.SetValue("")
-		m.SearchValueInput.Focus()
+		m.Inputs.SearchValueInput.SetValue("")
+		m.Inputs.SearchValueInput.Focus()
 		m.Screen = types.ScreenSearchValues
 	case "e":
 		m.Screen = types.ScreenExport
-		m.ExportInput.Focus()
+		m.Inputs.ExportInput.Focus()
 	case "I":
 		m.Screen = types.ScreenImport
-		m.ImportInput.Focus()
+		m.Inputs.ImportInput.Focus()
 	case "p":
 		m.Loading = true
 		return m, m.Cmds.GetPubSubChannels("*")
@@ -182,27 +182,27 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Loading = true
 		return m, m.Cmds.GetSlowLog(20)
 	case "E":
-		m.LuaScriptInput.SetValue("")
-		m.LuaScriptInput.Focus()
+		m.Inputs.LuaScriptInput.SetValue("")
+		m.Inputs.LuaScriptInput.Focus()
 		m.LuaResult = ""
 		m.Screen = types.ScreenLuaScript
 	case "D":
-		m.DBSwitchInput.SetValue("")
-		m.DBSwitchInput.Focus()
+		m.Inputs.DBSwitchInput.SetValue("")
+		m.Inputs.DBSwitchInput.Focus()
 		m.Screen = types.ScreenSwitchDB
 	case "O":
 		m.LogCursor = 0
 		m.ShowingLogDetail = false
 		m.Screen = types.ScreenLogs
 	case "B":
-		m.BulkDeleteInput.SetValue("")
-		m.BulkDeleteInput.Focus()
+		m.Inputs.BulkDeleteInput.SetValue("")
+		m.Inputs.BulkDeleteInput.Focus()
 		m.BulkDeletePreview = nil
 		m.Screen = types.ScreenBulkDelete
 	case "T":
-		m.BatchTTLInput.SetValue("")
-		m.BatchTTLPattern.SetValue("")
-		m.BatchTTLInput.Focus()
+		m.Inputs.BatchTTLInput.SetValue("")
+		m.Inputs.BatchTTLPattern.SetValue("")
+		m.Inputs.BatchTTLInput.Focus()
 		m.Screen = types.ScreenBatchTTL
 	case "F":
 		connID := int64(0)
@@ -212,12 +212,12 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenFavorites
 		return m, m.Cmds.LoadFavorites(connID)
 	case "ctrl+r":
-		m.RegexSearchInput.SetValue("")
-		m.RegexSearchInput.Focus()
+		m.Inputs.RegexSearchInput.SetValue("")
+		m.Inputs.RegexSearchInput.Focus()
 		m.Screen = types.ScreenRegexSearch
 	case "ctrl+f":
-		m.FuzzySearchInput.SetValue("")
-		m.FuzzySearchInput.Focus()
+		m.Inputs.FuzzySearchInput.SetValue("")
+		m.Inputs.FuzzySearchInput.Focus()
 		m.Screen = types.ScreenFuzzySearch
 	case "ctrl+l":
 		m.Loading = true
@@ -233,9 +233,9 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Loading = true
 		return m, m.Cmds.GetClusterInfo()
 	case "K":
-		m.CompareKey1Input.SetValue("")
-		m.CompareKey2Input.SetValue("")
-		m.CompareKey1Input.Focus()
+		m.Inputs.CompareKey1Input.SetValue("")
+		m.Inputs.CompareKey2Input.SetValue("")
+		m.Inputs.CompareKey1Input.Focus()
 		m.CompareFocusIdx = 0
 		m.Screen = types.ScreenCompareKeys
 	case "P":
@@ -276,7 +276,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Screen = types.ScreenExpiringKeys
 	case "esc":
 		if m.KeyPattern != "" {
-			m.PatternInput.SetValue("")
+			m.Inputs.PatternInput.SetValue("")
 			m.KeyPattern = ""
 			m.KeyCursor = 0
 			m.SearchSeq++
@@ -327,8 +327,8 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "t":
 		if m.CurrentKey != nil {
-			m.TTLInput.SetValue("")
-			m.TTLInput.Focus()
+			m.Inputs.TTLInput.SetValue("")
+			m.Inputs.TTLInput.Focus()
 			m.Screen = types.ScreenTTLEditor
 		}
 	case "r":
@@ -370,14 +370,14 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "R":
 		if m.CurrentKey != nil {
-			m.RenameInput.SetValue(m.CurrentKey.Key)
-			m.RenameInput.Focus()
+			m.Inputs.RenameInput.SetValue(m.CurrentKey.Key)
+			m.Inputs.RenameInput.Focus()
 			m.Screen = types.ScreenRenameKey
 		}
 	case "c":
 		if m.CurrentKey != nil {
-			m.CopyInput.SetValue(m.CurrentKey.Key + "_copy")
-			m.CopyInput.Focus()
+			m.Inputs.CopyInput.SetValue(m.CurrentKey.Key + "_copy")
+			m.Inputs.CopyInput.Focus()
 			m.Screen = types.ScreenCopyKey
 		}
 	case "f":
@@ -415,8 +415,8 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "J":
 		if m.CurrentKey != nil && m.CurrentKey.Type == types.KeyTypeString {
-			m.JSONPathInput.SetValue("")
-			m.JSONPathInput.Focus()
+			m.Inputs.JSONPathInput.SetValue("")
+			m.Inputs.JSONPathInput.Focus()
 			m.Screen = types.ScreenJSONPath
 		}
 	case "up", "k":

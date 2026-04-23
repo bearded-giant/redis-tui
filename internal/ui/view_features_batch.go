@@ -20,7 +20,7 @@ func (m Model) viewBulkDelete() string {
 
 	b.WriteString(keyStyle.Render("Pattern:"))
 	b.WriteString("\n")
-	b.WriteString(m.BulkDeleteInput.View())
+	b.WriteString(m.Inputs.BulkDeleteInput.View())
 	b.WriteString("\n\n")
 
 	if len(m.BulkDeletePreview) > 0 {
@@ -53,12 +53,12 @@ func (m Model) viewBatchTTL() string {
 
 	b.WriteString(keyStyle.Render("TTL (seconds):"))
 	b.WriteString("\n")
-	b.WriteString(m.BatchTTLInput.View())
+	b.WriteString(m.Inputs.BatchTTLInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(keyStyle.Render("Pattern:"))
 	b.WriteString("\n")
-	b.WriteString(m.BatchTTLPattern.View())
+	b.WriteString(m.Inputs.BatchTTLPattern.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("tab:next  enter:apply  esc:cancel"))

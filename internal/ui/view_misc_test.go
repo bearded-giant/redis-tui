@@ -668,7 +668,7 @@ func TestViewRedisConfig(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.RedisConfigParams = []types.RedisConfigParam{{Name: "maxmemory", Value: "100mb"}}
 		m.EditingConfigParam = "maxmemory"
-		m.ConfigEditInput.SetValue("200mb")
+		m.Inputs.ConfigEditInput.SetValue("200mb")
 		assertNonEmpty(t, "edit", m.viewRedisConfig())
 	})
 	t.Run("many params scroll", func(t *testing.T) {

@@ -109,7 +109,7 @@ func TestHandlePublishMessageScreen(t *testing.T) {
 func TestHandleSwitchDBScreen(t *testing.T) {
 	t.Run("enter valid db", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.DBSwitchInput.SetValue("5")
+		m.Inputs.DBSwitchInput.SetValue("5")
 		_, cmd := m.handleSwitchDBScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected switch cmd")
@@ -117,7 +117,7 @@ func TestHandleSwitchDBScreen(t *testing.T) {
 	})
 	t.Run("enter invalid db", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.DBSwitchInput.SetValue("not-a-number")
+		m.Inputs.DBSwitchInput.SetValue("not-a-number")
 		result, _ := m.handleSwitchDBScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if result.(Model).StatusMsg == "" {
 			t.Error("expected error status")
@@ -125,7 +125,7 @@ func TestHandleSwitchDBScreen(t *testing.T) {
 	})
 	t.Run("enter out of range", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.DBSwitchInput.SetValue("20")
+		m.Inputs.DBSwitchInput.SetValue("20")
 		result, _ := m.handleSwitchDBScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if result.(Model).StatusMsg == "" {
 			t.Error("expected error status")
@@ -147,7 +147,7 @@ func TestHandleSwitchDBScreen(t *testing.T) {
 func TestHandleExportScreen(t *testing.T) {
 	t.Run("enter exports with pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ExportInput.SetValue("out.json")
+		m.Inputs.ExportInput.SetValue("out.json")
 		m.KeyPattern = "user:*"
 		_, cmd := m.handleExportScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
@@ -156,7 +156,7 @@ func TestHandleExportScreen(t *testing.T) {
 	})
 	t.Run("enter exports empty pattern", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ExportInput.SetValue("out.json")
+		m.Inputs.ExportInput.SetValue("out.json")
 		_, cmd := m.handleExportScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected export cmd")
@@ -185,7 +185,7 @@ func TestHandleExportScreen(t *testing.T) {
 func TestHandleImportScreen(t *testing.T) {
 	t.Run("enter imports", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.ImportInput.SetValue("in.json")
+		m.Inputs.ImportInput.SetValue("in.json")
 		_, cmd := m.handleImportScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected import cmd")
@@ -229,7 +229,7 @@ func TestHandleSlowLogScreen(t *testing.T) {
 func TestHandleLuaScriptScreen(t *testing.T) {
 	t.Run("enter runs script", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.LuaScriptInput.SetValue("return 1")
+		m.Inputs.LuaScriptInput.SetValue("return 1")
 		_, cmd := m.handleLuaScriptScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected eval cmd")
@@ -419,7 +419,7 @@ func TestHandleRedisConfigScreen(t *testing.T) {
 	t.Run("editing enter sets config", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.EditingConfigParam = "maxmemory"
-		m.ConfigEditInput.SetValue("100mb")
+		m.Inputs.ConfigEditInput.SetValue("100mb")
 		_, cmd := m.handleRedisConfigScreen(tea.KeyMsg{Type: tea.KeyEnter})
 		if cmd == nil {
 			t.Error("expected cmd")

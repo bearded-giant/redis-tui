@@ -23,7 +23,7 @@ func (m Model) viewTTLEditor() string {
 
 	b.WriteString(keyStyle.Render("TTL (seconds):"))
 	b.WriteString("\n")
-	b.WriteString(m.TTLInput.View())
+	b.WriteString(m.Inputs.TTLInput.View())
 	b.WriteString("\n")
 	b.WriteString(dimStyle.Render("Enter 0 to remove expiry"))
 	b.WriteString("\n\n")
@@ -215,7 +215,7 @@ func (m Model) viewRenameKey() string {
 
 	b.WriteString(keyStyle.Render("New Name:"))
 	b.WriteString("\n")
-	b.WriteString(m.RenameInput.View())
+	b.WriteString(m.Inputs.RenameInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:rename  esc:cancel"))
@@ -237,7 +237,7 @@ func (m Model) viewCopyKey() string {
 
 	b.WriteString(keyStyle.Render("Destination:"))
 	b.WriteString("\n")
-	b.WriteString(m.CopyInput.View())
+	b.WriteString(m.Inputs.CopyInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:copy  esc:cancel"))

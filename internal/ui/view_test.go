@@ -145,7 +145,7 @@ func TestViewKeysListOnly(t *testing.T) {
 	})
 	t.Run("pattern focused", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
+		m.Inputs.PatternInput.Focus()
 		assertNonEmpty(t, "pattern focused", m.viewKeysListOnly())
 	})
 	t.Run("with keys various TTLs", func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestBuildKeysListPanel(t *testing.T) {
 	})
 	t.Run("pattern focused", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
-		m.PatternInput.Focus()
+		m.Inputs.PatternInput.Focus()
 		assertNonEmpty(t, "focus", m.buildKeysListPanel(80))
 	})
 	t.Run("with keys various formats", func(t *testing.T) {

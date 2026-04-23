@@ -27,14 +27,12 @@ type Model struct {
 	SelectedKeyIdx    int
 	KeyCursor         uint64
 	KeyPattern        string
-	PatternInput      textinput.Model
 	SearchSeq         int
 	CurrentKey        *types.RedisKey
 	CurrentValue      types.RedisValue
 	AddKeyInputs      []textinput.Model
 	AddKeyFocusIdx    int
 	AddKeyType        types.KeyType
-	TTLInput          textinput.Model
 	ServerInfo        types.ServerInfo
 	TotalKeys         int64
 	Width             int
@@ -54,12 +52,6 @@ type Model struct {
 	EditingField       string
 	AddCollectionInput []textinput.Model
 	AddCollFocusIdx    int
-	RenameInput        textinput.Model
-	CopyInput          textinput.Model
-	SearchValueInput   textinput.Model
-	ExportInput        textinput.Model
-	ImportInput        textinput.Model
-	LuaScriptInput     textinput.Model
 	LuaResult          string
 	PubSubInput        []textinput.Model
 	PubSubFocusIdx     int
@@ -71,7 +63,6 @@ type Model struct {
 	SelectedItemIdx    int
 	SortBy             string
 	SortAsc            bool
-	DBSwitchInput      textinput.Model
 	TestConnResult     string
 	LogCursor          int
 	ShowingLogDetail   bool
@@ -89,20 +80,15 @@ type Model struct {
 	SelectedTreeIdx int
 
 	// Bulk operations
-	BulkDeleteInput   textinput.Model
 	BulkDeletePreview []string
 	BulkDeleteCount   int
 	SelectedBulkKeys  map[string]bool
 
 	// Batch TTL
-	BatchTTLInput   textinput.Model
-	BatchTTLPattern textinput.Model
 	BatchTTLPreview []string
 
 	// Search
-	RegexSearchInput textinput.Model
-	FuzzySearchInput textinput.Model
-	SearchResults    []types.RedisKey
+	SearchResults []types.RedisKey
 
 	// Watch mode
 	WatchActive     bool
@@ -123,10 +109,8 @@ type Model struct {
 	ConnClusterMode bool
 
 	// Compare keys
-	CompareKey1Input textinput.Model
-	CompareKey2Input textinput.Model
-	CompareResult    *types.KeyComparison
-	CompareFocusIdx  int
+	CompareResult   *types.KeyComparison
+	CompareFocusIdx int
 
 	// Key templates
 	Templates           []types.KeyTemplate
@@ -135,7 +119,6 @@ type Model struct {
 	TemplateFocusIdx    int
 
 	// JSON path query
-	JSONPathInput  textinput.Model
 	JSONPathResult string
 
 	// Keybindings
@@ -174,7 +157,6 @@ type Model struct {
 	// Redis config
 	RedisConfigParams  []types.RedisConfigParam
 	SelectedConfigIdx  int
-	ConfigEditInput    textinput.Model
 	EditingConfigParam string
 
 	// Connection error (for prominent display)
@@ -187,8 +169,34 @@ type Model struct {
 	UpdateAvailable string
 	UpdateCmd       string
 
+	// Text inputs — held behind a pointer so Model stays small enough to avoid
+	// Go's large-object GC span class (>32KB), which triggered a race-detector
+	// false-positive bad-pointer crash in Go 1.26.
+	Inputs *ModelInputs
+
 	// Lazy initialization flag
 	inputsInitialized bool
+}
+
+type ModelInputs struct {
+	PatternInput     textinput.Model
+	TTLInput         textinput.Model
+	RenameInput      textinput.Model
+	CopyInput        textinput.Model
+	SearchValueInput textinput.Model
+	ExportInput      textinput.Model
+	ImportInput      textinput.Model
+	LuaScriptInput   textinput.Model
+	DBSwitchInput    textinput.Model
+	BulkDeleteInput  textinput.Model
+	BatchTTLInput    textinput.Model
+	BatchTTLPattern  textinput.Model
+	RegexSearchInput textinput.Model
+	FuzzySearchInput textinput.Model
+	CompareKey1Input textinput.Model
+	CompareKey2Input textinput.Model
+	JSONPathInput    textinput.Model
+	ConfigEditInput  textinput.Model
 }
 
 type ActionType string
@@ -218,25 +226,27 @@ func NewModel() Model {
 		WatchInterval:      time.Second * 2,
 		KeyBindings:        types.DefaultKeyBindings(),
 		ExpiryThreshold:    300,
-		PatternInput:       createTextInput("Filter pattern...", 40),
-		TTLInput:           createTextInput("TTL in seconds (-1 to remove)", 30),
-		RenameInput:        createTextInput("New key name", 40),
-		CopyInput:          createTextInput("New key name for copy", 40),
-		SearchValueInput:   createTextInput("Search in values...", 40),
-		ExportInput:        createTextInput("Export filename", 40),
-		ImportInput:        createTextInput("Import filename", 40),
-		LuaScriptInput:     createTextInput("Lua script", 60),
-		DBSwitchInput:      createTextInput("Database number (0-15)", 30),
-		BulkDeleteInput:    createTextInput("Pattern to delete (e.g., user:*)", 40),
-		BatchTTLInput:      createTextInput("TTL in seconds", 30),
-		BatchTTLPattern:    createTextInput("Key pattern", 40),
-		RegexSearchInput:   createTextInput("Regex pattern", 40),
-		FuzzySearchInput:   createTextInput("Fuzzy search...", 40),
-		CompareKey1Input:   createTextInput("First key", 40),
-		CompareKey2Input:   createTextInput("Second key", 40),
-		JSONPathInput:      createTextInput("JSONPath expression (e.g., $.name)", 40),
-		ConfigEditInput:    createTextInput("New value", 50),
-		inputsInitialized:  true,
+		Inputs: &ModelInputs{
+			PatternInput:     createTextInput("Filter pattern...", 40),
+			TTLInput:         createTextInput("TTL in seconds (-1 to remove)", 30),
+			RenameInput:      createTextInput("New key name", 40),
+			CopyInput:        createTextInput("New key name for copy", 40),
+			SearchValueInput: createTextInput("Search in values...", 40),
+			ExportInput:      createTextInput("Export filename", 40),
+			ImportInput:      createTextInput("Import filename", 40),
+			LuaScriptInput:   createTextInput("Lua script", 60),
+			DBSwitchInput:    createTextInput("Database number (0-15)", 30),
+			BulkDeleteInput:  createTextInput("Pattern to delete (e.g., user:*)", 40),
+			BatchTTLInput:    createTextInput("TTL in seconds", 30),
+			BatchTTLPattern:  createTextInput("Key pattern", 40),
+			RegexSearchInput: createTextInput("Regex pattern", 40),
+			FuzzySearchInput: createTextInput("Fuzzy search...", 40),
+			CompareKey1Input: createTextInput("First key", 40),
+			CompareKey2Input: createTextInput("Second key", 40),
+			JSONPathInput:    createTextInput("JSONPath expression (e.g., $.name)", 40),
+			ConfigEditInput:  createTextInput("New value", 50),
+		},
+		inputsInitialized: true,
 	}
 }
 

@@ -27,7 +27,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.SearchDebounceMsg:
 		if msg.Seq == m.SearchSeq {
-			pattern := m.PatternInput.Value()
+			pattern := m.Inputs.PatternInput.Value()
 			if pattern != "" && !strings.ContainsAny(pattern, "*?[]") {
 				pattern = "*" + pattern + "*"
 			}

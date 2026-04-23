@@ -123,7 +123,7 @@ func (m Model) handleTTLEditorScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		if m.CurrentKey != nil {
-			ttlSecs, err := strconv.Atoi(m.TTLInput.Value())
+			ttlSecs, err := strconv.Atoi(m.Inputs.TTLInput.Value())
 			if err != nil {
 				m.StatusMsg = "Invalid TTL: must be an integer (seconds)"
 				return m, nil
@@ -134,10 +134,10 @@ func (m Model) handleTTLEditorScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
-		m.TTLInput.Blur()
+		m.Inputs.TTLInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.TTLInput, inputCmd = m.TTLInput.Update(msg)
+		m.Inputs.TTLInput, inputCmd = m.Inputs.TTLInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -320,16 +320,16 @@ func (m Model) handleRemoveFromCollectionScreen(msg tea.KeyMsg) (tea.Model, tea.
 func (m Model) handleRenameKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if m.CurrentKey != nil && m.RenameInput.Value() != "" && m.RenameInput.Value() != m.CurrentKey.Key {
+		if m.CurrentKey != nil && m.Inputs.RenameInput.Value() != "" && m.Inputs.RenameInput.Value() != m.CurrentKey.Key {
 			m.Loading = true
-			return m, m.Cmds.RenameKey(m.CurrentKey.Key, m.RenameInput.Value())
+			return m, m.Cmds.RenameKey(m.CurrentKey.Key, m.Inputs.RenameInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
-		m.RenameInput.Blur()
+		m.Inputs.RenameInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.RenameInput, inputCmd = m.RenameInput.Update(msg)
+		m.Inputs.RenameInput, inputCmd = m.Inputs.RenameInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -338,16 +338,16 @@ func (m Model) handleRenameKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleCopyKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if m.CurrentKey != nil && m.CopyInput.Value() != "" {
+		if m.CurrentKey != nil && m.Inputs.CopyInput.Value() != "" {
 			m.Loading = true
-			return m, m.Cmds.CopyKey(m.CurrentKey.Key, m.CopyInput.Value(), false)
+			return m, m.Cmds.CopyKey(m.CurrentKey.Key, m.Inputs.CopyInput.Value(), false)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeyDetail
-		m.CopyInput.Blur()
+		m.Inputs.CopyInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.CopyInput, inputCmd = m.CopyInput.Update(msg)
+		m.Inputs.CopyInput, inputCmd = m.Inputs.CopyInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -356,16 +356,16 @@ func (m Model) handleCopyKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleBulkDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if m.BulkDeleteInput.Value() != "" {
+		if m.Inputs.BulkDeleteInput.Value() != "" {
 			m.Loading = true
-			return m, m.Cmds.BulkDelete(m.BulkDeleteInput.Value())
+			return m, m.Cmds.BulkDelete(m.Inputs.BulkDeleteInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
-		m.BulkDeleteInput.Blur()
+		m.Inputs.BulkDeleteInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.BulkDeleteInput, inputCmd = m.BulkDeleteInput.Update(msg)
+		m.Inputs.BulkDeleteInput, inputCmd = m.Inputs.BulkDeleteInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -374,34 +374,34 @@ func (m Model) handleBulkDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleBatchTTLScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
-		if m.BatchTTLInput.Focused() {
-			m.BatchTTLInput.Blur()
-			m.BatchTTLPattern.Focus()
+		if m.Inputs.BatchTTLInput.Focused() {
+			m.Inputs.BatchTTLInput.Blur()
+			m.Inputs.BatchTTLPattern.Focus()
 		} else {
-			m.BatchTTLPattern.Blur()
-			m.BatchTTLInput.Focus()
+			m.Inputs.BatchTTLPattern.Blur()
+			m.Inputs.BatchTTLInput.Focus()
 		}
 	case "enter":
-		if m.BatchTTLInput.Value() != "" && m.BatchTTLPattern.Value() != "" {
-			ttlSecs, err := strconv.Atoi(m.BatchTTLInput.Value())
+		if m.Inputs.BatchTTLInput.Value() != "" && m.Inputs.BatchTTLPattern.Value() != "" {
+			ttlSecs, err := strconv.Atoi(m.Inputs.BatchTTLInput.Value())
 			if err == nil {
 				m.Loading = true
 				ttl := time.Duration(ttlSecs) * time.Second
-				return m, m.Cmds.BatchSetTTL(m.BatchTTLPattern.Value(), ttl)
+				return m, m.Cmds.BatchSetTTL(m.Inputs.BatchTTLPattern.Value(), ttl)
 			}
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
-		m.BatchTTLInput.Blur()
-		m.BatchTTLPattern.Blur()
+		m.Inputs.BatchTTLInput.Blur()
+		m.Inputs.BatchTTLPattern.Blur()
 	default:
-		if m.BatchTTLInput.Focused() {
+		if m.Inputs.BatchTTLInput.Focused() {
 			var inputCmd tea.Cmd
-			m.BatchTTLInput, inputCmd = m.BatchTTLInput.Update(msg)
+			m.Inputs.BatchTTLInput, inputCmd = m.Inputs.BatchTTLInput.Update(msg)
 			return m, inputCmd
 		}
 		var inputCmd tea.Cmd
-		m.BatchTTLPattern, inputCmd = m.BatchTTLPattern.Update(msg)
+		m.Inputs.BatchTTLPattern, inputCmd = m.Inputs.BatchTTLPattern.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil

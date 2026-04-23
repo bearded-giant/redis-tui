@@ -404,7 +404,7 @@ func TestIsInArrayContext_BareValue(t *testing.T) {
 
 func TestHandleKeysScreen_DebounceClosureFires(t *testing.T) {
 	m, _, _ := newTestModel(t)
-	m.PatternInput.Focus()
+	m.Inputs.PatternInput.Focus()
 	_, cmd := m.handleKeysScreen(keyMsg('x'))
 	if cmd == nil {
 		t.Fatal("expected cmd")

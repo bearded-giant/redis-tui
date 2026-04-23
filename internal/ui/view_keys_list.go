@@ -72,8 +72,8 @@ func (m Model) viewKeysListOnly() string {
 	b.WriteString("\n\n")
 
 	b.WriteString(keyStyle.Render("Filter: "))
-	if m.PatternInput.Focused() {
-		b.WriteString(m.PatternInput.View())
+	if m.Inputs.PatternInput.Focused() {
+		b.WriteString(m.Inputs.PatternInput.View())
 	} else {
 		pattern := m.KeyPattern
 		if pattern == "" {
@@ -198,8 +198,8 @@ func (m Model) buildKeysListPanel(width int) string {
 
 	// Pattern filter
 	b.WriteString(keyStyle.Render("Filter: "))
-	if m.PatternInput.Focused() {
-		b.WriteString(m.PatternInput.View())
+	if m.Inputs.PatternInput.Focused() {
+		b.WriteString(m.Inputs.PatternInput.View())
 	} else {
 		pattern := m.KeyPattern
 		if pattern == "" {

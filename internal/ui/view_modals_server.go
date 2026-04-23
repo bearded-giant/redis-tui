@@ -174,7 +174,7 @@ func (m Model) viewRedisConfig() string {
 			if m.EditingConfigParam != "" && i == m.SelectedConfigIdx {
 				line := fmt.Sprintf("%s%s = ", cursor, param.Name)
 				b.WriteString(selectedStyle.Render(line))
-				b.WriteString(m.ConfigEditInput.View())
+				b.WriteString(m.Inputs.ConfigEditInput.View())
 			} else {
 				line := fmt.Sprintf("%s%s = %s", cursor, param.Name, param.Value)
 				if i == m.SelectedConfigIdx {
@@ -211,7 +211,7 @@ func (m Model) viewSwitchDB() string {
 
 	b.WriteString(keyStyle.Render("New Database (0-15):"))
 	b.WriteString("\n")
-	b.WriteString(m.DBSwitchInput.View())
+	b.WriteString(m.Inputs.DBSwitchInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:switch  esc:cancel"))
@@ -251,7 +251,7 @@ func (m Model) viewLuaScript() string {
 
 	b.WriteString(keyStyle.Render("Script:"))
 	b.WriteString("\n")
-	b.WriteString(m.LuaScriptInput.View())
+	b.WriteString(m.Inputs.LuaScriptInput.View())
 	b.WriteString("\n\n")
 
 	if m.LuaResult != "" {

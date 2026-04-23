@@ -34,7 +34,7 @@ func TestUpdate_SearchDebounceMsg(t *testing.T) {
 	t.Run("matching seq reloads", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.SearchSeq = 5
-		m.PatternInput.SetValue("foo")
+		m.Inputs.PatternInput.SetValue("foo")
 		_, cmd := m.Update(types.SearchDebounceMsg{Seq: 5})
 		if cmd == nil {
 			t.Error("expected reload cmd")
@@ -43,7 +43,7 @@ func TestUpdate_SearchDebounceMsg(t *testing.T) {
 	t.Run("wildcard pattern preserved", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.SearchSeq = 1
-		m.PatternInput.SetValue("user:*")
+		m.Inputs.PatternInput.SetValue("user:*")
 		result, _ := m.Update(types.SearchDebounceMsg{Seq: 1})
 		if result.(Model).KeyPattern != "user:*" {
 			t.Errorf("expected user:*, got %q", result.(Model).KeyPattern)
@@ -52,7 +52,7 @@ func TestUpdate_SearchDebounceMsg(t *testing.T) {
 	t.Run("plain pattern wrapped", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		m.SearchSeq = 1
-		m.PatternInput.SetValue("user")
+		m.Inputs.PatternInput.SetValue("user")
 		result, _ := m.Update(types.SearchDebounceMsg{Seq: 1})
 		if result.(Model).KeyPattern != "*user*" {
 			t.Errorf("expected *user*, got %q", result.(Model).KeyPattern)

@@ -15,7 +15,7 @@ func (m Model) viewRegexSearch() string {
 
 	b.WriteString(keyStyle.Render("Pattern:"))
 	b.WriteString("\n")
-	b.WriteString(m.RegexSearchInput.View())
+	b.WriteString(m.Inputs.RegexSearchInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(dimStyle.Render("Examples: user:\\d+  session:[a-f0-9]+"))
@@ -37,7 +37,7 @@ func (m Model) viewFuzzySearch() string {
 
 	b.WriteString(keyStyle.Render("Search:"))
 	b.WriteString("\n")
-	b.WriteString(m.FuzzySearchInput.View())
+	b.WriteString(m.Inputs.FuzzySearchInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(helpStyle.Render("enter:search  esc:cancel"))
@@ -53,12 +53,12 @@ func (m Model) viewCompareKeys() string {
 
 	b.WriteString(keyStyle.Render("Key 1:"))
 	b.WriteString("\n")
-	b.WriteString(m.CompareKey1Input.View())
+	b.WriteString(m.Inputs.CompareKey1Input.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(keyStyle.Render("Key 2:"))
 	b.WriteString("\n")
-	b.WriteString(m.CompareKey2Input.View())
+	b.WriteString(m.Inputs.CompareKey2Input.View())
 	b.WriteString("\n\n")
 
 	if m.CompareResult != nil {
@@ -97,7 +97,7 @@ func (m Model) viewJSONPath() string {
 
 	b.WriteString(keyStyle.Render("JSON Path:"))
 	b.WriteString("\n")
-	b.WriteString(m.JSONPathInput.View())
+	b.WriteString(m.Inputs.JSONPathInput.View())
 	b.WriteString("\n\n")
 
 	b.WriteString(dimStyle.Render("Examples: $.name  $.users[0]  $.items[*].id"))

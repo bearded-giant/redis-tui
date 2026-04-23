@@ -64,7 +64,7 @@ func (m Model) handlePublishMessageScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleSwitchDBScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		dbNum, err := strconv.Atoi(m.DBSwitchInput.Value())
+		dbNum, err := strconv.Atoi(m.Inputs.DBSwitchInput.Value())
 		if err == nil && dbNum >= 0 && dbNum <= 15 {
 			m.Loading = true
 			return m, m.Cmds.SwitchDB(dbNum)
@@ -73,10 +73,10 @@ func (m Model) handleSwitchDBScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
-		m.DBSwitchInput.Blur()
+		m.Inputs.DBSwitchInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.DBSwitchInput, inputCmd = m.DBSwitchInput.Update(msg)
+		m.Inputs.DBSwitchInput, inputCmd = m.Inputs.DBSwitchInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -85,20 +85,20 @@ func (m Model) handleSwitchDBScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleExportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if m.ExportInput.Value() != "" {
+		if m.Inputs.ExportInput.Value() != "" {
 			m.Loading = true
 			pattern := m.KeyPattern
 			if pattern == "" {
 				pattern = "*"
 			}
-			return m, m.Cmds.ExportKeys(pattern, m.ExportInput.Value())
+			return m, m.Cmds.ExportKeys(pattern, m.Inputs.ExportInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
-		m.ExportInput.Blur()
+		m.Inputs.ExportInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.ExportInput, inputCmd = m.ExportInput.Update(msg)
+		m.Inputs.ExportInput, inputCmd = m.Inputs.ExportInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -107,16 +107,16 @@ func (m Model) handleExportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleImportScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if m.ImportInput.Value() != "" {
+		if m.Inputs.ImportInput.Value() != "" {
 			m.Loading = true
-			return m, m.Cmds.ImportKeys(m.ImportInput.Value())
+			return m, m.Cmds.ImportKeys(m.Inputs.ImportInput.Value())
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
-		m.ImportInput.Blur()
+		m.Inputs.ImportInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.ImportInput, inputCmd = m.ImportInput.Update(msg)
+		m.Inputs.ImportInput, inputCmd = m.Inputs.ImportInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -136,16 +136,16 @@ func (m Model) handleSlowLogScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleLuaScriptScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		if m.LuaScriptInput.Value() != "" {
+		if m.Inputs.LuaScriptInput.Value() != "" {
 			m.Loading = true
-			return m, m.Cmds.EvalLuaScript(m.LuaScriptInput.Value(), []string{})
+			return m, m.Cmds.EvalLuaScript(m.Inputs.LuaScriptInput.Value(), []string{})
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
-		m.LuaScriptInput.Blur()
+		m.Inputs.LuaScriptInput.Blur()
 	default:
 		var inputCmd tea.Cmd
-		m.LuaScriptInput, inputCmd = m.LuaScriptInput.Update(msg)
+		m.Inputs.LuaScriptInput, inputCmd = m.Inputs.LuaScriptInput.Update(msg)
 		return m, inputCmd
 	}
 	return m, nil
@@ -267,16 +267,16 @@ func (m Model) handleRedisConfigScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			m.Loading = true
 			param := m.EditingConfigParam
-			value := m.ConfigEditInput.Value()
+			value := m.Inputs.ConfigEditInput.Value()
 			m.EditingConfigParam = ""
-			m.ConfigEditInput.Blur()
+			m.Inputs.ConfigEditInput.Blur()
 			return m, m.Cmds.SetRedisConfig(param, value)
 		case "esc":
 			m.EditingConfigParam = ""
-			m.ConfigEditInput.Blur()
+			m.Inputs.ConfigEditInput.Blur()
 		default:
 			var inputCmd tea.Cmd
-			m.ConfigEditInput, inputCmd = m.ConfigEditInput.Update(msg)
+			m.Inputs.ConfigEditInput, inputCmd = m.Inputs.ConfigEditInput.Update(msg)
 			return m, inputCmd
 		}
 		return m, nil
@@ -295,8 +295,8 @@ func (m Model) handleRedisConfigScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.RedisConfigParams) > 0 && m.SelectedConfigIdx < len(m.RedisConfigParams) {
 			param := m.RedisConfigParams[m.SelectedConfigIdx]
 			m.EditingConfigParam = param.Name
-			m.ConfigEditInput.SetValue(param.Value)
-			m.ConfigEditInput.Focus()
+			m.Inputs.ConfigEditInput.SetValue(param.Value)
+			m.Inputs.ConfigEditInput.Focus()
 		}
 	case "r":
 		m.Loading = true
