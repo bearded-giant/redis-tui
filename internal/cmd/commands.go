@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/davidbudnick/redis-tui/internal/service"
+	"github.com/bearded-giant/redis-tui/internal/service"
 )
 
 // Commands provides tea.Cmd factories with injected dependencies.

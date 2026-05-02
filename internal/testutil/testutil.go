@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/db"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/db"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // Injectable for tests to simulate crypto failures.

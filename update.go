@@ -31,7 +31,7 @@ var (
 	osCreateTemp  = os.CreateTemp
 )
 
-const githubRepo = "davidbudnick/redis-tui"
+const githubRepo = "bearded-giant/redis-tui"
 
 // maxDownloadSize is the maximum allowed download size (256 MB).
 const maxDownloadSize = 256 << 20
@@ -45,7 +45,7 @@ type githubRelease struct {
 
 func runUpdate(currentVersion string) error {
 	if currentVersion == "dev" || !isSemver(currentVersion) {
-		return fmt.Errorf("cannot self-update a development build (version=%q); use the install script instead:\n  curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash", currentVersion)
+		return fmt.Errorf("cannot self-update a development build (version=%q); use the install script instead:\n  curl -fsSL https://raw.githubusercontent.com/bearded-giant/redis-tui/main/install.sh | bash", currentVersion)
 	}
 
 	execPath, err := osExecutable()

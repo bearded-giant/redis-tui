@@ -3,8 +3,8 @@ package cmd
 import (
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/service"
-	"github.com/davidbudnick/redis-tui/internal/testutil"
+	"github.com/bearded-giant/redis-tui/internal/service"
+	"github.com/bearded-giant/redis-tui/internal/testutil"
 )
 
 func newMockCmds() (*Commands, *testutil.FullMockRedisClient) {

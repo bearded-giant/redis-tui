@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // roundTripFunc lets us plug in a fake transport for the version HTTP client.
@@ -180,7 +180,7 @@ func TestDetectUpgradeCmd(t *testing.T) {
 		{"executable error fallback", "", errFake, "redis-tui --update"},
 		{"homebrew Cellar path", "/usr/local/Cellar/redis-tui/1.0/bin/redis-tui", nil, "brew upgrade redis-tui"},
 		{"homebrew path", "/opt/homebrew/bin/redis-tui", nil, "brew upgrade redis-tui"},
-		{"go bin path", "/Users/me/go/bin/redis-tui", nil, "go install github.com/davidbudnick/redis-tui@latest"},
+		{"go bin path", "/Users/me/go/bin/redis-tui", nil, "go install github.com/bearded-giant/redis-tui@latest"},
 		{"generic path", "/usr/local/bin/redis-tui", nil, "redis-tui --update"},
 	}
 	for _, tc := range cases {

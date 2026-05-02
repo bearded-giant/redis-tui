@@ -3,7 +3,7 @@ package testutil
 import (
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -13,8 +13,9 @@ type FullMockRedisClient struct {
 	*MockRedisClient
 
 	// Configurable return values
-	IsClusterResult       bool
-	TestConnectionLatency time.Duration
+	IsClusterResult          bool
+	TestConnectionLatency    time.Duration
+	TestSSHConnectionLatency time.Duration
 	ServerInfo            types.ServerInfo
 	MemStats              types.MemoryStats
 	MemUsageResult        int64
@@ -49,6 +50,7 @@ type FullMockRedisClient struct {
 	ConnectClusterError     error
 	ConnectWithTLSError     error
 	TestConnectionError     error
+	TestSSHConnectionError  error
 	SetStringError          error
 	SetTTLError             error
 	BatchSetTTLError        error
@@ -142,6 +144,11 @@ func (m *FullMockRedisClient) IsCluster() bool {
 func (m *FullMockRedisClient) TestConnection(_ types.Connection) (time.Duration, error) {
 	m.Calls = append(m.Calls, "TestConnection")
 	return m.TestConnectionLatency, m.TestConnectionError
+}
+
+func (m *FullMockRedisClient) TestSSHConnection(_ *types.SSHConfig) (time.Duration, error) {
+	m.Calls = append(m.Calls, "TestSSHConnection")
+	return m.TestSSHConnectionLatency, m.TestSSHConnectionError
 }
 
 // Key operations

@@ -12,8 +12,8 @@ import (
 	"os/exec"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/davidbudnick/redis-tui/internal/types"
-	"github.com/davidbudnick/redis-tui/internal/ui"
+	"github.com/bearded-giant/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/ui"
 	"path/filepath"
 	"strings"
 	"testing"

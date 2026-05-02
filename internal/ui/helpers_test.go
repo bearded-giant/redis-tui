@@ -3,8 +3,8 @@ package ui
 import (
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
-	"github.com/davidbudnick/redis-tui/internal/testutil"
+	"github.com/bearded-giant/redis-tui/internal/cmd"
+	"github.com/bearded-giant/redis-tui/internal/testutil"
 )
 
 // newTestModel returns a fully-wired Model backed by mock redis + config services

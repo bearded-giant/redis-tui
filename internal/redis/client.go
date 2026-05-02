@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -39,6 +39,7 @@ type Client struct {
 	keyspacePS     *redis.PubSub
 	eventHandlers  []func(types.KeyspaceEvent)
 	cancelKeyspace context.CancelFunc
+	tunnel         *Tunnel
 }
 
 func (c *Client) cmdable() redis.Cmdable {

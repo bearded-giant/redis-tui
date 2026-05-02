@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // ---- view_features_batch.go ----

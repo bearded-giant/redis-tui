@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -84,7 +84,7 @@ func (c *Commands) CopyToClipboard(content string) tea.Cmd {
 
 // Version check helpers
 
-const githubRepo = "davidbudnick/redis-tui"
+const githubRepo = "bearded-giant/redis-tui"
 
 var (
 	versionHTTPClient = &http.Client{Timeout: 10 * time.Second}
@@ -137,7 +137,7 @@ func detectUpgradeCmd() string {
 		return "brew upgrade redis-tui"
 	}
 	if strings.Contains(execPath, "/go/bin/") {
-		return "go install github.com/davidbudnick/redis-tui@latest"
+		return "go install github.com/bearded-giant/redis-tui@latest"
 	}
 	return "redis-tui --update"
 }

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -58,6 +58,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleDisconnectedMsg()
 	case types.ConnectionTestMsg:
 		return m.handleConnectionTestMsg(msg)
+	case types.SSHTunnelConnectedMsg:
+		return m.handleSSHTunnelConnectedMsg(msg)
 	case types.GroupsLoadedMsg:
 		return m.handleGroupsLoadedMsg(msg)
 
@@ -274,7 +276,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		if m.Screen != types.ScreenHelp && m.Screen != types.ScreenAddConnection &&
 			m.Screen != types.ScreenEditConnection && m.Screen != types.ScreenAddKey &&
-			m.Screen != types.ScreenTTLEditor {
+			m.Screen != types.ScreenTTLEditor && m.Screen != types.ScreenSSHTunnel {
 			m.Screen = types.ScreenHelp
 			return m, nil
 		}
@@ -287,6 +289,8 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleAddConnectionScreen(msg)
 	case types.ScreenEditConnection:
 		return m.handleEditConnectionScreen(msg)
+	case types.ScreenSSHTunnel:
+		return m.handleSSHTunnelScreen(msg)
 	case types.ScreenKeys:
 		return m.handleKeysScreen(msg)
 	case types.ScreenKeyDetail:

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // --- Phase 1: Connection Persistence Round-Trip ---
@@ -213,6 +213,7 @@ func TestConfig_Persistence_SSHPasswordStripping(t *testing.T) {
 				Password:       "ssh_s3cr3t",
 				PrivateKeyPath: "/home/user/.ssh/id_rsa",
 				Passphrase:     "k3y_p@ss",
+				LocalPort:      16379,
 			}
 		}
 	}
@@ -263,6 +264,9 @@ func TestConfig_Persistence_SSHPasswordStripping(t *testing.T) {
 	}
 	if got.SSHConfig.Passphrase != "" {
 		t.Errorf("SSHConfig.Passphrase should be empty after reload, got %q", got.SSHConfig.Passphrase)
+	}
+	if got.SSHConfig.LocalPort != 16379 {
+		t.Errorf("SSHConfig.LocalPort = %d, want %d", got.SSHConfig.LocalPort, 16379)
 	}
 }
 

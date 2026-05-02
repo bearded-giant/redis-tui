@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/davidbudnick/redis-tui/internal/cmd"
-	"github.com/davidbudnick/redis-tui/internal/db"
-	"github.com/davidbudnick/redis-tui/internal/redis"
-	"github.com/davidbudnick/redis-tui/internal/service"
-	"github.com/davidbudnick/redis-tui/internal/types"
-	"github.com/davidbudnick/redis-tui/internal/ui"
+	"github.com/bearded-giant/redis-tui/internal/cmd"
+	"github.com/bearded-giant/redis-tui/internal/db"
+	"github.com/bearded-giant/redis-tui/internal/redis"
+	"github.com/bearded-giant/redis-tui/internal/service"
+	"github.com/bearded-giant/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

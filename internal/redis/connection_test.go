@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/davidbudnick/redis-tui/internal/testutil"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/testutil"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 func TestParseAddr(t *testing.T) {
@@ -630,6 +630,235 @@ func TestDisconnect_AfterSubscribeKeyspace(t *testing.T) {
 // SelectDB — SELECT command error path. Use the fake server to make SELECT
 // return an error.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// SSH tunnel — full E2E paths for Connect, ConnectCluster, TestConnection,
+// and disconnectLocked tunnel cleanup.
+// ---------------------------------------------------------------------------
+
+func TestConnect_ViaSSHTunnel(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+	mrPort, _ := strconv.Atoi(mr.Port())
+
+	srv := newTestSSHServer(t)
+	t.Cleanup(srv.Close)
+	srv.allowedUser = "alice"
+	srv.allowedPassword = "secret"
+
+	cleanup := withTempKnownHosts(t, srv.addr, srv.HostPublicKey())
+	t.Cleanup(cleanup)
+
+	sshHost, sshPort := splitForTest(t, srv.addr)
+	c := NewClient()
+	conn := types.Connection{
+		Name:   "ssh-test",
+		Host:   mr.Host(),
+		Port:   mrPort,
+		UseSSH: true,
+		SSHConfig: &types.SSHConfig{
+			Host:     sshHost,
+			Port:     sshPort,
+			User:     "alice",
+			Password: "secret",
+		},
+	}
+	if err := c.Connect(conn); err != nil {
+		t.Fatalf("Connect via SSH: %v", err)
+	}
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if c.tunnel == nil {
+		t.Fatal("tunnel should be set after SSH Connect")
+	}
+
+	mr.Set("k", "v")
+	got, err := c.client.Get(c.ctx, "k").Result()
+	if err != nil {
+		t.Fatalf("Get via SSH tunnel: %v", err)
+	}
+	if got != "v" {
+		t.Errorf("got %q, want v", got)
+	}
+}
+
+func TestConnect_SSHMissingConfig(t *testing.T) {
+	c := NewClient()
+	err := c.Connect(types.Connection{
+		Name:   "test",
+		Host:   "127.0.0.1",
+		Port:   6379,
+		UseSSH: true,
+	})
+	if err == nil {
+		t.Fatal("expected error when UseSSH true but SSHConfig nil")
+	}
+	if !strings.Contains(err.Error(), "SSH configuration is missing") {
+		t.Errorf("err = %v, want SSH configuration is missing", err)
+	}
+}
+
+func TestConnect_SSHDialError(t *testing.T) {
+	c := NewClient()
+	err := c.Connect(types.Connection{
+		Name:   "test",
+		Host:   "127.0.0.1",
+		Port:   6379,
+		UseSSH: true,
+		SSHConfig: &types.SSHConfig{
+			Host: "127.0.0.1",
+			Port: 1, // unreachable
+			User: "u",
+			// no auth → no SSH auth method available
+		},
+	})
+	if err == nil {
+		t.Fatal("expected SSH dial failure")
+	}
+}
+
+func TestConnectCluster_ViaSSHTunnel(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+
+	srv := newTestSSHServer(t)
+	t.Cleanup(srv.Close)
+	srv.allowedUser = "alice"
+	srv.allowedPassword = "secret"
+
+	cleanup := withTempKnownHosts(t, srv.addr, srv.HostPublicKey())
+	t.Cleanup(cleanup)
+
+	sshHost, sshPort := splitForTest(t, srv.addr)
+	c := NewClient()
+	conn := types.Connection{
+		Name:   "ssh-cluster-test",
+		UseSSH: true,
+		SSHConfig: &types.SSHConfig{
+			Host: sshHost, Port: sshPort, User: "alice", Password: "secret",
+		},
+	}
+	// miniredis is single-node — cluster ping will fail because miniredis
+	// doesn't speak CLUSTER INFO sufficiently. We expect ping to fail but
+	// the SSH branch and tunnel setup must execute. Verify tunnel was set.
+	mrAddr := mr.Host() + ":" + mr.Port()
+	_ = c.ConnectCluster([]string{mrAddr}, conn)
+	t.Cleanup(func() { _ = c.Disconnect() })
+
+	if c.tunnel == nil {
+		t.Fatal("tunnel should be set after SSH ConnectCluster")
+	}
+}
+
+func TestConnectCluster_SSHMissingConfig(t *testing.T) {
+	c := NewClient()
+	err := c.ConnectCluster([]string{"127.0.0.1:6379"}, types.Connection{
+		UseSSH: true,
+	})
+	if err == nil {
+		t.Fatal("expected error when UseSSH true but SSHConfig nil")
+	}
+}
+
+func TestConnectCluster_SSHWithTLSMissing(t *testing.T) {
+	srv := newTestSSHServer(t)
+	t.Cleanup(srv.Close)
+	srv.allowedUser = "alice"
+	srv.allowedPassword = "secret"
+	cleanup := withTempKnownHosts(t, srv.addr, srv.HostPublicKey())
+	t.Cleanup(cleanup)
+
+	sshHost, sshPort := splitForTest(t, srv.addr)
+	c := NewClient()
+	err := c.ConnectCluster([]string{"127.0.0.1:6379"}, types.Connection{
+		UseSSH: true,
+		UseTLS: true, // TLS requested but no config — must clean up tunnel before returning
+		SSHConfig: &types.SSHConfig{
+			Host: sshHost, Port: sshPort, User: "alice", Password: "secret",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected TLS missing error")
+	}
+}
+
+func TestConnectCluster_SSHWithTLSBuildError(t *testing.T) {
+	srv := newTestSSHServer(t)
+	t.Cleanup(srv.Close)
+	srv.allowedUser = "alice"
+	srv.allowedPassword = "secret"
+	cleanup := withTempKnownHosts(t, srv.addr, srv.HostPublicKey())
+	t.Cleanup(cleanup)
+
+	sshHost, sshPort := splitForTest(t, srv.addr)
+	c := NewClient()
+	err := c.ConnectCluster([]string{"127.0.0.1:6379"}, types.Connection{
+		UseSSH: true,
+		UseTLS: true,
+		TLSConfig: &types.TLSConfig{
+			CertFile: "/nonexistent/cert",
+			KeyFile:  "/nonexistent/key",
+		},
+		SSHConfig: &types.SSHConfig{
+			Host: sshHost, Port: sshPort, User: "alice", Password: "secret",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected TLS build error")
+	}
+}
+
+func TestTestConnection_ViaSSHTunnel(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("miniredis: %v", err)
+	}
+	t.Cleanup(mr.Close)
+	mrPort, _ := strconv.Atoi(mr.Port())
+
+	srv := newTestSSHServer(t)
+	t.Cleanup(srv.Close)
+	srv.allowedUser = "alice"
+	srv.allowedPassword = "secret"
+
+	cleanup := withTempKnownHosts(t, srv.addr, srv.HostPublicKey())
+	t.Cleanup(cleanup)
+
+	sshHost, sshPort := splitForTest(t, srv.addr)
+	c := NewClient()
+	dur, err := c.TestConnection(types.Connection{
+		Host:   mr.Host(),
+		Port:   mrPort,
+		UseSSH: true,
+		SSHConfig: &types.SSHConfig{
+			Host: sshHost, Port: sshPort, User: "alice", Password: "secret",
+		},
+	})
+	if err != nil {
+		t.Fatalf("TestConnection via SSH: %v", err)
+	}
+	if dur <= 0 {
+		t.Errorf("duration should be positive, got %v", dur)
+	}
+}
+
+func TestTestConnection_SSHMissingConfig(t *testing.T) {
+	c := NewClient()
+	_, err := c.TestConnection(types.Connection{
+		Host:   "127.0.0.1",
+		Port:   6379,
+		UseSSH: true,
+	})
+	if err == nil {
+		t.Fatal("expected error when UseSSH true but SSHConfig nil")
+	}
+}
 
 func TestSelectDB_SelectError(t *testing.T) {
 	srv := newFakeRedisServer(t)

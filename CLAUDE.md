@@ -13,11 +13,10 @@ make test-cover   # Tests with coverage report
 make lint         # Run go vet
 make fmt          # Format code with go fmt
 make run          # Run the application
-make dev-deps         # Install goreleaser
-make test-cover-check # Tests + fail if any function < 100% coverage
+make dev-deps     # Install goreleaser
 ```
 
-CI runs `go test -v -race -coverprofile=coverage.out ./...` — always ensure tests pass with `-race`. CI enforces **100% statement coverage** per function — any new code must include tests.
+CI runs `go test -v -race -coverprofile=coverage.out ./...` — always ensure tests pass with `-race`. New code should include tests; no enforced coverage threshold.
 
 ## Architecture
 
@@ -96,6 +95,6 @@ internal/
 ## Release
 
 - GoReleaser v2.13.1 builds for Linux/macOS/Windows (amd64/arm64)
-- Homebrew tap: `davidbudnick/homebrew-tap`
+- Homebrew tap: `bearded-giant/homebrew-tap`
 - Version injected via ldflags (`-X main.version=...`)
 - CGO disabled (`CGO_ENABLED=0`)

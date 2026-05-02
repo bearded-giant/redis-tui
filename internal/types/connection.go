@@ -36,6 +36,9 @@ type SSHConfig struct {
 	Password       string `json:"password,omitempty"` // #nosec G117 -- stored in local user config.
 	PrivateKeyPath string `json:"private_key_path,omitempty"`
 	Passphrase     string `json:"passphrase,omitempty"`
+	// LocalPort is the loopback port to bind for the tunnel listener.
+	// 0 means OS-assigned ephemeral. Persisted normally (non-sensitive).
+	LocalPort int `json:"local_port,omitempty"`
 }
 
 // TLSConfig stores TLS/SSL configuration

@@ -3,7 +3,7 @@ package ui
 import (
 	"log/slog"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -127,6 +127,15 @@ func (m Model) handleConnectionTestMsg(msg types.ConnectionTestMsg) (tea.Model, 
 		m.TestConnResult = "Failed: " + msg.Err.Error()
 	} else {
 		m.TestConnResult = "Connected in " + msg.Latency.String()
+	}
+	return m, nil
+}
+
+func (m Model) handleSSHTunnelConnectedMsg(msg types.SSHTunnelConnectedMsg) (tea.Model, tea.Cmd) {
+	if msg.Err != nil {
+		m.SSHTunnelStatus = "SSH failed: " + msg.Err.Error()
+	} else {
+		m.SSHTunnelStatus = "SSH OK"
 	}
 	return m, nil
 }

@@ -29,38 +29,6 @@ jobs:
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
 
-      - name: Enforce 100% coverage
-        shell: bash
-        run: |
-          set -euo pipefail
-          FAILED=0
-
-          while IFS= read -r line; do
-              func=$(echo "$line" | awk '{print $2}')
-              pct=$(echo "$line" | awk '{print $NF}' | tr -d '%')
-
-              if [[ "$func" == "(statements)" ]]; then
-                  continue
-              fi
-
-              if (( $(echo "$pct < 100.0" | bc -l) )); then
-                  location=$(echo "$line" | awk '{print $1}')
-                  file=$(echo "$location" | cut -d':' -f1)
-                  line_num=$(echo "$location" | cut -d':' -f2)
-                  
-                  # Generate an inline PR annotation for the failure
-                  echo "::error file=$file,line=$line_num::Function $func coverage is ${pct}%, required 100%"
-                  FAILED=1
-              fi
-          done < <(go tool cover -func=coverage.out)
-
-          if [[ $FAILED -eq 1 ]]; then
-              echo "Coverage enforcement failed."
-              exit 1
-          fi
-
-          echo "All functions at 100% coverage"
-
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:

@@ -4,7 +4,7 @@ package service
 import (
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -63,6 +63,7 @@ type RedisService interface {
 	Disconnect() error
 	IsCluster() bool
 	TestConnection(conn types.Connection) (time.Duration, error)
+	TestSSHConnection(sshCfg *types.SSHConfig) (time.Duration, error)
 
 	// Key operations
 	GetTotalKeys() int64

@@ -1,4 +1,4 @@
-module github.com/davidbudnick/redis-tui
+module github.com/bearded-giant/redis-tui
 
 go 1.26
 
@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/kujtimiihoxha/vimtea v0.0.2
 	github.com/redis/go-redis/v9 v9.18.0
+	golang.org/x/crypto v0.50.0
 )
 
 require (
@@ -36,6 +37,6 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 )

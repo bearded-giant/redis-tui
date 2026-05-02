@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/testutil"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/testutil"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 func TestConnectionErrorPaths(t *testing.T) {
@@ -280,6 +280,37 @@ func TestTestConnection(t *testing.T) {
 		cmds := NewCommands(nil, nil)
 		msg := cmds.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})()
 		result := msg.(types.ConnectionTestMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+func TestTestSSHConnection(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.TestSSHConnectionLatency = 7 * time.Millisecond
+		msg := cmds.TestSSHConnection(&types.SSHConfig{Host: "bastion", User: "u", Port: 22})()
+		result := msg.(types.SSHTunnelConnectedMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.TestSSHConnectionError = errors.New("ssh failed")
+		msg := cmds.TestSSHConnection(&types.SSHConfig{Host: "bastion", User: "u", Port: 22})()
+		result := msg.(types.SSHTunnelConnectedMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.TestSSHConnection(&types.SSHConfig{Host: "bastion"})()
+		result := msg.(types.SSHTunnelConnectedMsg)
 		if result.Err != nil {
 			t.Errorf("nil redis should not error: %v", result.Err)
 		}
