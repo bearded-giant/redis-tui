@@ -63,11 +63,11 @@ changelog:
 homebrew_casks:
   - name: redis-tui
     repository:
-      owner: davidbudnick
+      owner: bearded-giant
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Casks
-    homepage: https://github.com/davidbudnick/redis-tui
+    homepage: https://github.com/bearded-giant/redis-tui
     description: A powerful TUI for managing Redis databases
     license: MIT
 
@@ -75,7 +75,7 @@ nfpms:
   - id: packages
     package_name: redis-tui
     vendor: David Budnick
-    homepage: https://github.com/davidbudnick/redis-tui
+    homepage: https://github.com/bearded-giant/redis-tui
     maintainer: David Budnick
     description: A powerful TUI for managing Redis databases
     license: MIT
@@ -87,7 +87,7 @@ nfpms:
 
 release:
   github:
-    owner: davidbudnick
+    owner: bearded-giant
     name: redis-tui
   draft: false
   prerelease: auto
@@ -100,7 +100,7 @@ release:
 
     ### Quick Install (macOS/Linux)
     ```bash
-    curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/bearded-giant/redis-tui/main/install.sh | bash
     ```
 
     ### Update Existing Installation
@@ -110,13 +110,13 @@ release:
 
     ### Homebrew (macOS/Linux)
     ```bash
-    brew tap davidbudnick/homebrew-tap
+    brew tap bearded-giant/homebrew-tap
     brew install --cask redis-tui
     ```
 
     ### Go Install
     ```bash
-    go install github.com/davidbudnick/redis-tui@{{.Tag}}
+    go install github.com/bearded-giant/redis-tui@{{.Tag}}
     ```
 
     ### Binary Download

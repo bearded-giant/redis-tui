@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // jsonMarshalIndent is overridable in tests to simulate marshal errors.

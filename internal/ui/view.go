@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // getScreenView returns the view for the current screen.
@@ -17,6 +17,8 @@ func (m Model) getScreenView() string {
 		return m.viewAddConnection()
 	case types.ScreenEditConnection:
 		return m.viewEditConnection()
+	case types.ScreenSSHTunnel:
+		return m.viewSSHTunnel()
 	case types.ScreenKeys:
 		return m.viewKeys()
 	case types.ScreenKeyDetail:

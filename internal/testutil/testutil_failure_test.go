@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/db"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/db"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // fakeTB is a minimal testing.TB implementation that records Errorf/Fatalf

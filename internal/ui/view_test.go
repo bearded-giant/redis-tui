@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 // assertNonEmpty runs a view func and fails if it returns empty.

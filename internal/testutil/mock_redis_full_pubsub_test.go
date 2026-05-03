@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 func TestFullMockRedisClient_Publish(t *testing.T) {

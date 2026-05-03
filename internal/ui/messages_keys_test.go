@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 func TestHandleKeysLoadedMsg(t *testing.T) {

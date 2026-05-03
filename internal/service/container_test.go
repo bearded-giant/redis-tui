@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/testutil"
+	"github.com/bearded-giant/redis-tui/internal/testutil"
 )
 
 func newMockConfig(closeErr error) *testutil.MockConfigClient {

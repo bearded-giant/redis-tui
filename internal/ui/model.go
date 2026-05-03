@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/davidbudnick/redis-tui/internal/cmd"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/cmd"
+	"github.com/bearded-giant/redis-tui/internal/decoder"
+	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -107,6 +108,17 @@ type Model struct {
 	ClusterEnabled  bool
 	SelectedNodeIdx int
 	ConnClusterMode bool
+
+	// SSH tunnel form (sub-screen of add/edit connection)
+	SSHInputs       []textinput.Model
+	SSHFocusIdx     int
+	SSHEnabled      bool
+	PendingSSH      *types.SSHConfig // staged config from sub-screen
+	SSHTunnelStatus string           // result message from TestSSHConnection
+
+	// Blob decoder: empty = auto-detect; non-empty forces a specific format.
+	// Cycled via 'b' on key detail screen.
+	ValueDecodeOverride decoder.Format
 
 	// Compare keys
 	CompareResult   *types.KeyComparison
@@ -213,6 +225,7 @@ func NewModel() Model {
 		Screen:             types.ScreenConnections,
 		Connections:        []types.Connection{},
 		ConnInputs:         createConnectionInputs(),
+		SSHInputs:          createSSHInputs(),
 		Keys:               []types.RedisKey{},
 		AddKeyInputs:       createAddKeyInputs(),
 		AddCollectionInput: createAddCollectionInputs(),
@@ -289,6 +302,53 @@ func createConnectionInputs() []textinput.Model {
 	inputs[5].Placeholder = "Database (0-15)"
 	inputs[5].Width = 30
 	inputs[5].SetValue("0")
+
+	return inputs
+}
+
+// SSH form inputs:
+// 0: SSH host
+// 1: SSH port (22)
+// 2: SSH user
+// 3: Private key path
+// 4: Passphrase (echo masked)
+// 5: Password (echo masked)
+// 6: Local port (0 = ephemeral)
+func createSSHInputs() []textinput.Model {
+	inputs := make([]textinput.Model, 7)
+
+	inputs[0] = textinput.New()
+	inputs[0].Placeholder = "Bastion Host"
+	inputs[0].Width = 30
+	inputs[0].Focus()
+
+	inputs[1] = textinput.New()
+	inputs[1].Placeholder = "Bastion Port"
+	inputs[1].Width = 30
+	inputs[1].SetValue("22")
+
+	inputs[2] = textinput.New()
+	inputs[2].Placeholder = "SSH User"
+	inputs[2].Width = 30
+
+	inputs[3] = textinput.New()
+	inputs[3].Placeholder = "Private Key Path (optional)"
+	inputs[3].Width = 30
+
+	inputs[4] = textinput.New()
+	inputs[4].Placeholder = "Passphrase (optional)"
+	inputs[4].Width = 30
+	inputs[4].EchoMode = textinput.EchoPassword
+
+	inputs[5] = textinput.New()
+	inputs[5].Placeholder = "SSH Password (optional)"
+	inputs[5].Width = 30
+	inputs[5].EchoMode = textinput.EchoPassword
+
+	inputs[6] = textinput.New()
+	inputs[6].Placeholder = "Local Port (0 = ephemeral)"
+	inputs[6].Width = 30
+	inputs[6].SetValue("0")
 
 	return inputs
 }
@@ -386,6 +446,9 @@ func (m *Model) resetConnInputs() {
 	m.ConnInputs[0].Focus()
 	m.ConnFocusIdx = 0
 	m.ConnClusterMode = false
+	m.SSHEnabled = false
+	m.PendingSSH = nil
+	m.resetSSHInputs()
 }
 
 func (m *Model) resetAddKeyInputs() {
@@ -408,6 +471,64 @@ func (m *Model) populateConnInputs(conn types.Connection) {
 	m.ConnInputs[4].SetValue(conn.Password)
 	m.ConnInputs[5].SetValue(strconv.Itoa(conn.DB))
 	m.ConnClusterMode = conn.UseCluster
+	m.SSHEnabled = conn.UseSSH
+	if conn.SSHConfig != nil {
+		cfg := *conn.SSHConfig
+		m.PendingSSH = &cfg
+	} else {
+		m.PendingSSH = nil
+	}
+}
+
+func (m *Model) resetSSHInputs() {
+	for i := range m.SSHInputs {
+		m.SSHInputs[i].SetValue("")
+		m.SSHInputs[i].Blur()
+	}
+	m.SSHInputs[1].SetValue("22")
+	m.SSHInputs[6].SetValue("0")
+	m.SSHInputs[0].Focus()
+	m.SSHFocusIdx = 0
+	m.SSHTunnelStatus = ""
+}
+
+func (m *Model) populateSSHInputs(cfg *types.SSHConfig) {
+	m.resetSSHInputs()
+	if cfg == nil {
+		return
+	}
+	m.SSHInputs[0].SetValue(cfg.Host)
+	if cfg.Port != 0 {
+		m.SSHInputs[1].SetValue(strconv.Itoa(cfg.Port))
+	}
+	m.SSHInputs[2].SetValue(cfg.User)
+	m.SSHInputs[3].SetValue(cfg.PrivateKeyPath)
+	m.SSHInputs[4].SetValue(cfg.Passphrase)
+	m.SSHInputs[5].SetValue(cfg.Password)
+	m.SSHInputs[6].SetValue(strconv.Itoa(cfg.LocalPort))
+}
+
+// convertSSHInputs builds an SSHConfig from current SSH form inputs.
+// Returns nil if Host is empty (treated as "not configured").
+func (m *Model) convertSSHInputs() *types.SSHConfig {
+	host := m.SSHInputs[0].Value()
+	if host == "" {
+		return nil
+	}
+	port, _ := strconv.Atoi(m.SSHInputs[1].Value())
+	if port == 0 {
+		port = 22
+	}
+	localPort, _ := strconv.Atoi(m.SSHInputs[6].Value())
+	return &types.SSHConfig{
+		Host:           host,
+		Port:           port,
+		User:           m.SSHInputs[2].Value(),
+		PrivateKeyPath: m.SSHInputs[3].Value(),
+		Passphrase:     m.SSHInputs[4].Value(),
+		Password:       m.SSHInputs[5].Value(),
+		LocalPort:      localPort,
+	}
 }
 
 // convertCurrentInputsToConnection converts the current inputs to a connection
@@ -428,6 +549,8 @@ func (m *Model) convertCurrentInputsToConnection(inputs []textinput.Model, actio
 		Password:   inputs[4].Value(),
 		DB:         db,
 		UseCluster: m.ConnClusterMode,
+		UseSSH:     m.SSHEnabled,
+		SSHConfig:  m.PendingSSH,
 	}
 }
 

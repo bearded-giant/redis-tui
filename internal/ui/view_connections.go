@@ -350,5 +350,78 @@ func (m Model) renderConnForm() string {
 		b.WriteString("\n\n")
 	}
 
+	// SSH summary line (Ctrl+S to configure)
+	sshLabel := "SSH:"
+	sshStatus := "not configured"
+	if m.SSHEnabled && m.PendingSSH != nil {
+		sshStatus = "enabled (" + m.PendingSSH.Host + ")"
+	} else if m.PendingSSH != nil {
+		sshStatus = "configured (disabled)"
+	}
+	b.WriteString(keyStyle.Render(sshLabel))
+	b.WriteString(" ")
+	b.WriteString(normalStyle.Render(sshStatus))
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("ctrl+s: configure SSH tunnel"))
+	b.WriteString("\n\n")
+
 	return b.String()
+}
+
+func (m Model) viewSSHTunnel() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("SSH Tunnel"))
+	b.WriteString("\n\n")
+
+	labels := []string{
+		"Bastion Host", "Bastion Port", "SSH User",
+		"Private Key Path", "Passphrase", "SSH Password", "Local Port",
+	}
+	for i, label := range labels {
+		labelStyle := keyStyle
+		if m.SSHFocusIdx == i {
+			labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
+		}
+		b.WriteString(labelStyle.Render(label + ":"))
+		b.WriteString("\n")
+		b.WriteString(m.SSHInputs[i].View())
+		b.WriteString("\n\n")
+	}
+
+	// Toggle: SSH enabled
+	toggleStyle := keyStyle
+	if m.SSHFocusIdx == 7 {
+		toggleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true)
+	}
+	b.WriteString(toggleStyle.Render("Enable SSH:"))
+	b.WriteString("\n")
+	checkbox := "[ ] Use SSH tunnel"
+	if m.SSHEnabled {
+		checkbox = "[x] Use SSH tunnel"
+	}
+	cbStyle := normalStyle
+	if m.SSHFocusIdx == 7 {
+		cbStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+	}
+	b.WriteString(cbStyle.Render(checkbox))
+	b.WriteString("\n\n")
+
+	if m.SSHTunnelStatus != "" {
+		b.WriteString(normalStyle.Render(m.SSHTunnelStatus))
+		b.WriteString("\n\n")
+	}
+
+	b.WriteString(helpStyle.Render("Strict known_hosts. Add host first via `ssh user@host`."))
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("tab:next  space:toggle  ctrl+t:test  enter:save  esc:cancel"))
+
+	modalWidth := min(55, m.Width-10)
+	modalStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("39")).
+		Padding(1, 2).
+		Width(modalWidth)
+
+	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, modalStyle.Render(b.String()))
 }

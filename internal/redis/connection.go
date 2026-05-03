@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -71,6 +71,17 @@ func (c *Client) Connect(conn types.Connection) error {
 		}
 		opts.TLSConfig = tlsCfg
 	}
+
+	var tunnel *Tunnel
+	if conn.UseSSH {
+		t, err := openTunnel(c.ctx, conn.SSHConfig, fmt.Sprintf("%s:%d", conn.Host, conn.Port))
+		if err != nil {
+			return err
+		}
+		tunnel = t
+		opts.Addr = t.LocalAddr()
+	}
+
 	client := redis.NewClient(opts)
 
 	c.mu.Lock()
@@ -80,6 +91,7 @@ func (c *Client) Connect(conn types.Connection) error {
 	c.password = conn.Password
 	c.db = conn.DB
 	c.client = client
+	c.tunnel = tunnel
 	ctx := c.ctx
 	c.mu.Unlock()
 
@@ -103,6 +115,24 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 		seedHost = host
 	}
 
+	var tunnel *Tunnel
+	dialerHost := seedHost
+	dialerPort := 0
+	if conn.UseSSH {
+		// Tunnel forwards a single local port to seed addr. Cluster Dialer
+		// remaps every node's advertised addr to the seed host, then dials
+		// the local listener instead of the seed. Bastion must reach all
+		// cluster nodes for this to work.
+		seedAddr := net.JoinHostPort(seedHost, strconv.Itoa(port))
+		t, err := openTunnel(c.ctx, conn.SSHConfig, seedAddr)
+		if err != nil {
+			return err
+		}
+		tunnel = t
+		dialerHost = defaultTunnelLoopback
+		dialerPort = t.LocalPort()
+	}
+
 	opts := &redis.ClusterOptions{
 		Addrs:        addrs,
 		Username:     conn.Username,
@@ -116,22 +146,33 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 		// Remap cluster node addresses to the seed host. Cluster nodes
 		// (especially in Docker) advertise internal IPs that may not be
 		// reachable from the client. Keep the port from each node but
-		// route through the original host.
+		// route through the original host. When SSH is on, route through
+		// the local tunnel listener instead.
 		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			_, p, err := net.SplitHostPort(addr)
 			if err != nil {
 				return nil, err
 			}
-			return net.DialTimeout(network, net.JoinHostPort(seedHost, p), defaultDialTimeout)
+			targetPort := p
+			if dialerPort != 0 {
+				targetPort = strconv.Itoa(dialerPort)
+			}
+			return net.DialTimeout(network, net.JoinHostPort(dialerHost, targetPort), defaultDialTimeout)
 		},
 	}
 
 	if conn.UseTLS {
 		if conn.TLSConfig == nil {
+			if tunnel != nil {
+				_ = tunnel.Close()
+			}
 			return fmt.Errorf("TLS requested but TLS configuration is missing")
 		}
 		tlsCfg, err := conn.TLSConfig.BuildTLSConfig()
 		if err != nil {
+			if tunnel != nil {
+				_ = tunnel.Close()
+			}
 			return fmt.Errorf("failed to build TLS config: %w", err)
 		}
 		opts.TLSConfig = tlsCfg
@@ -146,6 +187,7 @@ func (c *Client) ConnectCluster(addrs []string, conn types.Connection) error {
 	c.host = host
 	c.port = port
 	c.cluster = cluster
+	c.tunnel = tunnel
 	ctx := c.ctx
 	c.mu.Unlock()
 
@@ -197,6 +239,12 @@ func (c *Client) disconnectLocked() error {
 	if c.client != nil {
 		errs = append(errs, c.client.Close())
 		c.client = nil
+	}
+	// Close tunnel after redis clients so in-flight writes can drain.
+	// Tunnel.Close() also closes the underlying SSH client.
+	if c.tunnel != nil {
+		errs = append(errs, c.tunnel.Close())
+		c.tunnel = nil
 	}
 	c.isCluster = false
 	c.eventHandlers = nil
@@ -250,6 +298,18 @@ func (c *Client) TestConnection(conn types.Connection) (time.Duration, error) {
 		}
 		opts.TLSConfig = tlsCfg
 	}
+
+	var tunnel *Tunnel
+	if conn.UseSSH {
+		t, err := openTunnel(c.ctx, conn.SSHConfig, fmt.Sprintf("%s:%d", conn.Host, conn.Port))
+		if err != nil {
+			return 0, err
+		}
+		tunnel = t
+		opts.Addr = t.LocalAddr()
+		defer tunnel.Close()
+	}
+
 	testClient := redis.NewClient(opts)
 	defer testClient.Close()
 
@@ -259,4 +319,38 @@ func (c *Client) TestConnection(conn types.Connection) (time.Duration, error) {
 
 	_, err := testClient.Ping(ctx).Result()
 	return time.Since(start), err
+}
+
+// TestSSHConnection verifies SSH connectivity standalone — dials the bastion
+// and tears down. Does not connect to redis. Useful as a UI test step before
+// committing a connection record.
+func (c *Client) TestSSHConnection(sshCfg *types.SSHConfig) (time.Duration, error) {
+	if sshCfg == nil {
+		return 0, fmt.Errorf("SSH configuration is missing")
+	}
+	start := time.Now()
+	client, err := dialSSH(sshCfg)
+	if err != nil {
+		return 0, err
+	}
+	_ = client.Close()
+	return time.Since(start), nil
+}
+
+// openTunnel dials SSH and starts a local-listener tunnel to remoteAddr.
+// Returns the tunnel; caller owns its lifecycle.
+func openTunnel(ctx context.Context, sshCfg *types.SSHConfig, remoteAddr string) (*Tunnel, error) {
+	if sshCfg == nil {
+		return nil, fmt.Errorf("SSH requested but SSH configuration is missing")
+	}
+	sshClient, err := dialSSH(sshCfg)
+	if err != nil {
+		return nil, err
+	}
+	tunnel, err := startTunnel(ctx, sshClient, remoteAddr, sshCfg.LocalPort)
+	if err != nil {
+		_ = sshClient.Close()
+		return nil, err
+	}
+	return tunnel, nil
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 func TestFuzzyScore(t *testing.T) {

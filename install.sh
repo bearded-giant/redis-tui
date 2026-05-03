@@ -1,13 +1,13 @@
 #!/bin/sh
 # Redis TUI installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/bearded-giant/redis-tui/main/install.sh | bash
 #
 # Environment variables:
 #   INSTALL_DIR  — directory to install the binary (default: ~/.local/bin)
 
 set -e
 
-REPO="davidbudnick/redis-tui"
+REPO="bearded-giant/redis-tui"
 BINARY="redis-tui"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 

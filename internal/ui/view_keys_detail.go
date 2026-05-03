@@ -7,8 +7,36 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/decoder"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
+
+// renderDecodedString runs the blob decoder on a Redis string value.
+// When ValueDecodeOverride is empty, the format is auto-detected; when set,
+// it's forced. Returns rendered text + a status badge ("[json]", "[jsonplus]",
+// etc.). Falls back to the prior formatPossibleJSON path on detection of
+// FormatRaw or on decode error.
+func (m Model) renderDecodedString(s string) (body, badge string) {
+	if s == "" {
+		return s, ""
+	}
+	format := m.ValueDecodeOverride
+	if format == "" {
+		format = decoder.Detect([]byte(s))
+	}
+	if format == decoder.FormatRaw {
+		return formatPossibleJSON(s), "raw"
+	}
+	out, err := decoder.Decode([]byte(s), format)
+	if err != nil {
+		return formatPossibleJSON(s), "raw (decode failed: " + err.Error() + ")"
+	}
+	b := out.Pretty
+	if out.Note != "" {
+		b = "// " + out.Note + "\n" + b
+	}
+	return b, string(out.Format)
+}
 
 func (m Model) viewKeyDetail() string {
 	var b strings.Builder
@@ -77,7 +105,12 @@ func (m Model) viewKeyDetail() string {
 	var vc strings.Builder
 	switch m.CurrentValue.Type {
 	case types.KeyTypeString:
-		vc.WriteString(formatPossibleJSON(m.CurrentValue.StringValue))
+		body, badge := m.renderDecodedString(m.CurrentValue.StringValue)
+		if badge != "" {
+			vc.WriteString(helpStyle.Render("[" + badge + "]   b: cycle decode"))
+			vc.WriteString("\n\n")
+		}
+		vc.WriteString(body)
 	case types.KeyTypeList:
 		if len(m.CurrentValue.ListValue) == 0 {
 			vc.WriteString("(empty list)")
@@ -226,7 +259,8 @@ func (m Model) detailValueString() string {
 	var vc strings.Builder
 	switch m.CurrentValue.Type {
 	case types.KeyTypeString:
-		vc.WriteString(formatPossibleJSON(m.CurrentValue.StringValue))
+		body, _ := m.renderDecodedString(m.CurrentValue.StringValue)
+		vc.WriteString(body)
 	case types.KeyTypeList:
 		for i, v := range m.CurrentValue.ListValue {
 			fmt.Fprintf(&vc, "%d. %s\n", i, v)

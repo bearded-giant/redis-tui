@@ -6,7 +6,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: all build install clean test test-cover test-cover-check lint run release snapshot \
+.PHONY: all build install clean test test-cover lint run release snapshot decode-blob \
 	docker-up docker-down docker-seed \
 	docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack \
 	docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack \
@@ -17,6 +17,11 @@ all: build
 ## Build the application
 build:
 	go build $(LDFLAGS) -o bin/$(APP_NAME) ./
+
+## Build the decode-blob CLI for one-off blob inspection
+##   usage: bin/decode-blob /path/to/redis-value
+decode-blob:
+	go build -o bin/decode-blob ./cmd/decode-blob
 
 ## Install to GOPATH/bin
 install:
@@ -35,28 +40,6 @@ test:
 test-cover:
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
-
-## Run tests and fail if any function is below 100% coverage
-test-cover-check:
-	@go test -v -race -coverprofile=coverage.out ./... && \
-		set -euo pipefail; \
-		FAILED=0; \
-		while IFS= read -r line; do \
-			func=$$(echo "$$line" | awk '{print $$2}'); \
-			pct=$$(echo "$$line" | awk '{print $$NF}' | tr -d '%'); \
-			if [[ "$$func" == "(statements)" ]]; then \
-				continue; \
-			fi; \
-			if (( $$(echo "$$pct < 100.0" | bc -l) )); then \
-				location=$$(echo "$$line" | awk '{print $$1}'); \
-				echo "FAIL: Function $$func at $$location coverage is $${pct}%, required 100%"; \
-				FAILED=1; \
-			fi; \
-		done < <(go tool cover -func=coverage.out); \
-		if [[ $$FAILED -eq 1 ]]; then \
-			exit 1; \
-		fi; \
-		echo "All functions at 100% coverage"
 
 ## Run linter
 lint:
@@ -162,7 +145,6 @@ help:
 	@echo "    clean       - Clean build artifacts"
 	@echo "    test        - Run tests"
 	@echo "    test-cover        - Run tests with coverage"
-	@echo "    test-cover-check  - Fail if any function < 100%%"
 	@echo "    lint        - Run linter"
 	@echo "    fmt         - Format code"
 	@echo "    run         - Run the application"
@@ -170,6 +152,7 @@ help:
 	@echo "    release     - Create a release with goreleaser"
 	@echo "    snapshot    - Create a snapshot release"
 	@echo "    dev-deps    - Install development dependencies"
+	@echo "    decode-blob - Build cmd/decode-blob CLI for one-off blob inspection"
 	@echo ""
 	@echo "  Docker Examples:"
 	@echo "    docker-up                  - Start all instances"

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/davidbudnick/redis-tui/internal/testutil"
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/testutil"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 func TestParseClusterNodes(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -93,5 +93,17 @@ func (c *Commands) TestConnection(conn types.Connection) tea.Cmd {
 
 		latency, err := c.redis.TestConnection(conn)
 		return types.ConnectionTestMsg{Success: err == nil, Latency: latency, Err: err}
+	}
+}
+
+// TestSSHConnection dials the SSH bastion and reports success without
+// connecting to redis. Used by the SSH form to verify bastion reachability.
+func (c *Commands) TestSSHConnection(sshCfg *types.SSHConfig) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.SSHTunnelConnectedMsg{Err: nil}
+		}
+		_, err := c.redis.TestSSHConnection(sshCfg)
+		return types.SSHTunnelConnectedMsg{Err: err}
 	}
 }

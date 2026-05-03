@@ -1,8 +1,7 @@
 # Redis TUI Manager
 
-[![CI](https://github.com/davidbudnick/redis-tui/actions/workflows/ci.yml/badge.svg)](https://github.com/davidbudnick/redis-tui/actions/workflows/ci.yml)
-[![Release](https://github.com/davidbudnick/redis-tui/actions/workflows/release.yml/badge.svg)](https://github.com/davidbudnick/redis-tui/actions/workflows/release.yml)
-[![Coverage: 100%](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/davidbudnick/redis-tui/actions/workflows/ci.yml)
+[![CI](https://github.com/bearded-giant/redis-tui/actions/workflows/ci.yml/badge.svg)](https://github.com/bearded-giant/redis-tui/actions/workflows/ci.yml)
+[![Release](https://github.com/bearded-giant/redis-tui/actions/workflows/release.yml/badge.svg)](https://github.com/bearded-giant/redis-tui/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A feature-rich terminal UI for managing Redis databases, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea). Browse, edit, and monitor your Redis keys without leaving the terminal.
@@ -13,17 +12,17 @@ A feature-rich terminal UI for managing Redis databases, built with Go and [Bubb
 
 ```bash
 # Native install — recommended (macOS and Linux)
-curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bearded-giant/redis-tui/main/install.sh | bash
 
 # Homebrew (macOS and Linux)
-brew tap davidbudnick/homebrew-tap
+brew tap bearded-giant/homebrew-tap
 brew install --cask redis-tui
 
 # Go (requires Go 1.26+)
-go install github.com/davidbudnick/redis-tui@latest
+go install github.com/bearded-giant/redis-tui@latest
 ```
 
-> **Pre-built binaries** — [Download from GitHub Releases](https://github.com/davidbudnick/redis-tui/releases)
+> **Pre-built binaries** — [Download from GitHub Releases](https://github.com/bearded-giant/redis-tui/releases)
 
 ## Screenshots
 
@@ -81,10 +80,10 @@ go install github.com/davidbudnick/redis-tui@latest
 The install script auto-detects your OS and architecture, downloads the latest release, verifies the checksum, and installs the binary to `~/.local/bin` (override with `INSTALL_DIR`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bearded-giant/redis-tui/main/install.sh | bash
 
 # Custom install directory
-INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/davidbudnick/redis-tui/main/install.sh | bash
+INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/bearded-giant/redis-tui/main/install.sh | bash
 ```
 
 ### Homebrew
@@ -95,7 +94,7 @@ See [Quick Install](#quick-install) above.
 
 ```bash
 # Clone the repository
-git clone https://github.com/davidbudnick/redis-tui.git
+git clone https://github.com/bearded-giant/redis-tui.git
 cd redis-tui
 
 # Build
@@ -107,14 +106,14 @@ make install
 
 ### Pre-built Binaries
 
-Download the latest release from the [Releases](https://github.com/davidbudnick/redis-tui/releases) page. Pre-built binaries are available for macOS, Linux, and Windows with no Go installation required.
+Download the latest release from the [Releases](https://github.com/bearded-giant/redis-tui/releases) page. Pre-built binaries are available for macOS, Linux, and Windows with no Go installation required.
 
 ### Using Go Install
 
 > **Note:** Requires Go 1.26 or later.
 
 ```bash
-go install github.com/davidbudnick/redis-tui@latest
+go install github.com/bearded-giant/redis-tui@latest
 ```
 
 ## Usage

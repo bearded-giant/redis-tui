@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidbudnick/redis-tui/internal/types"
+	"github.com/bearded-giant/redis-tui/internal/types"
 )
 
 var errTest = errors.New("test error")
@@ -117,6 +117,26 @@ func TestFullMockRedisClient_TestConnection(t *testing.T) {
 		m := NewFullMockRedisClient()
 		m.TestConnectionError = errTest
 		_, err := m.TestConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
+		if !errors.Is(err, errTest) {
+			t.Errorf("expected errTest, got %v", err)
+		}
+	})
+}
+
+func TestFullMockRedisClient_TestSSHConnection(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		m := NewFullMockRedisClient()
+		m.TestSSHConnectionLatency = 13 * time.Millisecond
+		latency, err := m.TestSSHConnection(&types.SSHConfig{Host: "bastion", User: "u"})
+		AssertNoError(t, err, "TestSSHConnection")
+		AssertEqual(t, latency, 13*time.Millisecond, "latency")
+		AssertEqual(t, m.Calls[0], "TestSSHConnection", "call name")
+	})
+
+	t.Run("error", func(t *testing.T) {
+		m := NewFullMockRedisClient()
+		m.TestSSHConnectionError = errTest
+		_, err := m.TestSSHConnection(&types.SSHConfig{Host: "bastion"})
 		if !errors.Is(err, errTest) {
 			t.Errorf("expected errTest, got %v", err)
 		}
