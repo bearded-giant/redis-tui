@@ -743,6 +743,56 @@ func TestAgentDialFunc_BadSocket(t *testing.T) {
 	}
 }
 
+func TestExpandHome(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("home dir: %v", err)
+	}
+	cases := map[string]string{
+		"":                "",
+		"/abs/path":       "/abs/path",
+		"relative":        "relative",
+		"~":               home,
+		"~/":              home,
+		"~/.ssh/id_rsa":   filepath.Join(home, ".ssh", "id_rsa"),
+		"~alice/.ssh/id": "~alice/.ssh/id", // unsupported, passthrough
+	}
+	for in, want := range cases {
+		got, err := expandHome(in)
+		if err != nil {
+			t.Errorf("expandHome(%q) err = %v", in, err)
+			continue
+		}
+		if got != want {
+			t.Errorf("expandHome(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestLoadPrivateKey_TildeExpansion(t *testing.T) {
+	// Create a key under HOME and reference it via "~/...".
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("home: %v", err)
+	}
+	tmpdir, err := os.MkdirTemp(home, "ssh-key-test-*")
+	if err != nil {
+		t.Fatalf("mkdtemp: %v", err)
+	}
+	defer os.RemoveAll(tmpdir)
+
+	keyPath := filepath.Join(tmpdir, "id_test")
+	keyContent, _ := os.ReadFile(writeTempPrivateKey(t, ""))
+	if err := os.WriteFile(keyPath, keyContent, 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	rel := "~" + strings.TrimPrefix(keyPath, home)
+	if _, err := loadPrivateKey(rel, ""); err != nil {
+		t.Errorf("loadPrivateKey(%q) failed: %v", rel, err)
+	}
+}
+
 func TestKnownHostsPath_Default(t *testing.T) {
 	path, err := knownHostsPath()
 	if err != nil {

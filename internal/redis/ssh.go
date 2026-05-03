@@ -50,6 +50,26 @@ var knownHostsPath = func() (string, error) {
 	return filepath.Join(home, ".ssh", "known_hosts"), nil
 }
 
+// expandHome resolves a leading "~/" or bare "~" to the user's home dir.
+// Other paths pass through unchanged.
+func expandHome(path string) (string, error) {
+	if path == "" || (path[0] != '~') {
+		return path, nil
+	}
+	if path != "~" && path[1] != '/' {
+		// Other-user expansion ("~alice/...") is not supported.
+		return path, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("user home dir: %w", err)
+	}
+	if path == "~" {
+		return home, nil
+	}
+	return filepath.Join(home, path[2:]), nil
+}
+
 // dialSSH establishes an SSH connection using auth precedence:
 // private key (with optional passphrase) → password → SSH agent.
 func dialSSH(cfg *types.SSHConfig) (*ssh.Client, error) {
@@ -140,9 +160,13 @@ func buildAuthMethods(cfg *types.SSHConfig) ([]ssh.AuthMethod, io.Closer, error)
 }
 
 func loadPrivateKey(path, passphrase string) (ssh.Signer, error) {
-	data, err := os.ReadFile(path) // #nosec G304 -- path is user-configured
+	expanded, err := expandHome(path)
 	if err != nil {
-		return nil, fmt.Errorf("read private key %s: %w", path, err)
+		return nil, err
+	}
+	data, err := os.ReadFile(expanded) // #nosec G304 -- path is user-configured
+	if err != nil {
+		return nil, fmt.Errorf("read private key %s: %w", expanded, err)
 	}
 	if passphrase != "" {
 		signer, err := ssh.ParsePrivateKeyWithPassphrase(data, []byte(passphrase))
