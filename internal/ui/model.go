@@ -276,31 +276,31 @@ func createConnectionInputs() []textinput.Model {
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "Connection Name"
 	inputs[0].Focus()
-	inputs[0].Width = 30
+	inputs[0].Width = 50
 
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "Host"
-	inputs[1].Width = 30
+	inputs[1].Width = 50
 	inputs[1].SetValue("localhost")
 
 	inputs[2] = textinput.New()
 	inputs[2].Placeholder = "Port"
-	inputs[2].Width = 30
+	inputs[2].Width = 50
 	inputs[2].SetValue("6379")
 
 	inputs[3] = textinput.New()
 	inputs[3].Placeholder = "Username (optional)"
-	inputs[3].Width = 30
+	inputs[3].Width = 50
 	inputs[3].SetValue("default")
 
 	inputs[4] = textinput.New()
 	inputs[4].Placeholder = "Password (optional)"
-	inputs[4].Width = 30
+	inputs[4].Width = 50
 	inputs[4].EchoMode = textinput.EchoPassword
 
 	inputs[5] = textinput.New()
 	inputs[5].Placeholder = "Database (0-15)"
-	inputs[5].Width = 30
+	inputs[5].Width = 50
 	inputs[5].SetValue("0")
 
 	return inputs
@@ -319,35 +319,35 @@ func createSSHInputs() []textinput.Model {
 
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "Bastion Host"
-	inputs[0].Width = 30
+	inputs[0].Width = 50
 	inputs[0].Focus()
 
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "Bastion Port"
-	inputs[1].Width = 30
+	inputs[1].Width = 50
 	inputs[1].SetValue("22")
 
 	inputs[2] = textinput.New()
 	inputs[2].Placeholder = "SSH User"
-	inputs[2].Width = 30
+	inputs[2].Width = 50
 
 	inputs[3] = textinput.New()
 	inputs[3].Placeholder = "Private Key Path (optional)"
-	inputs[3].Width = 30
+	inputs[3].Width = 50
 
 	inputs[4] = textinput.New()
 	inputs[4].Placeholder = "Passphrase (optional)"
-	inputs[4].Width = 30
+	inputs[4].Width = 50
 	inputs[4].EchoMode = textinput.EchoPassword
 
 	inputs[5] = textinput.New()
 	inputs[5].Placeholder = "SSH Password (optional)"
-	inputs[5].Width = 30
+	inputs[5].Width = 50
 	inputs[5].EchoMode = textinput.EchoPassword
 
 	inputs[6] = textinput.New()
 	inputs[6].Placeholder = "Local Port (0 = ephemeral)"
-	inputs[6].Width = 30
+	inputs[6].Width = 50
 	inputs[6].SetValue("0")
 
 	return inputs
@@ -359,16 +359,16 @@ func createAddKeyInputs() []textinput.Model {
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "Key Name"
 	inputs[0].Focus()
-	inputs[0].Width = 30
+	inputs[0].Width = 50
 
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "Value"
-	inputs[1].Width = 30
+	inputs[1].Width = 50
 
 	// Third input: Field name (hash/stream) or Score (zset)
 	inputs[2] = textinput.New()
 	inputs[2].Placeholder = "Field"
-	inputs[2].Width = 30
+	inputs[2].Width = 50
 
 	return inputs
 }
@@ -379,11 +379,11 @@ func createAddCollectionInputs() []textinput.Model {
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "Field/Member"
 	inputs[0].Focus()
-	inputs[0].Width = 30
+	inputs[0].Width = 50
 
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "Value/Score"
-	inputs[1].Width = 30
+	inputs[1].Width = 50
 
 	return inputs
 }
@@ -394,11 +394,11 @@ func createPubSubInputs() []textinput.Model {
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "Channel"
 	inputs[0].Focus()
-	inputs[0].Width = 30
+	inputs[0].Width = 50
 
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "Message"
-	inputs[1].Width = 30
+	inputs[1].Width = 50
 
 	return inputs
 }

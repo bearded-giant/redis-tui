@@ -178,7 +178,7 @@ func (m Model) viewConnections() string {
 			}
 
 			// Set card width
-			cardWidth := min(55, m.Width-10)
+			cardWidth := min(80, m.Width-10)
 			cardStyle = cardStyle.Width(cardWidth)
 
 			b.WriteString(cardStyle.Render(card.String()))
@@ -273,7 +273,7 @@ func (m Model) viewAddConnection() string {
 
 	b.WriteString(helpStyle.Render("tab:next  space:toggle  enter:save  esc:cancel"))
 
-	modalWidth := min(55, m.Width-10)
+	modalWidth := min(80, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).
@@ -293,7 +293,7 @@ func (m Model) viewEditConnection() string {
 
 	b.WriteString(helpStyle.Render("tab:next  space:toggle  enter:save  esc:cancel"))
 
-	modalWidth := min(55, m.Width-10)
+	modalWidth := min(80, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).
@@ -416,7 +416,7 @@ func (m Model) viewSSHTunnel() string {
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("tab:next  space:toggle  ctrl+t:test  enter:save  esc:cancel"))
 
-	modalWidth := min(55, m.Width-10)
+	modalWidth := min(80, m.Width-10)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("39")).
