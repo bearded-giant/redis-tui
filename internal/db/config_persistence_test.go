@@ -367,7 +367,11 @@ func TestConfig_UpdateConnection_PreservesGroupAndColor(t *testing.T) {
 	}
 }
 
-func TestConfig_UpdateConnection_PreservesSSH(t *testing.T) {
+// UpdateConnection accepts incoming UseSSH / SSHConfig from the caller
+// (now editable via the SSH form). Earlier behavior preserved existing values
+// — that was the right call when the form didn't capture SSH, but blocks
+// updates now. Caller is responsible for sending the full desired state.
+func TestConfig_UpdateConnection_AcceptsSSHFromCaller(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
@@ -375,45 +379,45 @@ func TestConfig_UpdateConnection_PreservesSSH(t *testing.T) {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
 
-	sshCfg := &types.SSHConfig{
-		Host:           "bastion.example.com",
-		Port:           22,
-		User:           "deploy",
+	conn.Name = "renamed"
+	conn.UseSSH = true
+	conn.SSHConfig = &types.SSHConfig{
+		Host: "bastion.example.com", Port: 22, User: "deploy",
 		PrivateKeyPath: "/home/user/.ssh/id_rsa",
 	}
-	cfg.mu.Lock()
-	for i := range cfg.Connections {
-		if cfg.Connections[i].ID == conn.ID {
-			cfg.Connections[i].UseSSH = true
-			cfg.Connections[i].SSHConfig = sshCfg
-		}
-	}
-	cfg.mu.Unlock()
-
-	conn.Name = "renamed"
-	conn.Host = "newhost"
-	conn.Port = 6380
-	conn.DB = 0
 	updated, err := cfg.UpdateConnection(conn)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
 
 	if !updated.UseSSH {
-		t.Error("UseSSH should be preserved after update")
+		t.Error("UseSSH should be set from incoming")
 	}
 	if updated.SSHConfig == nil {
-		t.Fatal("SSHConfig should be preserved after update")
+		t.Fatal("SSHConfig should be set from incoming")
 	}
 	if updated.SSHConfig.Host != "bastion.example.com" {
-		t.Errorf("SSHConfig.Host = %q, want %q", updated.SSHConfig.Host, "bastion.example.com")
+		t.Errorf("SSHConfig.Host = %q", updated.SSHConfig.Host)
 	}
-	if updated.SSHConfig.User != "deploy" {
-		t.Errorf("SSHConfig.User = %q, want %q", updated.SSHConfig.User, "deploy")
+
+	// Now clear SSH via update.
+	conn.UseSSH = false
+	conn.SSHConfig = nil
+	cleared, err := cfg.UpdateConnection(conn)
+	if err != nil {
+		t.Fatalf("UpdateConnection clear failed: %v", err)
+	}
+	if cleared.UseSSH {
+		t.Error("UseSSH should clear when incoming is false")
+	}
+	if cleared.SSHConfig != nil {
+		t.Error("SSHConfig should clear when incoming is nil")
 	}
 }
 
-func TestConfig_UpdateConnection_PreservesTLS(t *testing.T) {
+// Mirror of the SSH test: TLS is now also caller-controlled on update.
+// (Form coverage for TLS is a follow-up; for now this just locks the contract.)
+func TestConfig_UpdateConnection_AcceptsTLSFromCaller(t *testing.T) {
 	cfg := newTestConfig(t)
 
 	conn, err := cfg.AddConnection(types.Connection{Name: "test", Host: "localhost", Port: 6379, DB: 0, UseCluster: false})
@@ -421,42 +425,30 @@ func TestConfig_UpdateConnection_PreservesTLS(t *testing.T) {
 		t.Fatalf("AddConnection failed: %v", err)
 	}
 
-	tlsCfg := &types.TLSConfig{
+	conn.UseTLS = true
+	conn.TLSConfig = &types.TLSConfig{
 		CertFile:           "/certs/client.pem",
 		KeyFile:            "/certs/client-key.pem",
 		CAFile:             "/certs/ca.pem",
 		InsecureSkipVerify: true,
 		ServerName:         "redis.internal",
 	}
-	cfg.mu.Lock()
-	for i := range cfg.Connections {
-		if cfg.Connections[i].ID == conn.ID {
-			cfg.Connections[i].UseTLS = true
-			cfg.Connections[i].TLSConfig = tlsCfg
-		}
-	}
-	cfg.mu.Unlock()
-
-	conn.Name = "renamed"
-	conn.Host = "newhost"
-	conn.Port = 6380
-	conn.DB = 0
 	updated, err := cfg.UpdateConnection(conn)
 	if err != nil {
 		t.Fatalf("UpdateConnection failed: %v", err)
 	}
 
 	if !updated.UseTLS {
-		t.Error("UseTLS should be preserved after update")
+		t.Error("UseTLS should be set from incoming")
 	}
 	if updated.TLSConfig == nil {
-		t.Fatal("TLSConfig should be preserved after update")
+		t.Fatal("TLSConfig should be set from incoming")
 	}
 	if updated.TLSConfig.CertFile != "/certs/client.pem" {
-		t.Errorf("TLSConfig.CertFile = %q, want %q", updated.TLSConfig.CertFile, "/certs/client.pem")
+		t.Errorf("TLSConfig.CertFile = %q", updated.TLSConfig.CertFile)
 	}
 	if updated.TLSConfig.ServerName != "redis.internal" {
-		t.Errorf("TLSConfig.ServerName = %q, want %q", updated.TLSConfig.ServerName, "redis.internal")
+		t.Errorf("TLSConfig.ServerName = %q", updated.TLSConfig.ServerName)
 	}
 }
 
