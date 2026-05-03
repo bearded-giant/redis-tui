@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bearded-giant/redis-tui/internal/decoder"
 	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
@@ -133,6 +134,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.CurrentKey = &key
 			m.Loading = true
 			m.SelectedItemIdx = 0
+			m.ValueDecodeOverride = "" // auto-detect for the new key
 			return m, tea.Batch(m.Cmds.LoadKeyValue(key.Key), m.Cmds.GetMemoryUsage(key.Key))
 		}
 	case "a", "n":
@@ -325,6 +327,10 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.ConfirmData = *m.CurrentKey
 			m.Screen = types.ScreenConfirmDelete
 		}
+	case "b":
+		// Cycle the decode override for binary/structured values.
+		// Empty override = auto-detect; subsequent presses force a specific format.
+		m.ValueDecodeOverride = decoder.CycleFormat(m.ValueDecodeOverride)
 	case "t":
 		if m.CurrentKey != nil {
 			m.Inputs.TTLInput.SetValue("")

@@ -6,7 +6,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: all build install clean test test-cover lint run release snapshot \
+.PHONY: all build install clean test test-cover lint run release snapshot decode-blob \
 	docker-up docker-down docker-seed \
 	docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack \
 	docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack \
@@ -17,6 +17,11 @@ all: build
 ## Build the application
 build:
 	go build $(LDFLAGS) -o bin/$(APP_NAME) ./
+
+## Build the decode-blob CLI for one-off blob inspection
+##   usage: bin/decode-blob /path/to/redis-value
+decode-blob:
+	go build -o bin/decode-blob ./cmd/decode-blob
 
 ## Install to GOPATH/bin
 install:
@@ -147,6 +152,7 @@ help:
 	@echo "    release     - Create a release with goreleaser"
 	@echo "    snapshot    - Create a snapshot release"
 	@echo "    dev-deps    - Install development dependencies"
+	@echo "    decode-blob - Build cmd/decode-blob CLI for one-off blob inspection"
 	@echo ""
 	@echo "  Docker Examples:"
 	@echo "    docker-up                  - Start all instances"

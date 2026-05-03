@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/bearded-giant/redis-tui/internal/cmd"
+	"github.com/bearded-giant/redis-tui/internal/decoder"
 	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
@@ -114,6 +115,10 @@ type Model struct {
 	SSHEnabled      bool
 	PendingSSH      *types.SSHConfig // staged config from sub-screen
 	SSHTunnelStatus string           // result message from TestSSHConnection
+
+	// Blob decoder: empty = auto-detect; non-empty forces a specific format.
+	// Cycled via 'b' on key detail screen.
+	ValueDecodeOverride decoder.Format
 
 	// Compare keys
 	CompareResult   *types.KeyComparison
