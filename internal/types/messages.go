@@ -133,6 +133,12 @@ type ExportCompleteMsg struct {
 	Err      error
 }
 
+type ExportSingleKeyCompleteMsg struct {
+	Key      string
+	Filename string
+	Err      error
+}
+
 type ImportCompleteMsg struct {
 	Filename string
 	KeyCount int

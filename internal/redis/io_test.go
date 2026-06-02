@@ -11,6 +11,108 @@ import (
 )
 
 // ---------------------------------------------------------------------------
+// ExportSingleKey tests
+// ---------------------------------------------------------------------------
+
+func TestExportSingleKey_String(t *testing.T) {
+	client, mr := setupTestClient(t)
+	mr.Set("greeting", "hello world")
+
+	out, err := client.ExportSingleKey("greeting")
+	if err != nil {
+		t.Fatalf("ExportSingleKey: %v", err)
+	}
+	if out["key"] != "greeting" {
+		t.Errorf("key = %v, want greeting", out["key"])
+	}
+	if out["type"] != "string" {
+		t.Errorf("type = %v, want string", out["type"])
+	}
+	if out["value_raw"] != "hello world" {
+		t.Errorf("value_raw = %v, want \"hello world\"", out["value_raw"])
+	}
+	if _, ok := out["ttl_seconds"]; !ok {
+		t.Errorf("expected ttl_seconds key")
+	}
+	if out["ttl_seconds"] != nil {
+		t.Errorf("ttl_seconds = %v, want nil (no TTL set)", out["ttl_seconds"])
+	}
+	if _, ok := out["decoded_format"]; !ok {
+		t.Errorf("expected decoded_format key (string values go through decoder)")
+	}
+}
+
+func TestExportSingleKey_MissingKey(t *testing.T) {
+	client, _ := setupTestClient(t)
+
+	_, err := client.ExportSingleKey("nope")
+	if err == nil {
+		t.Fatal("expected error for missing key, got nil")
+	}
+}
+
+func TestExportSingleKey_WithTTL(t *testing.T) {
+	client, mr := setupTestClient(t)
+	mr.Set("ephemeral", "x")
+	mr.SetTTL("ephemeral", 60*time.Second)
+
+	out, err := client.ExportSingleKey("ephemeral")
+	if err != nil {
+		t.Fatalf("ExportSingleKey: %v", err)
+	}
+	ttl, ok := out["ttl_seconds"].(float64)
+	if !ok {
+		t.Fatalf("ttl_seconds type = %T, want float64", out["ttl_seconds"])
+	}
+	if ttl <= 0 || ttl > 60 {
+		t.Errorf("ttl_seconds = %v, want (0, 60]", ttl)
+	}
+}
+
+func TestExportSingleKey_Hash(t *testing.T) {
+	client, mr := setupTestClient(t)
+	mr.HSet("user:1", "name", "alice")
+	mr.HSet("user:1", "role", "admin")
+
+	out, err := client.ExportSingleKey("user:1")
+	if err != nil {
+		t.Fatalf("ExportSingleKey: %v", err)
+	}
+	if out["type"] != "hash" {
+		t.Errorf("type = %v, want hash", out["type"])
+	}
+	val, ok := out["value"].(map[string]string)
+	if !ok {
+		t.Fatalf("value type = %T, want map[string]string", out["value"])
+	}
+	if val["name"] != "alice" || val["role"] != "admin" {
+		t.Errorf("hash value = %v, want {name:alice, role:admin}", val)
+	}
+	// Hashes don't go through the decoder.
+	if _, ok := out["decoded_format"]; ok {
+		t.Errorf("decoded_format should not be set for hash type")
+	}
+}
+
+func TestExportSingleKey_DecodesBase64(t *testing.T) {
+	client, mr := setupTestClient(t)
+	// "hello world" base64-encoded — should be detected and decoded.
+	mr.Set("blob", "aGVsbG8gd29ybGQ=")
+
+	out, err := client.ExportSingleKey("blob")
+	if err != nil {
+		t.Fatalf("ExportSingleKey: %v", err)
+	}
+	if out["value_raw"] != "aGVsbG8gd29ybGQ=" {
+		t.Errorf("value_raw = %v, want original base64", out["value_raw"])
+	}
+	format, _ := out["decoded_format"].(string)
+	if format != "base64" {
+		t.Errorf("decoded_format = %q, want base64", format)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // ExportKeys tests
 // ---------------------------------------------------------------------------
 

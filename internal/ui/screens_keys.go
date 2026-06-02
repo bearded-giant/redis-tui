@@ -419,6 +419,14 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.CurrentKey != nil {
 			return m, m.Cmds.CopyToClipboard(m.CurrentValue.StringValue)
 		}
+	case "E":
+		if m.CurrentKey != nil {
+			connName := ""
+			if m.CurrentConn != nil {
+				connName = m.CurrentConn.Name
+			}
+			return m, m.Cmds.ExportSingleKey(connName, m.CurrentKey.Key)
+		}
 	case "J":
 		if m.CurrentKey != nil && m.CurrentKey.Type == types.KeyTypeString {
 			m.Inputs.JSONPathInput.SetValue("")

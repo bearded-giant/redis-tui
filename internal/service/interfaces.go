@@ -160,6 +160,7 @@ type RedisService interface {
 
 	// Import/Export
 	ExportKeys(pattern string) (map[string]any, error)
+	ExportSingleKey(key string) (map[string]any, error)
 	ImportKeys(data map[string]any) (int, error)
 
 	// Configuration

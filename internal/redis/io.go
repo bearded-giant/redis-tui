@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bearded-giant/redis-tui/internal/decoder"
 	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/redis/go-redis/v9"
 )
@@ -147,6 +148,72 @@ func (c *Client) ExportKeys(pattern string) (map[string]any, error) {
 	}
 
 	return export, nil
+}
+
+// ExportSingleKey dumps one key's metadata + value to a map. For string values
+// it also runs the decoder so binary/structured blobs (base64, JSON, msgpack,
+// JsonPlus envelopes) round-trip into a readable form alongside the raw bytes.
+// Returns an error if the key does not exist.
+func (c *Client) ExportSingleKey(key string) (map[string]any, error) {
+	pipe := c.pipeline()
+	typeCmd := pipe.Type(c.ctx, key)
+	ttlCmd := pipe.TTL(c.ctx, key)
+	if _, err := pipe.Exec(c.ctx); err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("type/ttl pipeline: %w", err)
+	}
+
+	keyType := typeCmd.Val()
+	if keyType == "" || keyType == "none" {
+		return nil, fmt.Errorf("key %q does not exist", key)
+	}
+
+	pipe = c.pipeline()
+	cmds := queueValueFetch(pipe, c.ctx, key, keyType)
+	if _, err := pipe.Exec(c.ctx); err != nil && err != redis.Nil {
+		return nil, fmt.Errorf("value fetch: %w", err)
+	}
+	val := extractValue(keyType, cmds)
+
+	out := map[string]any{
+		"key":  key,
+		"type": keyType,
+	}
+
+	ttl := ttlCmd.Val()
+	if ttl < 0 {
+		out["ttl_seconds"] = nil
+	} else {
+		out["ttl_seconds"] = ttl.Seconds()
+	}
+
+	switch keyType {
+	case "string":
+		raw := val.StringValue
+		out["value_raw"] = raw
+		format := decoder.Detect([]byte(raw))
+		dec, err := decoder.Decode([]byte(raw), format)
+		if err == nil {
+			out["value_decoded"] = dec.Pretty
+			out["decoded_format"] = string(dec.Format)
+			if dec.Note != "" {
+				out["decoded_note"] = dec.Note
+			}
+		}
+	case "list":
+		out["value"] = val.ListValue
+	case "set":
+		out["value"] = val.SetValue
+	case "zset":
+		out["value"] = val.ZSetValue
+	case "hash":
+		out["value"] = val.HashValue
+	case "stream":
+		out["value"] = val.StreamValue
+	case "ReJSON-RL":
+		out["value"] = val.JSONValue
+	}
+
+	return out, nil
 }
 
 // ImportKeys imports keys from a map

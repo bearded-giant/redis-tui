@@ -22,6 +22,15 @@ func (m Model) handleExportCompleteMsg(msg types.ExportCompleteMsg) (tea.Model, 
 	return m, nil
 }
 
+func (m Model) handleExportSingleKeyCompleteMsg(msg types.ExportSingleKeyCompleteMsg) (tea.Model, tea.Cmd) {
+	if msg.Err != nil {
+		m.StatusMsg = "Export " + msg.Key + " failed: " + msg.Err.Error()
+	} else {
+		m.StatusMsg = "Exported " + msg.Key + " to " + msg.Filename
+	}
+	return m, nil
+}
+
 func (m Model) handleImportCompleteMsg(msg types.ImportCompleteMsg) (tea.Model, tea.Cmd) {
 	m.Loading = false
 	if msg.Err != nil {
