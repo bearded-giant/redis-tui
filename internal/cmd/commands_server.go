@@ -23,6 +23,45 @@ func (c *Commands) StartMonitor(sendMsg func(tea.Msg)) tea.Cmd {
 	}
 }
 
+// LoadLatencySnapshot fans out LATENCY LATEST + DOCTOR + monitor-threshold
+// CONFIG GET in one Cmd, returning a combined snapshot for the screen.
+func (c *Commands) LoadLatencySnapshot() tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.LatencySnapshotMsg{}
+		}
+		events, eventsErr := c.redis.LatencyLatest()
+		doctor, _ := c.redis.LatencyDoctor()
+		threshold, _ := c.redis.LatencyMonitorThreshold()
+		return types.LatencySnapshotMsg{
+			Events:    events,
+			Doctor:    doctor,
+			Threshold: threshold,
+			Err:       eventsErr,
+		}
+	}
+}
+
+func (c *Commands) LoadLatencyHistory(event string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.LatencyHistoryMsg{Event: event}
+		}
+		samples, err := c.redis.LatencyHistory(event)
+		return types.LatencyHistoryMsg{Event: event, Samples: samples, Err: err}
+	}
+}
+
+func (c *Commands) ResetLatency(events ...string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.LatencyResetMsg{}
+		}
+		n, err := c.redis.LatencyReset(events...)
+		return types.LatencyResetMsg{Count: n, Err: err}
+	}
+}
+
 func (c *Commands) LoadServerInfo() tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {

@@ -171,12 +171,22 @@ type Model struct {
 	LiveMetricsActive bool
 
 	// MONITOR live stream
-	MonitorSession  types.MonitorSessionHandle
-	MonitorEntries  []types.MonitorEntry
-	MonitorFilter   textinput.Model
-	MonitorPaused   bool
-	MonitorErr      error
+	MonitorSession   types.MonitorSessionHandle
+	MonitorEntries   []types.MonitorEntry
+	MonitorFilter    textinput.Model
+	MonitorPaused    bool
+	MonitorErr       error
 	MonitorBufferCap int
+
+	// Latency Doctor
+	LatencyEvents       []types.LatencyEvent
+	LatencyDoctor       string
+	LatencyThreshold    int
+	LatencyErr          error
+	LatencySelectedIdx  int
+	LatencyHistory      []types.LatencySample
+	LatencyHistoryEvent string
+	LatencyShowDoctor   bool
 
 	// Redis config
 	RedisConfigParams  []types.RedisConfigParam

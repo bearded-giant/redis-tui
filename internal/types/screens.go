@@ -57,6 +57,8 @@ const (
 	ScreenPubSubChannels
 	ScreenRedisConfig
 	ScreenMonitor
+	ScreenLatency
+	ScreenLatencyConfirmReset
 )
 
 // ScreenName returns a human-readable name for the screen
@@ -113,6 +115,8 @@ func (s Screen) String() string {
 		ScreenPubSubChannels:       "Pub/Sub Channels",
 		ScreenRedisConfig:          "Redis Config",
 		ScreenMonitor:              "MONITOR",
+		ScreenLatency:              "Latency Doctor",
+		ScreenLatencyConfirmReset:  "Latency Reset",
 	}
 	if name, ok := names[s]; ok {
 		return name
