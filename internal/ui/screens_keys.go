@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bearded-giant/redis-tui/internal/decoder"
+	redispkg "github.com/bearded-giant/redis-tui/internal/redis"
 	"github.com/bearded-giant/redis-tui/internal/types"
 	"github.com/kujtimiihoxha/vimtea"
 
@@ -443,6 +444,11 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y":
 		if m.CurrentKey != nil {
 			return m, m.Cmds.CopyToClipboard(m.CurrentValue.StringValue)
+		}
+	case "Y":
+		if m.CurrentKey != nil && m.CurrentConn != nil {
+			cli := redispkg.BuildCLICommand(*m.CurrentConn, *m.CurrentKey)
+			return m, m.Cmds.CopyToClipboard(cli)
 		}
 	case "E":
 		if m.CurrentKey != nil {
