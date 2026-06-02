@@ -125,6 +125,42 @@ func (m Model) handleValueHistoryMsg(msg types.ValueHistoryMsg) (tea.Model, tea.
 	return m, nil
 }
 
+func (m Model) handleLatencySnapshotMsg(msg types.LatencySnapshotMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	m.LatencyEvents = msg.Events
+	m.LatencyDoctor = msg.Doctor
+	m.LatencyThreshold = msg.Threshold
+	m.LatencyErr = msg.Err
+	if m.LatencySelectedIdx >= len(msg.Events) {
+		m.LatencySelectedIdx = 0
+	}
+	return m, nil
+}
+
+func (m Model) handleLatencyHistoryMsg(msg types.LatencyHistoryMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	if msg.Err != nil {
+		m.StatusMsg = "LATENCY HISTORY failed: " + msg.Err.Error()
+		return m, nil
+	}
+	m.LatencyHistory = msg.Samples
+	m.LatencyHistoryEvent = msg.Event
+	return m, nil
+}
+
+func (m Model) handleLatencyResetMsg(msg types.LatencyResetMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	if msg.Err != nil {
+		m.StatusMsg = "LATENCY RESET failed: " + msg.Err.Error()
+		return m, nil
+	}
+	m.StatusMsg = fmt.Sprintf("Reset %d latency events", msg.Count)
+	m.LatencyEvents = nil
+	m.LatencyHistory = nil
+	m.LatencyHistoryEvent = ""
+	return m, m.Cmds.LoadLatencySnapshot()
+}
+
 // Search message handlers
 
 func (m Model) handleRegexSearchResultMsg(msg types.RegexSearchResultMsg) (tea.Model, tea.Cmd) {

@@ -232,6 +232,12 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+l":
 		m.Loading = true
 		return m, m.Cmds.GetClientList()
+	case "ctrl+y":
+		m.Loading = true
+		m.LatencyHistory = nil
+		m.LatencyHistoryEvent = ""
+		m.Screen = types.ScreenLatency
+		return m, m.Cmds.LoadLatencySnapshot()
 	case "m":
 		m.LiveMetricsActive = true
 		m.Loading = true

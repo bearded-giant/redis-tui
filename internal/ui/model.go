@@ -167,6 +167,16 @@ type Model struct {
 	LiveMetrics       *types.LiveMetrics
 	LiveMetricsActive bool
 
+	// Latency Doctor
+	LatencyEvents          []types.LatencyEvent
+	LatencyDoctor          string
+	LatencyThreshold       int
+	LatencyErr             error
+	LatencySelectedIdx     int
+	LatencyHistory         []types.LatencySample
+	LatencyHistoryEvent    string
+	LatencyShowDoctor      bool
+
 	// Redis config
 	RedisConfigParams  []types.RedisConfigParam
 	SelectedConfigIdx  int

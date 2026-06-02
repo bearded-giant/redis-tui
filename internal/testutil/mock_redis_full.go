@@ -55,6 +55,16 @@ type FullMockRedisClient struct {
 	SetStringError          error
 	SetTTLError             error
 	BatchSetTTLError        error
+	LatencyLatestResult     []types.LatencyEvent
+	LatencyLatestError      error
+	LatencyHistoryResult    []types.LatencySample
+	LatencyHistoryError     error
+	LatencyDoctorResult     string
+	LatencyDoctorError      error
+	LatencyResetResult      int
+	LatencyResetError       error
+	LatencyThresholdResult  int
+	LatencyThresholdError   error
 	RPushError              error
 	LSetError               error
 	LRemError               error
@@ -217,6 +227,31 @@ func (m *FullMockRedisClient) SetTTL(_ string, _ time.Duration) error {
 func (m *FullMockRedisClient) BatchSetTTL(_ string, _ time.Duration) (int, error) {
 	m.Calls = append(m.Calls, "BatchSetTTL")
 	return m.BatchTTLResult, m.BatchSetTTLError
+}
+
+func (m *FullMockRedisClient) LatencyLatest() ([]types.LatencyEvent, error) {
+	m.Calls = append(m.Calls, "LatencyLatest")
+	return m.LatencyLatestResult, m.LatencyLatestError
+}
+
+func (m *FullMockRedisClient) LatencyHistory(_ string) ([]types.LatencySample, error) {
+	m.Calls = append(m.Calls, "LatencyHistory")
+	return m.LatencyHistoryResult, m.LatencyHistoryError
+}
+
+func (m *FullMockRedisClient) LatencyDoctor() (string, error) {
+	m.Calls = append(m.Calls, "LatencyDoctor")
+	return m.LatencyDoctorResult, m.LatencyDoctorError
+}
+
+func (m *FullMockRedisClient) LatencyReset(_ ...string) (int, error) {
+	m.Calls = append(m.Calls, "LatencyReset")
+	return m.LatencyResetResult, m.LatencyResetError
+}
+
+func (m *FullMockRedisClient) LatencyMonitorThreshold() (int, error) {
+	m.Calls = append(m.Calls, "LatencyMonitorThreshold")
+	return m.LatencyThresholdResult, m.LatencyThresholdError
 }
 
 // List operations

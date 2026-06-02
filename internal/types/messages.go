@@ -378,3 +378,33 @@ type EditorSaveMsg struct {
 
 // EditorQuitMsg is sent when user quits vim editor (:q)
 type EditorQuitMsg struct{}
+
+type LatencyEvent struct {
+	Event    string
+	Time     int64
+	LatestMs int64
+	MaxMs    int64
+}
+
+type LatencySample struct {
+	Time     int64
+	LatencyMs int64
+}
+
+type LatencySnapshotMsg struct {
+	Events    []LatencyEvent
+	Doctor    string
+	Threshold int
+	Err       error
+}
+
+type LatencyHistoryMsg struct {
+	Event   string
+	Samples []LatencySample
+	Err     error
+}
+
+type LatencyResetMsg struct {
+	Count int
+	Err   error
+}

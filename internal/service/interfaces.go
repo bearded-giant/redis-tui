@@ -132,6 +132,13 @@ type RedisService interface {
 	SelectDB(db int) error
 	FlushDB() error
 
+	// Latency monitoring
+	LatencyLatest() ([]types.LatencyEvent, error)
+	LatencyHistory(event string) ([]types.LatencySample, error)
+	LatencyDoctor() (string, error)
+	LatencyReset(events ...string) (int, error)
+	LatencyMonitorThreshold() (int, error)
+
 	// Server info and monitoring
 	GetServerInfo() (types.ServerInfo, error)
 	GetMemoryStats() (types.MemoryStats, error)
