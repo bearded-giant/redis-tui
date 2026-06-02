@@ -177,6 +177,14 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "I":
 		m.Screen = types.ScreenImport
 		m.Inputs.ImportInput.Focus()
+	case "ctrl+p":
+		m.PreviewPaneVisible = !m.PreviewPaneVisible
+		if m.PreviewPaneVisible {
+			m.StatusMsg = "Preview pane: on"
+		} else {
+			m.StatusMsg = "Preview pane: off"
+		}
+		return m, m.Cmds.SetPreviewPaneVisible(m.PreviewPaneVisible)
 	case "p":
 		m.Loading = true
 		return m, m.Cmds.GetPubSubChannels("*")

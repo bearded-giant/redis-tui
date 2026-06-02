@@ -21,12 +21,13 @@ type Config struct {
 	Favorites       []types.Favorite          `json:"favorites,omitempty"`
 	RecentKeys      []types.RecentKey         `json:"recent_keys,omitempty"`
 	Templates       []types.KeyTemplate       `json:"templates,omitempty"`
-	KeyBindings     types.KeyBindings         `json:"key_bindings"`
-	TreeSeparator   string                    `json:"tree_separator"`
-	ValueHistory    []types.ValueHistoryEntry `json:"-"` // In-memory only — Redis values may contain secrets.
-	MaxRecentKeys   int                       `json:"max_recent_keys"`
-	MaxValueHistory int                       `json:"max_value_history"`
-	WatchInterval   int                       `json:"watch_interval_ms"`
+	KeyBindings        types.KeyBindings         `json:"key_bindings"`
+	TreeSeparator      string                    `json:"tree_separator"`
+	ValueHistory       []types.ValueHistoryEntry `json:"-"` // In-memory only — Redis values may contain secrets.
+	MaxRecentKeys      int                       `json:"max_recent_keys"`
+	MaxValueHistory    int                       `json:"max_value_history"`
+	WatchInterval      int                       `json:"watch_interval_ms"`
+	PreviewPaneVisible bool                      `json:"preview_pane_visible"`
 	nextID          int64
 	path            string
 	mu              sync.RWMutex
@@ -42,10 +43,11 @@ func NewConfig(configPath string) (*Config, error) {
 		Templates:       defaultTemplates(),
 		KeyBindings:     types.DefaultKeyBindings(),
 		TreeSeparator:   ":",
-		MaxRecentKeys:   20,
-		MaxValueHistory: 50,
-		WatchInterval:   1000,
-		nextID:          1,
+		MaxRecentKeys:      20,
+		MaxValueHistory:    50,
+		WatchInterval:      1000,
+		PreviewPaneVisible: true,
+		nextID:             1,
 	}
 
 	// Ensure directory exists
@@ -134,17 +136,18 @@ func (c *Config) save() error {
 
 	// Create a copy of config with safe connections
 	safeCfg := &Config{
-		Connections:     safeConnections,
-		Groups:          c.Groups,
-		Favorites:       c.Favorites,
-		RecentKeys:      c.RecentKeys,
-		Templates:       c.Templates,
-		KeyBindings:     c.KeyBindings,
-		TreeSeparator:   c.TreeSeparator,
-		ValueHistory:    c.ValueHistory,
-		MaxRecentKeys:   c.MaxRecentKeys,
-		MaxValueHistory: c.MaxValueHistory,
-		WatchInterval:   c.WatchInterval,
+		Connections:        safeConnections,
+		Groups:             c.Groups,
+		Favorites:          c.Favorites,
+		RecentKeys:         c.RecentKeys,
+		Templates:          c.Templates,
+		KeyBindings:        c.KeyBindings,
+		TreeSeparator:      c.TreeSeparator,
+		ValueHistory:       c.ValueHistory,
+		MaxRecentKeys:      c.MaxRecentKeys,
+		MaxValueHistory:    c.MaxValueHistory,
+		WatchInterval:      c.WatchInterval,
+		PreviewPaneVisible: c.PreviewPaneVisible,
 	}
 
 	data, err := jsonMarshalIndent(safeCfg, "", "  ")
@@ -565,6 +568,19 @@ func (c *Config) SetTreeSeparator(sep string) error {
 	defer c.mu.Unlock()
 
 	c.TreeSeparator = sep
+	return c.save()
+}
+
+func (c *Config) GetPreviewPaneVisible() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.PreviewPaneVisible
+}
+
+func (c *Config) SetPreviewPaneVisible(v bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.PreviewPaneVisible = v
 	return c.save()
 }
 

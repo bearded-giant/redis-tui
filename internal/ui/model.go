@@ -157,10 +157,11 @@ type Model struct {
 	LastTickTime time.Time
 
 	// Key preview (shown in keys list)
-	PreviewKey    string
-	PreviewValue  types.RedisValue
-	PreviewScroll int
-	DetailScroll  int
+	PreviewKey         string
+	PreviewValue       types.RedisValue
+	PreviewScroll      int
+	DetailScroll       int
+	PreviewPaneVisible bool
 
 	// Live metrics dashboard
 	LiveMetrics       *types.LiveMetrics
@@ -239,6 +240,7 @@ func NewModel() Model {
 		WatchInterval:      time.Second * 2,
 		KeyBindings:        types.DefaultKeyBindings(),
 		ExpiryThreshold:    300,
+		PreviewPaneVisible: true,
 		Inputs: &ModelInputs{
 			PatternInput:     createTextInput("Filter pattern...", 40),
 			TTLInput:         createTextInput("TTL in seconds (-1 to remove)", 30),

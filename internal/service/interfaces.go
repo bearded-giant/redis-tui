@@ -50,6 +50,8 @@ type ConfigService interface {
 	GetTreeSeparator() string
 	SetTreeSeparator(sep string) error
 	GetWatchInterval() time.Duration
+	GetPreviewPaneVisible() bool
+	SetPreviewPaneVisible(v bool) error
 
 	// Lifecycle
 	Close() error
