@@ -207,6 +207,7 @@ func (m Model) viewConnections() string {
 		{"enter", "connect"},
 		{"a", "add"},
 		{"e", "edit"},
+		{"D", "duplicate"},
 		{"d", "delete"},
 		{"q", "quit"},
 	}
