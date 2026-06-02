@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -279,6 +282,111 @@ func TestJSONPathQuery(t *testing.T) {
 		cmds := NewCommands(nil, nil)
 		msg := cmds.JSONPathQuery("mykey", "$.name")()
 		result := msg.(types.JSONPathResultMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}
+
+
+func TestSanitizeForFilename(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"", "unnamed"},
+		{"simple", "simple"},
+		{"path/with/slashes", "path_with_slashes"},
+		{"user:1234", "user_1234"},
+		{"weird?name*here", "weird_name_here"},
+		{"has spaces", "has_spaces"},
+		{`<>|"\:`, "______"},
+		{strings.Repeat("a", 300), strings.Repeat("a", 200)},
+	}
+	for _, c := range cases {
+		got := sanitizeForFilename(c.in)
+		if got != c.want {
+			t.Errorf("sanitizeForFilename(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestSingleKeyExportPath(t *testing.T) {
+	now := time.Date(2026, 6, 1, 12, 30, 45, 0, time.UTC)
+	path, err := singleKeyExportPath("prod-redis", "user:1234", now)
+	if err != nil {
+		t.Fatalf("singleKeyExportPath: %v", err)
+	}
+	if !strings.Contains(path, "redis-tui-exports") {
+		t.Errorf("path missing redis-tui-exports: %q", path)
+	}
+	base := filepath.Base(path)
+	want := "prod-redis-user_1234-20260601T123045Z.json"
+	if base != want {
+		t.Errorf("basename = %q, want %q", base, want)
+	}
+}
+
+func TestExportSingleKey(t *testing.T) {
+	t.Run("success writes file with decoded payload", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ExportSingleResult = map[string]any{
+			"key":           "user:1",
+			"type":          "string",
+			"ttl_seconds":   nil,
+			"value_raw":     "alice",
+			"decoded_format": "raw",
+		}
+
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+
+		msg := cmds.ExportSingleKey("conn1", "user:1")()
+		result := msg.(types.ExportSingleKeyCompleteMsg)
+		if result.Err != nil {
+			t.Fatalf("unexpected error: %v", result.Err)
+		}
+		if result.Key != "user:1" {
+			t.Errorf("Key = %q, want user:1", result.Key)
+		}
+		if !strings.HasPrefix(result.Filename, filepath.Join(home, "redis-tui-exports")) {
+			t.Errorf("Filename prefix wrong: %q", result.Filename)
+		}
+
+		data, err := os.ReadFile(result.Filename)
+		if err != nil {
+			t.Fatalf("read exported file: %v", err)
+		}
+		var parsed map[string]any
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			t.Fatalf("unmarshal exported file: %v", err)
+		}
+		if parsed["key"] != "user:1" {
+			t.Errorf("file.key = %v, want user:1", parsed["key"])
+		}
+		if _, ok := parsed["exported_at"]; !ok {
+			t.Error("exported_at missing from file")
+		}
+	})
+
+	t.Run("export error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.ExportSingleError = errors.New("nope")
+		t.Setenv("HOME", t.TempDir())
+
+		msg := cmds.ExportSingleKey("conn1", "ghost")()
+		result := msg.(types.ExportSingleKeyCompleteMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+		if result.Filename != "" {
+			t.Errorf("Filename should be empty on error, got %q", result.Filename)
+		}
+	})
+
+	t.Run("nil redis no-op", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.ExportSingleKey("conn1", "anything")()
+		result := msg.(types.ExportSingleKeyCompleteMsg)
 		if result.Err != nil {
 			t.Errorf("nil redis should not error: %v", result.Err)
 		}

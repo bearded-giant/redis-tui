@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bearded-giant/redis-tui/internal/types"
@@ -29,6 +31,70 @@ func (c *Commands) ExportKeys(pattern, filename string) tea.Cmd {
 		err = os.WriteFile(filename, jsonData, 0600)
 		return types.ExportCompleteMsg{Filename: filename, KeyCount: len(data), Err: err}
 	}
+}
+
+// ExportSingleKey dumps one key (type + ttl + raw + decoded value) to a JSON
+// file under ~/redis-tui-exports/. Filename is auto-generated from connection
+// name + sanitized key + timestamp.
+func (c *Commands) ExportSingleKey(connName, key string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.ExportSingleKeyCompleteMsg{Key: key}
+		}
+		data, err := c.redis.ExportSingleKey(key)
+		if err != nil {
+			return types.ExportSingleKeyCompleteMsg{Key: key, Err: err}
+		}
+		data["exported_at"] = time.Now().UTC().Format(time.RFC3339)
+
+		filename, err := singleKeyExportPath(connName, key, time.Now())
+		if err != nil {
+			return types.ExportSingleKeyCompleteMsg{Key: key, Err: err}
+		}
+		if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+			return types.ExportSingleKeyCompleteMsg{Key: key, Err: err}
+		}
+
+		blob, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return types.ExportSingleKeyCompleteMsg{Key: key, Err: err}
+		}
+		err = os.WriteFile(filename, blob, 0o600)
+		return types.ExportSingleKeyCompleteMsg{Key: key, Filename: filename, Err: err}
+	}
+}
+
+// singleKeyExportPath builds the on-disk path for a single-key export.
+// Exposed at package level (not method) so tests can verify sanitization without
+// hitting Redis.
+func singleKeyExportPath(connName, key string, now time.Time) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve home dir: %w", err)
+	}
+	dir := filepath.Join(home, "redis-tui-exports")
+	base := fmt.Sprintf("%s-%s-%s.json",
+		sanitizeForFilename(connName),
+		sanitizeForFilename(key),
+		now.UTC().Format("20060102T150405Z"),
+	)
+	return filepath.Join(dir, base), nil
+}
+
+func sanitizeForFilename(s string) string {
+	if s == "" {
+		return "unnamed"
+	}
+	replacer := strings.NewReplacer(
+		"/", "_", ":", "_", "*", "_", "?", "_",
+		"\"", "_", "<", "_", ">", "_", "|", "_",
+		"\\", "_", " ", "_",
+	)
+	out := replacer.Replace(s)
+	if len(out) > 200 {
+		out = out[:200]
+	}
+	return out
 }
 
 func (c *Commands) ImportKeys(filename string) tea.Cmd {

@@ -28,6 +28,7 @@ type FullMockRedisClient struct {
 	PubSubChannelsResult  []string
 	ConfigGetResult       map[string]string
 	ExportResult          map[string]any
+	ExportSingleResult    map[string]any
 	ImportResult          int
 	BulkDeleteResult      int
 	BatchTTLResult        int
@@ -80,6 +81,7 @@ type FullMockRedisClient struct {
 	ConfigGetError          error
 	ConfigSetError          error
 	ExportError             error
+	ExportSingleError       error
 	ImportError             error
 	RenameError             error
 	CopyError               error
@@ -391,6 +393,11 @@ func (m *FullMockRedisClient) UnsubscribeKeyspace() error {
 func (m *FullMockRedisClient) ExportKeys(_ string) (map[string]any, error) {
 	m.Calls = append(m.Calls, "ExportKeys")
 	return m.ExportResult, m.ExportError
+}
+
+func (m *FullMockRedisClient) ExportSingleKey(_ string) (map[string]any, error) {
+	m.Calls = append(m.Calls, "ExportSingleKey")
+	return m.ExportSingleResult, m.ExportSingleError
 }
 
 func (m *FullMockRedisClient) ImportKeys(_ map[string]any) (int, error) {

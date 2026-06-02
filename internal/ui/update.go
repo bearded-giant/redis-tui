@@ -126,6 +126,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Import/Export messages
 	case types.ExportCompleteMsg:
 		return m.handleExportCompleteMsg(msg)
+	case types.ExportSingleKeyCompleteMsg:
+		return m.handleExportSingleKeyCompleteMsg(msg)
 	case types.ImportCompleteMsg:
 		return m.handleImportCompleteMsg(msg)
 
