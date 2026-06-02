@@ -17,8 +17,8 @@ make test-cover   # Tests with coverage HTML report
 make lint         # Run go vet
 make fmt          # Format code with go fmt
 make run          # Run the application
-make dev-deps     # Install goreleaser
 make decode-blob  # Build cmd/decode-blob CLI for one-off blob inspection
+make help         # List all targets with descriptions
 ```
 
 CI runs `go test -v -race ./...` on push/PR to `main` and a single linux/amd64 build verify. Goreleaser cross-compiles on tag push. New code should include tests; no enforced coverage threshold.

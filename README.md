@@ -441,39 +441,34 @@ Keybindings can be customized in the configuration file under the `key_bindings`
 
 ## Development
 
+Run `make help` for the full list of targets. Common ones:
+
 ```bash
-# Install development dependencies
-make dev-deps
+make build       # Build to bin/redis-tui
+make run         # Run the application
+make test        # Run tests with race detector
+make test-cover  # Tests with HTML coverage report
+make lint        # go vet
+make fmt         # go fmt
+make clean       # Remove bin/ and dist/
+make decode-blob # Build the standalone decode-blob CLI
+make dev         # Boot standalone Redis, seed, run app
+```
 
-# Run the application
-make run
+### Release Process
 
-# Run tests
-make test
+Releases are tag-driven via [goreleaser](https://goreleaser.com/) and the [`release.yml`](.github/workflows/release.yml) workflow. Pushing a `v*` tag cross-compiles for macOS/Linux/Windows (amd64/arm64), publishes binaries to GitHub Releases, and updates the Homebrew tap.
 
-# Run tests with coverage
-make test-cover
+```bash
+# 1. Tag the release
+git tag v1.2.3
+git push origin v1.2.3
 
-# Run linter
-make lint
+# 2. Verify a cross-platform build locally before publishing (optional)
+go install github.com/goreleaser/goreleaser/v2@latest
+make snapshot   # output lands in dist/, nothing published
 
-# Format code
-make fmt
-
-# Build the application
-make build
-
-# Build for all platforms
-make build-all
-
-# Clean build artifacts
-make clean
-
-# Create a release with goreleaser
-make release
-
-# Create a snapshot release (no publish)
-make snapshot
+# 3. CI runs `make release` automatically on tag push
 ```
 
 ## License

@@ -6,7 +6,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: all build install clean test test-cover lint run dev release snapshot decode-blob \
+.PHONY: all build install clean test test-cover lint fmt run dev release snapshot decode-blob help \
 	docker-up docker-down docker-seed \
 	docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack \
 	docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack \
@@ -14,157 +14,88 @@ LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main
 
 all: build
 
-## Build the application
-build:
+build: ## Build the application to bin/redis-tui
 	go build $(LDFLAGS) -o bin/$(APP_NAME) ./
 
-## Build the decode-blob CLI for one-off blob inspection
-##   usage: bin/decode-blob /path/to/redis-value
-decode-blob:
+decode-blob: ## Build cmd/decode-blob CLI for one-off blob inspection
 	go build -o bin/decode-blob ./cmd/decode-blob
 
-## Install to GOPATH/bin
-install:
+install: ## Install to GOPATH/bin
 	go install $(LDFLAGS) ./
 
-## Clean build artifacts
-clean:
+clean: ## Remove bin/ and dist/
 	rm -rf bin/
 	rm -rf dist/
 
-## Run tests
-test:
+test: ## Run tests with race detector
 	go test -v -race ./...
 
-## Run tests with coverage
-test-cover:
+test-cover: ## Run tests with HTML coverage report (coverage.html)
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
-## Run linter
-lint:
+lint: ## Run go vet
 	go vet ./...
 
-## Format code
-fmt:
+fmt: ## Format code with go fmt
 	go fmt ./...
 
-## Run the application
-run:
+run: ## Run the application
 	go run ./
 
-## Dev loop: boot standalone Redis (:6379), seed, run app
-dev: docker-up-standalone docker-seed-standalone run
+dev: docker-up-standalone docker-seed-standalone run ## Boot standalone Redis (:6379), seed, run app
 
-## Run the application in debug mode
-debug-server:
-	@mkdir -p tmp || true
-	@-pkill -f "dlv.*38697" || true
-	go build -gcflags="all=-N -l" -o tmp/$(APP_NAME)-debug ./
-	go run github.com/go-delve/delve/cmd/dlv@latest exec ./tmp/$(APP_NAME)-debug --headless --listen=127.0.0.1:38697 --api-version=2
-	@printf "\033[?1049l\033[?25h"
-	@stty sane
-	@reset
-
-## Build for multiple platforms
-build-all:
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o bin/$(APP_NAME)-darwin-amd64 ./
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o bin/$(APP_NAME)-darwin-arm64 ./
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/$(APP_NAME)-linux-amd64 ./
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o bin/$(APP_NAME)-linux-arm64 ./
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o bin/$(APP_NAME)-windows-amd64.exe ./
-
-## Create a release with goreleaser
-release:
+release: ## Tag-driven release via goreleaser (requires VERSION tag pushed)
 	goreleaser release --clean
 
-## Create a snapshot release (no publish)
-snapshot:
+snapshot: ## Local cross-platform build via goreleaser (no publish, output in dist/)
 	goreleaser release --snapshot --clean
-
-## Install development dependencies
-dev-deps:
-	go install github.com/goreleaser/goreleaser/v2@v2.13.1
-	go install github.com/go-delve/delve/cmd/dlv@latest
 
 ## --- Docker Examples ---
 
-## Start all example Redis instances
-docker-up: docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack
+docker-up: docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack ## Start all example Redis instances
 
-## Stop all example Redis instances
-docker-down: docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack
+docker-down: docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack ## Stop all example Redis instances
 
-## Seed all running example instances
-docker-seed: docker-seed-standalone docker-seed-standalone-stack docker-seed-cluster docker-seed-cluster-stack
+docker-seed: docker-seed-standalone docker-seed-standalone-stack docker-seed-cluster docker-seed-cluster-stack ## Seed all running example instances
 
-## Standalone (redis:7-alpine on :6379)
-docker-up-standalone:
+docker-up-standalone: ## Start standalone Redis (redis:7-alpine on :6379)
 	docker compose -f examples/standalone/docker-compose.yml up -d
 
-docker-down-standalone:
+docker-down-standalone: ## Stop standalone Redis
 	docker compose -f examples/standalone/docker-compose.yml down
 
-docker-seed-standalone:
+docker-seed-standalone: ## Seed standalone Redis with example data
 	go run ./examples/seed -flush
 
-## Standalone Redis Stack (redis-stack on :6390)
-docker-up-standalone-stack:
+docker-up-standalone-stack: ## Start standalone Redis Stack (redis-stack on :6390)
 	docker compose -f examples/standalone-redis-stack/docker-compose.yml up -d
 
-docker-down-standalone-stack:
+docker-down-standalone-stack: ## Stop standalone Redis Stack
 	docker compose -f examples/standalone-redis-stack/docker-compose.yml down
 
-docker-seed-standalone-stack:
+docker-seed-standalone-stack: ## Seed standalone Redis Stack with example data
 	go run ./examples/seed -addr localhost:6390 -flush
 
-## Cluster (redis:7-alpine on :6380-6385)
-docker-up-cluster:
+docker-up-cluster: ## Start cluster (redis:7-alpine on :6380-6385)
 	docker compose -f examples/cluster/docker-compose.yml up -d
 
-docker-down-cluster:
+docker-down-cluster: ## Stop cluster
 	docker compose -f examples/cluster/docker-compose.yml down
 
-docker-seed-cluster:
+docker-seed-cluster: ## Seed cluster with example data
 	go run ./examples/seed -addr localhost:6380 -cluster -flush
 
-## Cluster Redis Stack (redis-stack on :6386-6392)
-docker-up-cluster-stack:
+docker-up-cluster-stack: ## Start cluster Redis Stack (redis-stack on :6386-6392)
 	docker compose -f examples/cluster-redis-stack/docker-compose.yml up -d
 
-docker-down-cluster-stack:
+docker-down-cluster-stack: ## Stop cluster Redis Stack
 	docker compose -f examples/cluster-redis-stack/docker-compose.yml down
 
-docker-seed-cluster-stack:
+docker-seed-cluster-stack: ## Seed cluster Redis Stack with example data
 	go run ./examples/seed -addr localhost:6386 -cluster -flush
 
-## Show help
-help:
-	@echo "Available targets:"
-	@echo ""
-	@echo "  Build & Dev:"
-	@echo "    build       - Build the application"
-	@echo "    install     - Install to GOPATH/bin"
-	@echo "    clean       - Clean build artifacts"
-	@echo "    test        - Run tests"
-	@echo "    test-cover        - Run tests with coverage"
-	@echo "    lint        - Run linter"
-	@echo "    fmt         - Format code"
-	@echo "    run         - Run the application"
-	@echo "    dev         - Boot standalone Redis (:6379), seed, run app"
-	@echo "    build-all   - Build for multiple platforms"
-	@echo "    release     - Create a release with goreleaser"
-	@echo "    snapshot    - Create a snapshot release"
-	@echo "    dev-deps    - Install development dependencies"
-	@echo "    decode-blob - Build cmd/decode-blob CLI for one-off blob inspection"
-	@echo ""
-	@echo "  Docker Examples:"
-	@echo "    docker-up                  - Start all instances"
-	@echo "    docker-down                - Stop all instances"
-	@echo "    docker-seed                - Seed all instances"
-	@echo "    docker-up-standalone       - Standalone (:6379)"
-	@echo "    docker-up-standalone-stack - Standalone Redis Stack (:6390)"
-	@echo "    docker-up-cluster          - Cluster (:6380-6385)"
-	@echo "    docker-up-cluster-stack    - Cluster Redis Stack (:6386-6392)"
-	@echo ""
-	@echo "    help        - Show this help"
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*?## "; printf "Targets:\n\n"} \
+		/^## --- / {gsub(/^## --- | ---$$/, "", $$0); printf "\n  %s\n", $$0; next} \
+		/^[a-zA-Z_-]+:.*?## / {printf "  %-30s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
