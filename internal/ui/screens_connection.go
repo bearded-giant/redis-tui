@@ -1,10 +1,32 @@
 package ui
 
 import (
+	"fmt"
+
 	"github.com/bearded-giant/redis-tui/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+// uniqueDupName returns a name for a duplicated connection that does not
+// collide with any name in existing. First tries "{base}-copy", then
+// "{base}-copy-2", "{base}-copy-3", etc.
+func uniqueDupName(base string, existing []types.Connection) string {
+	taken := make(map[string]struct{}, len(existing))
+	for _, c := range existing {
+		taken[c.Name] = struct{}{}
+	}
+	candidate := base + "-copy"
+	if _, clash := taken[candidate]; !clash {
+		return candidate
+	}
+	for i := 2; ; i++ {
+		candidate = fmt.Sprintf("%s-copy-%d", base, i)
+		if _, clash := taken[candidate]; !clash {
+			return candidate
+		}
+	}
+}
 
 func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -36,6 +58,20 @@ func (m Model) handleConnectionsScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.EditingConnection = &conn
 			m.populateConnInputs(conn)
 			m.Screen = types.ScreenEditConnection
+		}
+	case "D":
+		if len(m.Connections) > 0 && m.SelectedConnIdx < len(m.Connections) {
+			src := m.Connections[m.SelectedConnIdx]
+			// Keep a copy of the source so Group/Color/TLS (not editable on the
+			// add form) can be merged back in when the user saves.
+			srcCopy := src
+			m.DuplicatingFrom = &srcCopy
+			dup := src
+			dup.Name = uniqueDupName(src.Name, m.Connections)
+			m.EditingConnection = nil
+			m.populateConnInputs(dup)
+			m.Screen = types.ScreenAddConnection
+			m.ConnectionError = ""
 		}
 	case "d", "delete", "backspace":
 		if len(m.Connections) > 0 && m.SelectedConnIdx < len(m.Connections) {
@@ -96,6 +132,7 @@ func (m Model) handleAddConnectionScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "esc":
 		m.Screen = types.ScreenConnections
+		m.DuplicatingFrom = nil
 		m.resetConnInputs()
 	default:
 		return m.updateConnInputs(msg)

@@ -38,7 +38,10 @@ func (m Model) handleConnectionAddedMsg(msg types.ConnectionAddedMsg) (tea.Model
 	} else {
 		m.Connections = append(m.Connections, msg.Connection)
 		m.Screen = types.ScreenConnections
+		m.DuplicatingFrom = nil
 		m.resetConnInputs()
+		// Select the newly-added connection so the user sees it land.
+		m.SelectedConnIdx = len(m.Connections) - 1
 		m.StatusMsg = "Connection added"
 	}
 	return m, nil

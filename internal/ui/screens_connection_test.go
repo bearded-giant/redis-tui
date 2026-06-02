@@ -115,6 +115,150 @@ func TestHandleConnectionsScreen(t *testing.T) {
 			t.Error("expected nil cmd for empty list")
 		}
 	})
+	t.Run("D duplicates", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		ssh := &types.SSHConfig{Host: "bastion.example", Port: 22, User: "deploy"}
+		m.Connections = []types.Connection{{
+			ID:        7,
+			Name:      "prod",
+			Host:      "redis.example",
+			Port:      6379,
+			Username:  "default",
+			Password:  "secret",
+			DB:        2,
+			Group:     "live",
+			Color:     "red",
+			UseSSH:    true,
+			SSHConfig: ssh,
+			UseTLS:    true,
+			TLSConfig: &types.TLSConfig{ServerName: "redis.example"},
+		}}
+		result, _ := m.handleConnectionsScreen(keyMsg('D'))
+		model := result.(Model)
+		if model.Screen != types.ScreenAddConnection {
+			t.Errorf("expected ScreenAddConnection, got %v", model.Screen)
+		}
+		if model.EditingConnection != nil {
+			t.Error("expected EditingConnection nil for duplicate flow")
+		}
+		if model.DuplicatingFrom == nil {
+			t.Fatal("expected DuplicatingFrom set")
+		}
+		if model.DuplicatingFrom.ID != 7 {
+			t.Errorf("DuplicatingFrom should snapshot source ID 7, got %d", model.DuplicatingFrom.ID)
+		}
+		if got := model.ConnInputs[0].Value(); got != "prod-copy" {
+			t.Errorf("expected name 'prod-copy', got %q", got)
+		}
+		if got := model.ConnInputs[1].Value(); got != "redis.example" {
+			t.Errorf("expected host carried over, got %q", got)
+		}
+		if !model.SSHEnabled {
+			t.Error("expected SSHEnabled carried from source")
+		}
+		if model.PendingSSH == nil || model.PendingSSH == ssh {
+			t.Errorf("expected PendingSSH deep-copied (non-nil, distinct pointer), got %v", model.PendingSSH)
+		}
+		if model.PendingSSH.Host != "bastion.example" {
+			t.Errorf("expected PendingSSH host carried, got %q", model.PendingSSH.Host)
+		}
+	})
+	t.Run("D collision suffix", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		m.Connections = []types.Connection{
+			{ID: 1, Name: "prod", Host: "h"},
+			{ID: 2, Name: "prod-copy", Host: "h"},
+			{ID: 3, Name: "prod-copy-2", Host: "h"},
+		}
+		result, _ := m.handleConnectionsScreen(keyMsg('D'))
+		model := result.(Model)
+		if got := model.ConnInputs[0].Value(); got != "prod-copy-3" {
+			t.Errorf("expected 'prod-copy-3', got %q", got)
+		}
+	})
+	t.Run("D no-op on empty list", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		result, _ := m.handleConnectionsScreen(keyMsg('D'))
+		model := result.(Model)
+		if model.DuplicatingFrom != nil {
+			t.Error("expected no duplicate stash on empty list")
+		}
+		if model.Screen == types.ScreenAddConnection {
+			t.Error("should not navigate on empty list")
+		}
+	})
+}
+
+func TestUniqueDupName(t *testing.T) {
+	cases := []struct {
+		name     string
+		base     string
+		existing []string
+		want     string
+	}{
+		{"no collision", "prod", nil, "prod-copy"},
+		{"base copy taken", "prod", []string{"prod", "prod-copy"}, "prod-copy-2"},
+		{"sequential collisions", "prod", []string{"prod-copy", "prod-copy-2", "prod-copy-3"}, "prod-copy-4"},
+		{"gap in sequence not filled", "prod", []string{"prod-copy", "prod-copy-3"}, "prod-copy-2"},
+		{"unrelated names ignored", "prod", []string{"staging", "dev-copy"}, "prod-copy"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			conns := make([]types.Connection, len(tc.existing))
+			for i, n := range tc.existing {
+				conns[i] = types.Connection{Name: n}
+			}
+			if got := uniqueDupName(tc.base, conns); got != tc.want {
+				t.Errorf("uniqueDupName(%q, %v) = %q, want %q", tc.base, tc.existing, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestConvertCurrentInputsToConnection_DuplicateCarriesNonFormFields(t *testing.T) {
+	m, _, _ := newTestModel(t)
+	src := types.Connection{
+		ID:        5,
+		Name:      "prod",
+		Group:     "live",
+		Color:     "red",
+		UseTLS:    true,
+		TLSConfig: &types.TLSConfig{ServerName: "redis.example", InsecureSkipVerify: false},
+	}
+	m.DuplicatingFrom = &src
+	m.ConnInputs[0].SetValue("prod-copy")
+	m.ConnInputs[1].SetValue("redis.example")
+	m.ConnInputs[2].SetValue("6379")
+	m.ConnInputs[5].SetValue("0")
+
+	got := m.convertCurrentInputsToConnection(m.ConnInputs, "add")
+	if got.ID != 0 {
+		t.Errorf("duplicate should not carry source ID, got %d", got.ID)
+	}
+	if got.Group != "live" || got.Color != "red" {
+		t.Errorf("expected Group/Color carried, got %q/%q", got.Group, got.Color)
+	}
+	if !got.UseTLS || got.TLSConfig == nil {
+		t.Fatal("expected UseTLS + TLSConfig carried")
+	}
+	if got.TLSConfig == src.TLSConfig {
+		t.Error("TLSConfig should be deep-copied, not aliased")
+	}
+	if got.TLSConfig.ServerName != "redis.example" {
+		t.Errorf("expected ServerName carried, got %q", got.TLSConfig.ServerName)
+	}
+}
+
+func TestConvertCurrentInputsToConnection_AddWithoutDuplicateNoCarry(t *testing.T) {
+	m, _, _ := newTestModel(t)
+	m.ConnInputs[0].SetValue("fresh")
+	m.ConnInputs[1].SetValue("host")
+	m.ConnInputs[2].SetValue("6379")
+	m.ConnInputs[5].SetValue("0")
+	got := m.convertCurrentInputsToConnection(m.ConnInputs, "add")
+	if got.Group != "" || got.Color != "" || got.UseTLS || got.TLSConfig != nil {
+		t.Errorf("plain add should leave non-form fields zero, got %+v", got)
+	}
 }
 
 func TestHandleAddConnectionScreen(t *testing.T) {
@@ -192,6 +336,17 @@ func TestHandleAddConnectionScreen(t *testing.T) {
 		model := result.(Model)
 		if model.Screen != types.ScreenConnections {
 			t.Errorf("expected ScreenConnections, got %v", model.Screen)
+		}
+	})
+	t.Run("esc clears DuplicatingFrom", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		src := types.Connection{ID: 9, Name: "prod"}
+		m.DuplicatingFrom = &src
+		m.Screen = types.ScreenAddConnection
+		result, _ := m.handleAddConnectionScreen(tea.KeyMsg{Type: tea.KeyEsc})
+		model := result.(Model)
+		if model.DuplicatingFrom != nil {
+			t.Error("esc on add screen should clear DuplicatingFrom")
 		}
 	})
 	t.Run("default updates input", func(t *testing.T) {

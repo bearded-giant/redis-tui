@@ -23,6 +23,7 @@ type Model struct {
 	ConnInputs        []textinput.Model
 	ConnFocusIdx      int
 	EditingConnection *types.Connection
+	DuplicatingFrom   *types.Connection
 	CurrentConn       *types.Connection
 	Keys              []types.RedisKey
 	SelectedKeyIdx    int
@@ -565,7 +566,7 @@ func (m *Model) convertCurrentInputsToConnection(inputs []textinput.Model, actio
 
 	port, _ := strconv.Atoi(inputs[2].Value())
 	db, _ := strconv.Atoi(inputs[5].Value())
-	return types.Connection{
+	conn := types.Connection{
 		ID:         id,
 		Name:       inputs[0].Value(),
 		Port:       port,
@@ -577,6 +578,19 @@ func (m *Model) convertCurrentInputsToConnection(inputs []textinput.Model, actio
 		UseSSH:     m.SSHEnabled,
 		SSHConfig:  m.PendingSSH,
 	}
+	// When duplicating, the source's Group/Color/TLS aren't editable via the form,
+	// so carry them forward from the source so the duplicate is a true clone.
+	if action == "add" && m.DuplicatingFrom != nil {
+		src := m.DuplicatingFrom
+		conn.Group = src.Group
+		conn.Color = src.Color
+		conn.UseTLS = src.UseTLS
+		if src.TLSConfig != nil {
+			tls := *src.TLSConfig
+			conn.TLSConfig = &tls
+		}
+	}
+	return conn
 }
 
 // connFieldCount returns the number of focusable fields in the connection form.
