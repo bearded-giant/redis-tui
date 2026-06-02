@@ -1001,3 +1001,74 @@ func TestBulkDelete_LargeKeySet(t *testing.T) {
 		t.Errorf("expected 0 keys remaining, got %d", client.GetTotalKeys())
 	}
 }
+
+func TestBatchSetTTLPreview_Counts(t *testing.T) {
+	client, mr := setupTestClient(t)
+	mr.Set("user:1", "a")
+	mr.Set("user:2", "b")
+	mr.Set("user:3", "c")
+	mr.Set("session:1", "x")
+
+	matched, sample, err := client.BatchSetTTLPreview("user:*", 10)
+	if err != nil {
+		t.Fatalf("BatchSetTTLPreview: %v", err)
+	}
+	if matched != 3 {
+		t.Errorf("matched = %d, want 3", matched)
+	}
+	if len(sample) != 3 {
+		t.Errorf("sample length = %d, want 3", len(sample))
+	}
+}
+
+func TestBatchSetTTLPreview_NoMutation(t *testing.T) {
+	client, mr := setupTestClient(t)
+	mr.Set("key1", "v")
+	mr.Set("key2", "v")
+
+	// Should not change TTLs.
+	if _, _, err := client.BatchSetTTLPreview("*", 10); err != nil {
+		t.Fatalf("BatchSetTTLPreview: %v", err)
+	}
+
+	if ttl := mr.TTL("key1"); ttl != 0 {
+		t.Errorf("key1 TTL changed by preview: %v", ttl)
+	}
+	if ttl := mr.TTL("key2"); ttl != 0 {
+		t.Errorf("key2 TTL changed by preview: %v", ttl)
+	}
+}
+
+func TestBatchSetTTLPreview_SampleCap(t *testing.T) {
+	client, mr := setupTestClient(t)
+	for i := 0; i < 50; i++ {
+		mr.Set(fmt.Sprintf("k%d", i), "v")
+	}
+
+	matched, sample, err := client.BatchSetTTLPreview("*", 5)
+	if err != nil {
+		t.Fatalf("BatchSetTTLPreview: %v", err)
+	}
+	if matched != 50 {
+		t.Errorf("matched = %d, want 50", matched)
+	}
+	if len(sample) != 5 {
+		t.Errorf("sample len = %d, want 5 (capped)", len(sample))
+	}
+}
+
+func TestBatchSetTTLPreview_NoMatch(t *testing.T) {
+	client, mr := setupTestClient(t)
+	mr.Set("foo", "v")
+
+	matched, sample, err := client.BatchSetTTLPreview("bar:*", 10)
+	if err != nil {
+		t.Fatalf("BatchSetTTLPreview: %v", err)
+	}
+	if matched != 0 {
+		t.Errorf("matched = %d, want 0", matched)
+	}
+	if len(sample) != 0 {
+		t.Errorf("sample len = %d, want 0", len(sample))
+	}
+}

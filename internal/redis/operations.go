@@ -217,6 +217,24 @@ func (c *Client) SetTTL(key string, ttl time.Duration) error {
 	return c.cmdable().Expire(c.ctx, key, ttl).Err()
 }
 
+// BatchSetTTLPreview counts keys matching a pattern and returns up to N
+// samples without mutating anything. Used to drive a dry-run confirmation
+// before BatchSetTTL applies expiry across the matched set.
+func (c *Client) BatchSetTTLPreview(pattern string, sampleN int) (int, []string, error) {
+	if sampleN < 0 {
+		sampleN = 0
+	}
+	allKeys, err := c.scanAll(pattern, 100)
+	if err != nil {
+		return 0, nil, err
+	}
+	sample := allKeys
+	if sampleN < len(sample) {
+		sample = sample[:sampleN]
+	}
+	return len(allKeys), sample, nil
+}
+
 // BatchSetTTL sets TTL on all keys matching a pattern
 func (c *Client) BatchSetTTL(pattern string, ttl time.Duration) (int, error) {
 	allKeys, err := c.scanAll(pattern, 100)

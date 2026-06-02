@@ -372,8 +372,14 @@ func (m Model) handleBulkDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleBatchTTLScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Two-step flow: enter shows preview, "a" applies, esc cancels at any step.
+	previewLoaded := m.BatchTTLPendingPattern != ""
+
 	switch msg.String() {
 	case "tab":
+		if previewLoaded {
+			return m, nil
+		}
 		if m.Inputs.BatchTTLInput.Focused() {
 			m.Inputs.BatchTTLInput.Blur()
 			m.Inputs.BatchTTLPattern.Focus()
@@ -382,19 +388,38 @@ func (m Model) handleBatchTTLScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Inputs.BatchTTLInput.Focus()
 		}
 	case "enter":
+		if previewLoaded {
+			return m, nil
+		}
 		if m.Inputs.BatchTTLInput.Value() != "" && m.Inputs.BatchTTLPattern.Value() != "" {
 			ttlSecs, err := strconv.Atoi(m.Inputs.BatchTTLInput.Value())
 			if err == nil {
 				m.Loading = true
 				ttl := time.Duration(ttlSecs) * time.Second
-				return m, m.Cmds.BatchSetTTL(m.Inputs.BatchTTLPattern.Value(), ttl)
+				return m, m.Cmds.BatchSetTTLPreview(m.Inputs.BatchTTLPattern.Value(), ttl)
 			}
+		}
+	case "a":
+		if previewLoaded && m.BatchTTLMatched > 0 {
+			m.Loading = true
+			pattern := m.BatchTTLPendingPattern
+			ttl := m.BatchTTLPendingTTL
+			m.BatchTTLPendingPattern = ""
+			m.BatchTTLPreview = nil
+			m.BatchTTLMatched = 0
+			return m, m.Cmds.BatchSetTTL(pattern, ttl)
 		}
 	case "esc":
 		m.Screen = types.ScreenKeys
 		m.Inputs.BatchTTLInput.Blur()
 		m.Inputs.BatchTTLPattern.Blur()
+		m.BatchTTLPendingPattern = ""
+		m.BatchTTLPreview = nil
+		m.BatchTTLMatched = 0
 	default:
+		if previewLoaded {
+			return m, nil
+		}
 		if m.Inputs.BatchTTLInput.Focused() {
 			var inputCmd tea.Cmd
 			m.Inputs.BatchTTLInput, inputCmd = m.Inputs.BatchTTLInput.Update(msg)

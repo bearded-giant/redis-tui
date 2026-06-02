@@ -92,6 +92,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleTTLSetMsg(msg)
 	case types.BatchTTLSetMsg:
 		return m.handleBatchTTLSetMsg(msg)
+	case types.BatchTTLPreviewMsg:
+		return m.handleBatchTTLPreviewMsg(msg)
 
 	// Server messages
 	case types.ServerInfoLoadedMsg:

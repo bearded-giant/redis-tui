@@ -86,7 +86,10 @@ type Model struct {
 	SelectedBulkKeys  map[string]bool
 
 	// Batch TTL
-	BatchTTLPreview []string
+	BatchTTLPreview        []string
+	BatchTTLMatched        int
+	BatchTTLPendingPattern string
+	BatchTTLPendingTTL     time.Duration
 
 	// Search
 	SearchResults []types.RedisKey

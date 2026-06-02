@@ -125,6 +125,27 @@ func (m Model) handleValueHistoryMsg(msg types.ValueHistoryMsg) (tea.Model, tea.
 	return m, nil
 }
 
+func (m Model) handleBatchTTLPreviewMsg(msg types.BatchTTLPreviewMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	if msg.Err != nil {
+		m.StatusMsg = "Preview failed: " + msg.Err.Error()
+		m.BatchTTLPendingPattern = ""
+		m.BatchTTLPreview = nil
+		m.BatchTTLMatched = 0
+		return m, nil
+	}
+	m.BatchTTLPendingPattern = msg.Pattern
+	m.BatchTTLPendingTTL = msg.TTL
+	m.BatchTTLMatched = msg.Matched
+	m.BatchTTLPreview = msg.Sample
+	if msg.Matched == 0 {
+		m.StatusMsg = "No keys match " + msg.Pattern
+	} else {
+		m.StatusMsg = strconv.Itoa(msg.Matched) + " keys matched — press 'a' to apply"
+	}
+	return m, nil
+}
+
 // Search message handlers
 
 func (m Model) handleRegexSearchResultMsg(msg types.RegexSearchResultMsg) (tea.Model, tea.Cmd) {
