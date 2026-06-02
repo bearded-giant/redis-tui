@@ -6,6 +6,23 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// StartMonitor opens a MONITOR stream. Events fire via sendMsg (the model's
+// tea.Program.Send wrapper). Caller holds the returned handle on the Model
+// and Close()es it on screen exit. sendMsg may be nil in tests — events drop.
+func (c *Commands) StartMonitor(sendMsg func(tea.Msg)) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.MonitorStartedMsg{}
+		}
+		handle, err := c.redis.StartMonitor(func(entry types.MonitorEntry) {
+			if sendMsg != nil {
+				sendMsg(types.MonitorEntryMsg{Entry: entry})
+			}
+		})
+		return types.MonitorStartedMsg{Handle: handle, Err: err}
+	}
+}
+
 func (c *Commands) LoadServerInfo() tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {

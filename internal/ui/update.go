@@ -95,6 +95,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.BatchTTLPreviewMsg:
 		return m.handleBatchTTLPreviewMsg(msg)
 
+	// MONITOR messages
+	case types.MonitorStartedMsg:
+		return m.handleMonitorStartedMsg(msg)
+	case types.MonitorEntryMsg:
+		return m.handleMonitorEntryMsg(msg)
+
 	// Server messages
 	case types.ServerInfoLoadedMsg:
 		return m.handleServerInfoLoadedMsg(msg)
@@ -333,6 +339,8 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleImportScreen(msg)
 	case types.ScreenSlowLog:
 		return m.handleSlowLogScreen(msg)
+	case types.ScreenMonitor:
+		return m.handleMonitorScreen(msg)
 	case types.ScreenLuaScript:
 		return m.handleLuaScriptScreen(msg)
 	case types.ScreenTestConnection:

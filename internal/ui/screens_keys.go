@@ -177,6 +177,17 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "I":
 		m.Screen = types.ScreenImport
 		m.Inputs.ImportInput.Focus()
+	case "ctrl+t":
+		m.MonitorEntries = nil
+		m.MonitorErr = nil
+		m.MonitorPaused = false
+		m.MonitorFilter.SetValue("")
+		m.Screen = types.ScreenMonitor
+		var sendMsg func(tea.Msg)
+		if m.SendFunc != nil {
+			sendMsg = *m.SendFunc
+		}
+		return m, m.Cmds.StartMonitor(sendMsg)
 	case "ctrl+p":
 		m.PreviewPaneVisible = !m.PreviewPaneVisible
 		if m.PreviewPaneVisible {

@@ -386,3 +386,31 @@ type EditorSaveMsg struct {
 
 // EditorQuitMsg is sent when user quits vim editor (:q)
 type EditorQuitMsg struct{}
+
+type MonitorEntry struct {
+	Time   time.Time
+	DB     int
+	Client string
+	Cmd    string
+	Args   []string
+	Raw    string
+}
+
+type MonitorEntryMsg struct {
+	Entry MonitorEntry
+}
+
+type MonitorStartedMsg struct {
+	Handle MonitorSessionHandle
+	Err    error
+}
+
+type MonitorStoppedMsg struct{}
+
+// MonitorSessionHandle is anything that owns an active MONITOR subscription.
+// Close detaches and stops the underlying goroutine. Exposed via an interface
+// here (rather than importing the redis package into service/) to keep the
+// dependency direction one-way: service → types, never service → redis.
+type MonitorSessionHandle interface {
+	Close()
+}

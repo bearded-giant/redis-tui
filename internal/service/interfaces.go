@@ -133,6 +133,9 @@ type RedisService interface {
 	SelectDB(db int) error
 	FlushDB() error
 
+	// MONITOR live stream
+	StartMonitor(onEvent func(types.MonitorEntry)) (types.MonitorSessionHandle, error)
+
 	// Server info and monitoring
 	GetServerInfo() (types.ServerInfo, error)
 	GetMemoryStats() (types.MemoryStats, error)

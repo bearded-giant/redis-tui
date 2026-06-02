@@ -55,6 +55,8 @@ func (m Model) getScreenView() string {
 		return m.viewImport()
 	case types.ScreenSlowLog:
 		return m.viewSlowLog()
+	case types.ScreenMonitor:
+		return m.viewMonitor()
 	case types.ScreenLuaScript:
 		return m.viewLuaScript()
 	case types.ScreenTestConnection:
