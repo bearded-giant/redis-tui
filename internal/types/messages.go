@@ -226,6 +226,14 @@ type BatchTTLSetMsg struct {
 	Err     error
 }
 
+type BatchTTLPreviewMsg struct {
+	Pattern string
+	TTL     time.Duration
+	Matched int
+	Sample  []string
+	Err     error
+}
+
 type TemplatesLoadedMsg struct {
 	Templates []KeyTemplate
 	Err       error

@@ -139,6 +139,25 @@ func (c *Commands) BatchSetTTL(pattern string, ttl time.Duration) tea.Cmd {
 	}
 }
 
+// BatchSetTTLPreview counts matched keys + samples without applying TTL.
+// Catastrophic-action guard: UI runs this first and only invokes BatchSetTTL
+// after the user confirms.
+func (c *Commands) BatchSetTTLPreview(pattern string, ttl time.Duration) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.BatchTTLPreviewMsg{Pattern: pattern, TTL: ttl}
+		}
+		matched, sample, err := c.redis.BatchSetTTLPreview(pattern, 10)
+		return types.BatchTTLPreviewMsg{
+			Pattern: pattern,
+			TTL:     ttl,
+			Matched: matched,
+			Sample:  sample,
+			Err:     err,
+		}
+	}
+}
+
 func (c *Commands) EvalLuaScript(script string, keys []string, args ...any) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {

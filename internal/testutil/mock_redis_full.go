@@ -55,6 +55,9 @@ type FullMockRedisClient struct {
 	SetStringError          error
 	SetTTLError             error
 	BatchSetTTLError        error
+	BatchTTLPreviewMatched  int
+	BatchTTLPreviewSample   []string
+	BatchTTLPreviewError    error
 	RPushError              error
 	LSetError               error
 	LRemError               error
@@ -217,6 +220,11 @@ func (m *FullMockRedisClient) SetTTL(_ string, _ time.Duration) error {
 func (m *FullMockRedisClient) BatchSetTTL(_ string, _ time.Duration) (int, error) {
 	m.Calls = append(m.Calls, "BatchSetTTL")
 	return m.BatchTTLResult, m.BatchSetTTLError
+}
+
+func (m *FullMockRedisClient) BatchSetTTLPreview(_ string, _ int) (int, []string, error) {
+	m.Calls = append(m.Calls, "BatchSetTTLPreview")
+	return m.BatchTTLPreviewMatched, m.BatchTTLPreviewSample, m.BatchTTLPreviewError
 }
 
 // List operations

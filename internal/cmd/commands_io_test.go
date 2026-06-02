@@ -392,3 +392,48 @@ func TestExportSingleKey(t *testing.T) {
 		}
 	})
 }
+
+func TestBatchSetTTLPreview(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.BatchTTLPreviewMatched = 7
+		mock.BatchTTLPreviewSample = []string{"a", "b", "c"}
+
+		msg := cmds.BatchSetTTLPreview("user:*", 60*time.Second)()
+		result := msg.(types.BatchTTLPreviewMsg)
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Matched != 7 {
+			t.Errorf("Matched = %d, want 7", result.Matched)
+		}
+		if len(result.Sample) != 3 {
+			t.Errorf("Sample length = %d, want 3", len(result.Sample))
+		}
+		if result.TTL != 60*time.Second {
+			t.Errorf("TTL = %v, want 60s", result.TTL)
+		}
+		if result.Pattern != "user:*" {
+			t.Errorf("Pattern = %q, want user:*", result.Pattern)
+		}
+	})
+
+	t.Run("error", func(t *testing.T) {
+		cmds, mock := newMockCmds()
+		mock.BatchTTLPreviewError = errors.New("scan blew up")
+		msg := cmds.BatchSetTTLPreview("*", time.Second)()
+		result := msg.(types.BatchTTLPreviewMsg)
+		if result.Err == nil {
+			t.Error("expected error")
+		}
+	})
+
+	t.Run("nil redis", func(t *testing.T) {
+		cmds := NewCommands(nil, nil)
+		msg := cmds.BatchSetTTLPreview("*", time.Second)()
+		result := msg.(types.BatchTTLPreviewMsg)
+		if result.Err != nil {
+			t.Errorf("nil redis should not error: %v", result.Err)
+		}
+	})
+}

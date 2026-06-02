@@ -93,6 +93,7 @@ type RedisService interface {
 	// TTL operations
 	SetTTL(key string, ttl time.Duration) error
 	BatchSetTTL(pattern string, ttl time.Duration) (int, error)
+	BatchSetTTLPreview(pattern string, sampleN int) (int, []string, error)
 
 	// List operations
 	RPush(key string, values ...string) error
