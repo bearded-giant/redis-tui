@@ -34,9 +34,11 @@ type MockConfigClient struct {
 	KeyBindingsResult       types.KeyBindings
 	SetKeyBindingsError     error
 	ResetKeyBindingsError   error
-	TreeSeparatorResult     string
-	SetTreeSeparatorError   error
-	WatchIntervalResult     time.Duration
+	TreeSeparatorResult        string
+	SetTreeSeparatorError      error
+	WatchIntervalResult        time.Duration
+	PreviewPaneVisibleResult   bool
+	SetPreviewPaneVisibleError error
 
 	// Call counters for void methods that otherwise have no observable effect.
 	AddRecentKeyCalls     int
@@ -97,3 +99,8 @@ func (m *MockConfigClient) ResetKeyBindings() error                             
 func (m *MockConfigClient) GetTreeSeparator() string                              { return m.TreeSeparatorResult }
 func (m *MockConfigClient) SetTreeSeparator(_ string) error                       { return m.SetTreeSeparatorError }
 func (m *MockConfigClient) GetWatchInterval() time.Duration                       { return m.WatchIntervalResult }
+func (m *MockConfigClient) GetPreviewPaneVisible() bool                            { return m.PreviewPaneVisibleResult }
+func (m *MockConfigClient) SetPreviewPaneVisible(v bool) error {
+	m.PreviewPaneVisibleResult = v
+	return m.SetPreviewPaneVisibleError
+}

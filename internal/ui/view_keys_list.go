@@ -10,8 +10,8 @@ import (
 func (m Model) viewKeys() string {
 	// Calculate panel widths - left panel for keys, right panel for preview
 	totalWidth := m.Width
-	if totalWidth < 100 {
-		// If terminal is too narrow, just show keys list without preview
+	if totalWidth < 100 || !m.PreviewPaneVisible {
+		// Terminal too narrow OR user toggled the preview off
 		return m.viewKeysListOnly()
 	}
 

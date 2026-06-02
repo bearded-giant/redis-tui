@@ -84,6 +84,18 @@ func (c *Commands) SaveValueHistory(key string, value types.RedisValue, action s
 	}
 }
 
+// SetPreviewPaneVisible persists the toggle state via the config service.
+// UI flips the in-memory flag synchronously; this command is fired for the
+// disk-write only and returns nil.
+func (c *Commands) SetPreviewPaneVisible(visible bool) tea.Cmd {
+	return func() tea.Msg {
+		if c.config != nil {
+			_ = c.config.SetPreviewPaneVisible(visible)
+		}
+		return nil
+	}
+}
+
 func (c *Commands) LoadRedisConfig(pattern string) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {

@@ -79,6 +79,7 @@ func setup() (ui.Model, error) {
 	container := &service.Container{Config: config, Redis: redisClient}
 	m.Cmds = cmd.NewCommandsFromContainer(container)
 	m.ScanSize = cmd.GetScanSize()
+	m.PreviewPaneVisible = config.GetPreviewPaneVisible()
 	m.Version = version
 
 	return m, nil

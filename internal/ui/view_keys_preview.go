@@ -5,9 +5,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/bearded-giant/redis-tui/internal/decoder"
 	"github.com/bearded-giant/redis-tui/internal/types"
+	"github.com/charmbracelet/lipgloss"
 )
+
+// previewByteCap caps the size of any single rendered value in the preview
+// pane. Full value is still available via enter→detail. 4KB chosen to give
+// enough context for envelope shape without bogging down render on huge blobs.
+const previewByteCap = 4096
 
 func (m Model) buildPreviewPanel(width int) string {
 	var b strings.Builder
@@ -105,7 +111,12 @@ func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
 	switch m.PreviewValue.Type {
 	case types.KeyTypeString:
 		value := m.PreviewValue.StringValue
-		formatted := formatPossibleJSON(value)
+		formatted, badge := previewDecodeString(value)
+
+		if badge != "" {
+			lines = append(lines, dimStyle.Render("Decoded: "+badge))
+			lines = append(lines, "")
+		}
 
 		// Split into lines and limit
 		valueLines := strings.Split(formatted, "\n")
@@ -310,4 +321,41 @@ func (m Model) formatPreviewValue(maxWidth, maxLines int) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// previewDecodeString routes a raw Redis string through the blob decoder so
+// base64 / JSON / msgpack / JsonPlus envelopes render as readable structure
+// in the preview pane. Falls back to formatPossibleJSON for plain text. The
+// returned `badge` names the detected format (empty for raw text).
+//
+// Output is capped at previewByteCap bytes so megabyte values don't bog
+// down preview render — full value is still available via enter→detail.
+func previewDecodeString(value string) (rendered string, badge string) {
+	if len(value) > previewByteCap {
+		// Pre-cap raw payload before sniffing — saves work on huge blobs.
+		// Decoder's detect heuristics work fine on a 4KB prefix.
+		value = value[:previewByteCap]
+	}
+
+	format := decoder.Detect([]byte(value))
+	if format == decoder.FormatRaw {
+		return capPreview(formatPossibleJSON(value)), ""
+	}
+
+	dec, err := decoder.Decode([]byte(value), format)
+	if err != nil || dec.Pretty == "" {
+		return capPreview(formatPossibleJSON(value)), ""
+	}
+	out := capPreview(dec.Pretty)
+	if dec.Note != "" {
+		out = out + "\n\n" + dimStyle.Render("Note: "+dec.Note)
+	}
+	return out, string(dec.Format)
+}
+
+func capPreview(s string) string {
+	if len(s) <= previewByteCap {
+		return s
+	}
+	return s[:previewByteCap] + fmt.Sprintf("\n... (truncated at %d bytes)", previewByteCap)
 }

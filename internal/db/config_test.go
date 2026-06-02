@@ -287,3 +287,30 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+func TestConfig_PreviewPaneVisible_DefaultsTrue(t *testing.T) {
+	cfg := newTestConfig(t)
+	if !cfg.GetPreviewPaneVisible() {
+		t.Error("default PreviewPaneVisible = false, want true")
+	}
+}
+
+func TestConfig_PreviewPaneVisible_RoundTrip(t *testing.T) {
+	cfg := newTestConfig(t)
+	if err := cfg.SetPreviewPaneVisible(false); err != nil {
+		t.Fatalf("SetPreviewPaneVisible(false): %v", err)
+	}
+
+	cfg2 := reloadConfig(t, cfg)
+	if cfg2.GetPreviewPaneVisible() {
+		t.Error("after persist+reload, PreviewPaneVisible = true, want false")
+	}
+
+	if err := cfg2.SetPreviewPaneVisible(true); err != nil {
+		t.Fatalf("SetPreviewPaneVisible(true): %v", err)
+	}
+	cfg3 := reloadConfig(t, cfg2)
+	if !cfg3.GetPreviewPaneVisible() {
+		t.Error("after toggling back on, PreviewPaneVisible = false, want true")
+	}
+}
