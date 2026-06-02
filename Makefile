@@ -6,7 +6,7 @@ COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: all build install clean test test-cover lint run release snapshot decode-blob \
+.PHONY: all build install clean test test-cover lint run dev release snapshot decode-blob \
 	docker-up docker-down docker-seed \
 	docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack \
 	docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack \
@@ -52,6 +52,9 @@ fmt:
 ## Run the application
 run:
 	go run ./
+
+## Dev loop: boot standalone Redis (:6379), seed, run app
+dev: docker-up-standalone docker-seed-standalone run
 
 ## Run the application in debug mode
 debug-server:
@@ -148,6 +151,7 @@ help:
 	@echo "    lint        - Run linter"
 	@echo "    fmt         - Format code"
 	@echo "    run         - Run the application"
+	@echo "    dev         - Boot standalone Redis (:6379), seed, run app"
 	@echo "    build-all   - Build for multiple platforms"
 	@echo "    release     - Create a release with goreleaser"
 	@echo "    snapshot    - Create a snapshot release"
