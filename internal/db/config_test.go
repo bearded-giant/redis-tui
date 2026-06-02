@@ -256,6 +256,53 @@ func TestDefaultTemplates(t *testing.T) {
 	}
 }
 
+// TestConfig_LegacyThemesField verifies a config file written by an older
+// version (which had a now-removed `themes` keybinding) loads without error.
+// encoding/json silently drops unknown fields on unmarshal; on next save the
+// field is gone for good.
+func TestConfig_LegacyThemesField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	legacy := `{
+  "connections": [],
+  "key_bindings": {
+    "quit": "q",
+    "themes": "ctrl+t",
+    "recent_keys": "H"
+  },
+  "tree_separator": ":",
+  "max_recent_keys": 20,
+  "max_value_history": 50,
+  "watch_interval_ms": 1000
+}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatalf("write legacy config: %v", err)
+	}
+
+	cfg, err := NewConfig(path)
+	if err != nil {
+		t.Fatalf("NewConfig failed on legacy file: %v", err)
+	}
+	if cfg.KeyBindings.Quit != "q" {
+		t.Errorf("Quit = %q, want \"q\" (legacy field not loaded)", cfg.KeyBindings.Quit)
+	}
+	if cfg.KeyBindings.RecentKeys != "H" {
+		t.Errorf("RecentKeys = %q, want \"H\"", cfg.KeyBindings.RecentKeys)
+	}
+
+	if err := cfg.save(); err != nil {
+		t.Fatalf("save failed: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if contains(string(data), "themes") {
+		t.Errorf("rewritten config still contains \"themes\" field:\n%s", data)
+	}
+}
+
 // newTestConfig creates a config for testing with a temp file
 func newTestConfig(t *testing.T) *Config {
 	t.Helper()

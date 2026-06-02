@@ -4,7 +4,6 @@
 //   - redis.go: Redis data types (KeyType, RedisKey, RedisValue, etc.)
 //   - connection.go: Connection and SSH/TLS configuration
 //   - messages.go: Bubble Tea message types
-//   - theme.go: UI theme definitions
 //   - keybindings.go: Keyboard shortcut configuration
 //   - logger.go: Log writer implementation
 //   - tree.go: Tree view data structures

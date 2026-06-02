@@ -71,7 +71,6 @@ go install github.com/bearded-giant/redis-tui@latest
 - **Redis config** — browse and edit runtime CONFIG parameters
 - **Pub/Sub** — browse active channels with subscriber counts and publish messages
 - **Lua scripting** — execute Lua scripts directly against the server
-- **Themes** — switch between color themes
 
 ## Installation
 
@@ -384,7 +383,6 @@ Configuration is stored in `~/.config/redis-tui/config.json`.
     "json_path": "J",
     "copy_clipboard": "y",
     "logs": "O",
-    "themes": "ctrl+t",
     "recent_keys": "H",
     "favorites": "ctrl+f",
     "value_history": "u"
