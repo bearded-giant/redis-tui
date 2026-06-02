@@ -56,6 +56,7 @@ const (
 	ScreenLiveMetrics
 	ScreenPubSubChannels
 	ScreenRedisConfig
+	ScreenMonitor
 )
 
 // ScreenName returns a human-readable name for the screen
@@ -111,6 +112,7 @@ func (s Screen) String() string {
 		ScreenLiveMetrics:          "Live Metrics",
 		ScreenPubSubChannels:       "Pub/Sub Channels",
 		ScreenRedisConfig:          "Redis Config",
+		ScreenMonitor:              "MONITOR",
 	}
 	if name, ok := names[s]; ok {
 		return name

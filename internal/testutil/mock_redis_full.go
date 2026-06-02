@@ -55,6 +55,8 @@ type FullMockRedisClient struct {
 	SetStringError          error
 	SetTTLError             error
 	BatchSetTTLError        error
+	StartMonitorError       error
+	StartMonitorPrefill     []types.MonitorEntry
 	RPushError              error
 	LSetError               error
 	LRemError               error
@@ -218,6 +220,21 @@ func (m *FullMockRedisClient) BatchSetTTL(_ string, _ time.Duration) (int, error
 	m.Calls = append(m.Calls, "BatchSetTTL")
 	return m.BatchTTLResult, m.BatchSetTTLError
 }
+
+func (m *FullMockRedisClient) StartMonitor(onEvent func(types.MonitorEntry)) (types.MonitorSessionHandle, error) {
+	m.Calls = append(m.Calls, "StartMonitor")
+	if m.StartMonitorError != nil {
+		return nil, m.StartMonitorError
+	}
+	for _, entry := range m.StartMonitorPrefill {
+		onEvent(entry)
+	}
+	return &noopMonitorHandle{}, nil
+}
+
+type noopMonitorHandle struct{}
+
+func (noopMonitorHandle) Close() {}
 
 // List operations
 

@@ -167,6 +167,14 @@ type Model struct {
 	LiveMetrics       *types.LiveMetrics
 	LiveMetricsActive bool
 
+	// MONITOR live stream
+	MonitorSession  types.MonitorSessionHandle
+	MonitorEntries  []types.MonitorEntry
+	MonitorFilter   textinput.Model
+	MonitorPaused   bool
+	MonitorErr      error
+	MonitorBufferCap int
+
 	// Redis config
 	RedisConfigParams  []types.RedisConfigParam
 	SelectedConfigIdx  int
@@ -241,6 +249,8 @@ func NewModel() Model {
 		KeyBindings:        types.DefaultKeyBindings(),
 		ExpiryThreshold:    300,
 		PreviewPaneVisible: true,
+		MonitorFilter:      createTextInput("Filter (cmd or arg substring)...", 40),
+		MonitorBufferCap:   5000,
 		Inputs: &ModelInputs{
 			PatternInput:     createTextInput("Filter pattern...", 40),
 			TTLInput:         createTextInput("TTL in seconds (-1 to remove)", 30),

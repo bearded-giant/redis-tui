@@ -125,6 +125,31 @@ func (m Model) handleValueHistoryMsg(msg types.ValueHistoryMsg) (tea.Model, tea.
 	return m, nil
 }
 
+func (m Model) handleMonitorStartedMsg(msg types.MonitorStartedMsg) (tea.Model, tea.Cmd) {
+	if msg.Err != nil {
+		m.MonitorErr = msg.Err
+		m.StatusMsg = "MONITOR failed: " + msg.Err.Error()
+		return m, nil
+	}
+	m.MonitorSession = msg.Handle
+	m.MonitorErr = nil
+	m.StatusMsg = "MONITOR active (may impact server perf)"
+	return m, nil
+}
+
+func (m Model) handleMonitorEntryMsg(msg types.MonitorEntryMsg) (tea.Model, tea.Cmd) {
+	if m.MonitorPaused {
+		return m, nil
+	}
+	m.MonitorEntries = append(m.MonitorEntries, msg.Entry)
+	// FIFO trim — keep most recent N
+	if len(m.MonitorEntries) > m.MonitorBufferCap {
+		drop := len(m.MonitorEntries) - m.MonitorBufferCap
+		m.MonitorEntries = m.MonitorEntries[drop:]
+	}
+	return m, nil
+}
+
 // Search message handlers
 
 func (m Model) handleRegexSearchResultMsg(msg types.RegexSearchResultMsg) (tea.Model, tea.Cmd) {
