@@ -754,6 +754,22 @@ func TestHandleKeyDetailScreen(t *testing.T) {
 			t.Error("expected cmd")
 		}
 	})
+	t.Run("Y copies redis-cli command", func(t *testing.T) {
+		m, _ := newModelWithKey(t, types.KeyTypeString)
+		m.CurrentConn = &types.Connection{Host: "redis.example", Port: 6379}
+		_, cmd := m.handleKeyDetailScreen(keyMsg('Y'))
+		if cmd == nil {
+			t.Fatal("expected cmd")
+		}
+	})
+	t.Run("Y no-op without current connection", func(t *testing.T) {
+		m, _ := newModelWithKey(t, types.KeyTypeString)
+		m.CurrentConn = nil
+		_, cmd := m.handleKeyDetailScreen(keyMsg('Y'))
+		if cmd != nil {
+			t.Error("expected nil cmd when CurrentConn is nil")
+		}
+	})
 	t.Run("J json path", func(t *testing.T) {
 		m, _ := newModelWithKey(t, types.KeyTypeString)
 		result, _ := m.handleKeyDetailScreen(keyMsg('J'))

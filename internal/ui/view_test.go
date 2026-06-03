@@ -63,6 +63,14 @@ func TestViewConnections(t *testing.T) {
 			t.Error("expected error box")
 		}
 	})
+	t.Run("footer lists duplicate keybind", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		m.Connections = []types.Connection{{Name: "c", Host: "h", Port: 6379}}
+		out := m.viewConnections()
+		if !strings.Contains(out, "duplicate") {
+			t.Error("expected footer to list 'duplicate' keybind")
+		}
+	})
 }
 
 func TestBuildStatsBar(t *testing.T) {

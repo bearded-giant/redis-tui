@@ -58,6 +58,26 @@ func TestHandleConnectionAddedMsg(t *testing.T) {
 			t.Errorf("unexpected status: %q", model.StatusMsg)
 		}
 	})
+	t.Run("success clears DuplicatingFrom and selects new entry", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		m.Connections = []types.Connection{{ID: 1, Name: "a"}, {ID: 2, Name: "b"}}
+		m.SelectedConnIdx = 0
+		src := types.Connection{ID: 1, Name: "a"}
+		m.DuplicatingFrom = &src
+		m.Screen = types.ScreenAddConnection
+		msg := types.ConnectionAddedMsg{Connection: types.Connection{ID: 3, Name: "a-copy"}}
+		result, _ := m.handleConnectionAddedMsg(msg)
+		model := result.(Model)
+		if model.DuplicatingFrom != nil {
+			t.Error("expected DuplicatingFrom cleared after add success")
+		}
+		if model.SelectedConnIdx != len(model.Connections)-1 {
+			t.Errorf("expected newest connection selected, got idx %d of %d", model.SelectedConnIdx, len(model.Connections))
+		}
+		if model.Connections[model.SelectedConnIdx].Name != "a-copy" {
+			t.Errorf("expected last connection to be the new one, got %q", model.Connections[model.SelectedConnIdx].Name)
+		}
+	})
 	t.Run("error", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
 		msg := types.ConnectionAddedMsg{Err: errors.New("boom")}
