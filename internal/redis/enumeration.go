@@ -10,6 +10,30 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// CountMatches scans the keyspace for keys matching pattern and returns the
+// total count. After each batch onBatch is invoked with the running total; if
+// onBatch returns false the scan stops early and the partial count is returned
+// (with stopped=true). maxKeys caps the count; 0 means unlimited.
+func (c *Client) CountMatches(pattern string, maxKeys int, onBatch func(running uint64) bool) (count uint64, stopped bool, err error) {
+	if pattern == "" {
+		pattern = "*"
+	}
+	err = c.scanEach(pattern, scanBatchDefault, func(keys []string) bool {
+		count += uint64(len(keys))
+		if maxKeys > 0 && count >= uint64(maxKeys) {
+			count = uint64(maxKeys)
+			stopped = true
+			return false
+		}
+		if onBatch != nil && !onBatch(count) {
+			stopped = true
+			return false
+		}
+		return true
+	})
+	return count, stopped, err
+}
+
 // GetTotalKeys returns the total number of keys in the current database
 func (c *Client) GetTotalKeys() int64 {
 	count, err := c.cmdable().DBSize(c.ctx).Result()

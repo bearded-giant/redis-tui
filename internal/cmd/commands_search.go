@@ -36,6 +36,27 @@ func (c *Commands) FuzzySearch(term string, maxKeys int) tea.Cmd {
 	}
 }
 
+// CountMatches scans the full keyspace for pattern and returns the total count.
+// Intermediate progress is emitted via sendMsg (cap ~10 updates/sec to avoid
+// flooding the program). Final count returned as MatchCountProgressMsg{Done:true}.
+// seq is checked against the active SearchSeq on receipt; stale msgs dropped.
+func (c *Commands) CountMatches(pattern string, maxKeys, seq int, sendMsg func(tea.Msg)) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.MatchCountProgressMsg{Seq: seq, Done: true}
+		}
+		var lastSent uint64
+		count, stopped, err := c.redis.CountMatches(pattern, maxKeys, func(running uint64) bool {
+			if sendMsg != nil && running-lastSent >= 500 {
+				lastSent = running
+				sendMsg(types.MatchCountProgressMsg{Seq: seq, Count: running})
+			}
+			return true
+		})
+		return types.MatchCountProgressMsg{Seq: seq, Count: count, Stopped: stopped, Done: true, Err: err}
+	}
+}
+
 func (c *Commands) CompareKeys(key1, key2 string) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {

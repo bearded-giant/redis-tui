@@ -353,6 +353,46 @@ func (m Model) handleCopyKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleJqPathScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.JqPath = m.Inputs.JqPathInput.Value()
+		m.JqPathErr = nil
+		m.Inputs.JqPathInput.Blur()
+		m.Screen = types.ScreenKeyDetail
+	case "esc":
+		m.Inputs.JqPathInput.Blur()
+		m.Screen = types.ScreenKeyDetail
+	default:
+		var inputCmd tea.Cmd
+		m.Inputs.JqPathInput, inputCmd = m.Inputs.JqPathInput.Update(msg)
+		return m, inputCmd
+	}
+	return m, nil
+}
+
+func (m Model) handleJumpToKeyScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		name := m.Inputs.JumpToKeyInput.Value()
+		if name == "" {
+			return m, nil
+		}
+		m.Inputs.JumpToKeyInput.Blur()
+		m.Loading = true
+		m.JumpKeyInput = name
+		return m, m.Cmds.JumpToKey(name)
+	case "esc":
+		m.Screen = types.ScreenKeys
+		m.Inputs.JumpToKeyInput.Blur()
+	default:
+		var inputCmd tea.Cmd
+		m.Inputs.JumpToKeyInput, inputCmd = m.Inputs.JumpToKeyInput.Update(msg)
+		return m, inputCmd
+	}
+	return m, nil
+}
+
 func (m Model) handleBulkDeleteScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":

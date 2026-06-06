@@ -43,6 +43,10 @@ func (m Model) getScreenView() string {
 		return m.viewRenameKey()
 	case types.ScreenCopyKey:
 		return m.viewCopyKey()
+	case types.ScreenJumpToKey:
+		return m.viewJumpToKey()
+	case types.ScreenJqPath:
+		return m.viewJqPath()
 	case types.ScreenPubSub, types.ScreenPublishMessage:
 		return m.viewPubSub()
 	case types.ScreenSwitchDB:

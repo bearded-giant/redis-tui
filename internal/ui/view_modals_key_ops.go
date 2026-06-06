@@ -223,6 +223,40 @@ func (m Model) viewRenameKey() string {
 	return m.renderModal(b.String())
 }
 
+func (m Model) viewJqPath() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("jq Path Filter"))
+	b.WriteString("\n\n")
+	b.WriteString(dimStyle.Render("Filters decoded JSON value. Empty = reset."))
+	b.WriteString("\n\n")
+	b.WriteString(keyStyle.Render("Expression:"))
+	b.WriteString("\n")
+	b.WriteString(m.Inputs.JqPathInput.View())
+	b.WriteString("\n\n")
+	if m.JqPathErr != nil {
+		b.WriteString(errorStyle.Render(m.JqPathErr.Error()))
+		b.WriteString("\n\n")
+	}
+	b.WriteString(helpStyle.Render("enter:apply  esc:cancel"))
+	return m.renderModal(b.String())
+}
+
+func (m Model) viewJumpToKey() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Jump to Key"))
+	b.WriteString("\n\n")
+	b.WriteString(dimStyle.Render("Type the exact key name. Skips SCAN."))
+	b.WriteString("\n\n")
+	b.WriteString(keyStyle.Render("Key:"))
+	b.WriteString("\n")
+	b.WriteString(m.Inputs.JumpToKeyInput.View())
+	b.WriteString("\n\n")
+	b.WriteString(helpStyle.Render("enter:jump  esc:cancel"))
+	return m.renderModal(b.String())
+}
+
 func (m Model) viewCopyKey() string {
 	var b strings.Builder
 

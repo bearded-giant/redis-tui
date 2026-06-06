@@ -52,6 +52,31 @@ func createVimEditor(content string, width, height int, fileName string) vimtea.
 	return sized.(vimtea.Editor)
 }
 
+// matchCountMaxKeys caps the live counter so massive keyspaces don't keep the
+// scan running indefinitely. Result is suffixed "N+" in the UI when this hits.
+const matchCountMaxKeys = 1_000_000
+
+// kickMatchCount resets match-count state for a new pattern and returns the cmd
+// that runs the background scan. Returns nil when pattern is empty (DBSIZE
+// already covers the "*" case so a counter would be redundant).
+func (m *Model) kickMatchCount(pattern string) tea.Cmd {
+	m.MatchCountSeq++
+	m.MatchCount = 0
+	m.MatchScanStopped = false
+	m.MatchScanErr = nil
+	if pattern == "" {
+		m.MatchScanning = false
+		return nil
+	}
+	m.MatchScanning = true
+	seq := m.MatchCountSeq
+	var sendMsg func(tea.Msg)
+	if m.SendFunc != nil {
+		sendMsg = *m.SendFunc
+	}
+	return m.Cmds.CountMatches(pattern, matchCountMaxKeys, seq, sendMsg)
+}
+
 func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.Inputs.PatternInput.Focused() {
 		switch msg.String() {
@@ -64,7 +89,8 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Inputs.PatternInput.Blur()
 			m.KeyCursor = 0
 			m.Loading = true
-			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
+			countCmd := m.kickMatchCount(pattern)
+			return m, tea.Batch(m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize), countCmd)
 		case "esc":
 			m.Inputs.PatternInput.Blur()
 			m.Inputs.PatternInput.SetValue("")
@@ -72,6 +98,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.KeyCursor = 0
 			m.SearchSeq++
 			m.Loading = true
+			m.kickMatchCount("")
 			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		default:
 			var inputCmd tea.Cmd
@@ -136,6 +163,8 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Loading = true
 			m.SelectedItemIdx = 0
 			m.ValueDecodeOverride = "" // auto-detect for the new key
+			m.JqPath = ""
+			m.JqPathErr = nil
 			return m, tea.Batch(m.Cmds.LoadKeyValue(key.Key), m.Cmds.GetMemoryUsage(key.Key))
 		}
 	case "a", "n":
@@ -160,6 +189,16 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.Cmds.LoadServerInfo()
 	case "/":
 		m.Inputs.PatternInput.Focus()
+	case "Y":
+		if m.CurrentConn != nil {
+			cli := redispkg.BuildScanCLICommand(*m.CurrentConn, m.KeyPattern)
+			m.StatusMsg = "Copied SCAN cli command"
+			return m, m.Cmds.CopyToClipboard(cli)
+		}
+	case ":":
+		m.Inputs.JumpToKeyInput.SetValue("")
+		m.Inputs.JumpToKeyInput.Focus()
+		m.Screen = types.ScreenJumpToKey
 	case "f":
 		m.ConfirmType = "flushdb"
 		m.Screen = types.ScreenConfirmDelete
@@ -309,6 +348,7 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.KeyCursor = 0
 			m.SearchSeq++
 			m.Loading = true
+			m.kickMatchCount("")
 			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
 		}
 		m.Screen = types.ScreenConnections
@@ -463,6 +503,12 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Inputs.JSONPathInput.SetValue("")
 			m.Inputs.JSONPathInput.Focus()
 			m.Screen = types.ScreenJSONPath
+		}
+	case "Q":
+		if m.CurrentKey != nil {
+			m.Inputs.JqPathInput.SetValue(m.JqPath)
+			m.Inputs.JqPathInput.Focus()
+			m.Screen = types.ScreenJqPath
 		}
 	case "up", "k":
 		if m.DetailScroll > 0 {

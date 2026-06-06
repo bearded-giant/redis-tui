@@ -164,6 +164,17 @@ type SearchDebounceMsg struct {
 	Seq int
 }
 
+// MatchCountProgressMsg reports incremental progress (Done=false) and the final
+// total (Done=true) for an asynchronous match-count scan. Seq matches the
+// SearchSeq active when the scan kicked off; stale msgs are dropped.
+type MatchCountProgressMsg struct {
+	Seq     int
+	Count   uint64
+	Stopped bool
+	Done    bool
+	Err     error
+}
+
 type TTLRefreshMsg struct {
 	Keys []RedisKey
 	Err  error
@@ -276,6 +287,14 @@ type SSHTunnelConnectedMsg struct {
 type FuzzySearchResultMsg struct {
 	Keys []RedisKey
 	Err  error
+}
+
+// JumpToKeyResultMsg is returned by Commands.JumpToKey. Found=false signals
+// the key does not exist; the UI shows a status message and stays on the list.
+type JumpToKeyResultMsg struct {
+	Key      RedisKey
+	Found    bool
+	Err      error
 }
 
 type RegexSearchResultMsg struct {

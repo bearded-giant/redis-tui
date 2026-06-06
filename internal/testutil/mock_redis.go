@@ -80,6 +80,21 @@ func (m *MockRedisClient) GetValue(key string) (types.RedisValue, error) {
 	return value, nil
 }
 
+// LookupKey returns the key meta from the mock store.
+func (m *MockRedisClient) LookupKey(key string) (types.RedisKey, bool, error) {
+	if !m.connected {
+		return types.RedisKey{}, false, ErrMockNotConnected
+	}
+	if m.GetError != nil {
+		return types.RedisKey{}, false, m.GetError
+	}
+	keyType, exists := m.keyTypes[key]
+	if !exists {
+		return types.RedisKey{Key: key}, false, nil
+	}
+	return types.RedisKey{Key: key, Type: keyType, TTL: m.keyTTLs[key]}, true, nil
+}
+
 // ScanKeys returns keys matching a pattern from the mock store.
 func (m *MockRedisClient) ScanKeys(pattern string, cursor uint64, count int64) ([]types.RedisKey, uint64, error) {
 	if !m.connected {

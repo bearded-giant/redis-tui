@@ -8,6 +8,24 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// LookupKey returns metadata for a key (type + TTL). Returns found=false when
+// the key does not exist. Used to jump directly to a key without scanning.
+func (c *Client) LookupKey(key string) (types.RedisKey, bool, error) {
+	keyType, err := c.cmdable().Type(c.ctx, key).Result()
+	if err != nil {
+		return types.RedisKey{}, false, err
+	}
+	if keyType == "" || keyType == "none" {
+		return types.RedisKey{Key: key}, false, nil
+	}
+	ttl, _ := c.cmdable().TTL(c.ctx, key).Result()
+	return types.RedisKey{
+		Key:  key,
+		Type: types.KeyType(keyType),
+		TTL:  ttl,
+	}, true, nil
+}
+
 // GetValue retrieves the value for a key
 func (c *Client) GetValue(key string) (types.RedisValue, error) {
 	keyType, err := c.cmdable().Type(c.ctx, key).Result()

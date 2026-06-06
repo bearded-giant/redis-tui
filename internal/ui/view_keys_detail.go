@@ -35,7 +35,17 @@ func (m Model) renderDecodedString(s string) (body, badge string) {
 	if out.Note != "" {
 		b = "// " + out.Note + "\n" + b
 	}
-	return b, string(out.Format)
+	badgeText := string(out.Format)
+	if m.JqPath != "" {
+		filtered, jqErr := decoder.ApplyJqPath(out, m.JqPath)
+		if jqErr != nil {
+			badgeText += " | jq error: " + jqErr.Error()
+		} else {
+			b = filtered
+			badgeText += " | jq " + m.JqPath
+		}
+	}
+	return b, badgeText
 }
 
 func (m Model) viewKeyDetail() string {
@@ -238,11 +248,11 @@ func (m Model) viewKeyDetail() string {
 	helpText := "t:TTL  d:del  r:refresh  R:rename  c:copy"
 	switch m.CurrentKey.Type {
 	case types.KeyTypeString, types.KeyTypeJSON:
-		helpText += "  e:edit"
+		helpText += "  e:edit  Q:jq"
 	case types.KeyTypeHyperLogLog, types.KeyTypeBitmap:
 		helpText += "  a:add"
 	default:
-		helpText += "  a:add  x:remove"
+		helpText += "  a:add  x:remove  Q:jq"
 	}
 	helpText += "  esc:back"
 	b.WriteString(lipgloss.PlaceHorizontal(boxWidth, lipgloss.Center, helpStyle.Render(helpText)))

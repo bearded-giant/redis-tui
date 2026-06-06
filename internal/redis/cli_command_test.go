@@ -114,3 +114,62 @@ func TestShellQuote_EscapesSingleQuote(t *testing.T) {
 		t.Errorf("got %q want %q", got, want)
 	}
 }
+
+func TestBuildScanCLICommand_NoPattern(t *testing.T) {
+	conn := types.Connection{Host: "redis.example", Port: 6379}
+	got := BuildScanCLICommand(conn, "")
+	if !strings.Contains(got, "--scan") {
+		t.Errorf("missing --scan in %q", got)
+	}
+	if strings.Contains(got, "--pattern") {
+		t.Errorf("unexpected --pattern in empty case: %q", got)
+	}
+	if !strings.Contains(got, "--count 5000") {
+		t.Errorf("missing --count 5000 in %q", got)
+	}
+}
+
+func TestBuildScanCLICommand_WithPattern(t *testing.T) {
+	conn := types.Connection{Host: "h", Port: 6380, DB: 3}
+	got := BuildScanCLICommand(conn, "chatorch:*:cp:job:3264792")
+	if !strings.Contains(got, "--pattern 'chatorch:*:cp:job:3264792'") {
+		t.Errorf("expected quoted pattern in %q", got)
+	}
+	if !strings.Contains(got, "-p 6380") {
+		t.Errorf("expected -p 6380 in %q", got)
+	}
+	if !strings.Contains(got, "-n 3") {
+		t.Errorf("expected -n 3 in %q", got)
+	}
+}
+
+func TestBuildScanCLICommand_PatternWithSingleQuote(t *testing.T) {
+	conn := types.Connection{Host: "h", Port: 6379}
+	got := BuildScanCLICommand(conn, "foo'bar:*")
+	if !strings.Contains(got, `'foo'\''bar:*'`) {
+		t.Errorf("expected escaped single quote in %q", got)
+	}
+}
+
+func TestBuildScanCLICommand_SSHComment(t *testing.T) {
+	conn := types.Connection{
+		Host: "redis-internal", Port: 6379,
+		UseSSH:    true,
+		SSHConfig: &types.SSHConfig{Host: "bastion", User: "ec2-user", Port: 22},
+	}
+	got := BuildScanCLICommand(conn, "k:*")
+	if !strings.HasPrefix(got, "# requires SSH tunnel") {
+		t.Errorf("expected SSH comment prefix in %q", got)
+	}
+	if !strings.Contains(got, "--scan") {
+		t.Errorf("missing --scan in %q", got)
+	}
+}
+
+func TestBuildScanCLICommand_Cluster(t *testing.T) {
+	conn := types.Connection{Host: "h", Port: 6379, UseCluster: true}
+	got := BuildScanCLICommand(conn, "k:*")
+	if !strings.Contains(got, " -c ") {
+		t.Errorf("expected -c flag in %q", got)
+	}
+}

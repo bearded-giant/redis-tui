@@ -34,7 +34,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.KeyPattern = pattern
 			m.KeyCursor = 0
 			m.Loading = true
-			return m, m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize)
+			countCmd := m.kickMatchCount(pattern)
+			return m, tea.Batch(m.Cmds.LoadKeys(m.KeyPattern, 0, m.ScanSize), countCmd)
+		}
+		return m, nil
+
+	case types.MatchCountProgressMsg:
+		if msg.Seq != m.MatchCountSeq {
+			return m, nil
+		}
+		m.MatchCount = msg.Count
+		m.MatchScanStopped = msg.Stopped
+		if msg.Done {
+			m.MatchScanning = false
+			if msg.Err != nil {
+				m.MatchScanErr = msg.Err
+			}
 		}
 		return m, nil
 
@@ -168,6 +183,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleRegexSearchResultMsg(msg)
 	case types.FuzzySearchResultMsg:
 		return m.handleFuzzySearchResultMsg(msg)
+	case types.JumpToKeyResultMsg:
+		return m.handleJumpToKeyResultMsg(msg)
 	case types.CompareKeysResultMsg:
 		return m.handleCompareKeysResultMsg(msg)
 	case types.JSONPathResultMsg:
@@ -361,6 +378,10 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleLogsScreen(msg)
 	case types.ScreenBulkDelete:
 		return m.handleBulkDeleteScreen(msg)
+	case types.ScreenJumpToKey:
+		return m.handleJumpToKeyScreen(msg)
+	case types.ScreenJqPath:
+		return m.handleJqPathScreen(msg)
 	case types.ScreenBatchTTL:
 		return m.handleBatchTTLScreen(msg)
 	case types.ScreenFavorites:

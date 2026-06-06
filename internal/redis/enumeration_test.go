@@ -933,3 +933,101 @@ func TestScanKeys_PlainZSetNotMisDetected(t *testing.T) {
 		t.Errorf("type = %q, want zset", keys[0].Type)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// CountMatches
+// ---------------------------------------------------------------------------
+
+func TestCountMatches(t *testing.T) {
+	t.Run("counts matching keys", func(t *testing.T) {
+		client, mr := setupTestClient(t)
+		for i := 0; i < 7; i++ {
+			mr.Set(fmt.Sprintf("user:%d", i), "v")
+		}
+		for i := 0; i < 3; i++ {
+			mr.Set(fmt.Sprintf("other:%d", i), "v")
+		}
+
+		count, stopped, err := client.CountMatches("user:*", 0, nil)
+		if err != nil {
+			t.Fatalf("CountMatches error: %v", err)
+		}
+		if stopped {
+			t.Errorf("stopped = true, want false")
+		}
+		if count != 7 {
+			t.Errorf("count = %d, want 7", count)
+		}
+	})
+
+	t.Run("respects maxKeys cap", func(t *testing.T) {
+		client, mr := setupTestClient(t)
+		for i := 0; i < 200; i++ {
+			mr.Set(fmt.Sprintf("k:%d", i), "v")
+		}
+
+		count, stopped, err := client.CountMatches("k:*", 50, nil)
+		if err != nil {
+			t.Fatalf("CountMatches error: %v", err)
+		}
+		if !stopped {
+			t.Errorf("stopped = false, want true")
+		}
+		if count != 50 {
+			t.Errorf("count = %d, want 50 (cap)", count)
+		}
+	})
+
+	t.Run("empty pattern treated as *", func(t *testing.T) {
+		client, mr := setupTestClient(t)
+		mr.Set("a", "1")
+		mr.Set("b", "2")
+
+		count, _, err := client.CountMatches("", 0, nil)
+		if err != nil {
+			t.Fatalf("CountMatches error: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("count = %d, want 2", count)
+		}
+	})
+
+	t.Run("onBatch invoked with running total", func(t *testing.T) {
+		client, mr := setupTestClient(t)
+		for i := 0; i < 50; i++ {
+			mr.Set(fmt.Sprintf("k:%d", i), "v")
+		}
+
+		var lastSeen uint64
+		_, _, err := client.CountMatches("k:*", 0, func(running uint64) bool {
+			lastSeen = running
+			return true
+		})
+		if err != nil {
+			t.Fatalf("CountMatches error: %v", err)
+		}
+		if lastSeen == 0 {
+			t.Errorf("onBatch never invoked")
+		}
+	})
+
+	t.Run("onBatch can cancel scan", func(t *testing.T) {
+		client, mr := setupTestClient(t)
+		for i := 0; i < 500; i++ {
+			mr.Set(fmt.Sprintf("k:%d", i), "v")
+		}
+
+		count, stopped, err := client.CountMatches("k:*", 0, func(running uint64) bool {
+			return false
+		})
+		if err != nil {
+			t.Fatalf("CountMatches error: %v", err)
+		}
+		if !stopped {
+			t.Errorf("stopped = false, want true")
+		}
+		if count == 0 {
+			t.Errorf("count = 0, want first batch size")
+		}
+	})
+}

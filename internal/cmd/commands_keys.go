@@ -21,6 +21,18 @@ func (c *Commands) LoadKeys(pattern string, cursor uint64, count int64) tea.Cmd 
 	}
 }
 
+// JumpToKey looks up a key by exact name (TYPE+TTL). UI uses the result to
+// push the detail screen without paging through SCAN.
+func (c *Commands) JumpToKey(key string) tea.Cmd {
+	return func() tea.Msg {
+		if c.redis == nil {
+			return types.JumpToKeyResultMsg{Key: types.RedisKey{Key: key}}
+		}
+		meta, found, err := c.redis.LookupKey(key)
+		return types.JumpToKeyResultMsg{Key: meta, Found: found, Err: err}
+	}
+}
+
 func (c *Commands) LoadKeyValue(key string) tea.Cmd {
 	return func() tea.Msg {
 		if c.redis == nil {

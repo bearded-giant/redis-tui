@@ -7,6 +7,28 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// matchCountSuffix renders the live match-count indicator shown next to the
+// filter pattern. Empty string when no pattern is active.
+func (m Model) matchCountSuffix() string {
+	if m.KeyPattern == "" {
+		return ""
+	}
+	if m.MatchScanning && m.MatchCount == 0 {
+		return "  " + dimStyle.Render("scanning…")
+	}
+	count := fmt.Sprintf("%d matches", m.MatchCount)
+	if m.MatchScanStopped {
+		count = fmt.Sprintf("%d+ matches (cap)", m.MatchCount)
+	}
+	if m.MatchScanning {
+		count = "scanning… " + count
+	}
+	if m.MatchScanErr != nil {
+		count += " (err)"
+	}
+	return "  " + dimStyle.Render(count)
+}
+
 func (m Model) viewKeys() string {
 	// Calculate panel widths - left panel for keys, right panel for preview
 	totalWidth := m.Width
@@ -81,6 +103,7 @@ func (m Model) viewKeysListOnly() string {
 		}
 		b.WriteString(normalStyle.Render(pattern))
 	}
+	b.WriteString(m.matchCountSuffix())
 	b.WriteString("\n\n")
 
 	if len(m.Keys) == 0 {
@@ -207,6 +230,7 @@ func (m Model) buildKeysListPanel(width int) string {
 		}
 		b.WriteString(normalStyle.Render(pattern))
 	}
+	b.WriteString(m.matchCountSuffix())
 	b.WriteString("\n\n")
 
 	if len(m.Keys) == 0 {

@@ -59,6 +59,8 @@ const (
 	ScreenMonitor
 	ScreenLatency
 	ScreenLatencyConfirmReset
+	ScreenJumpToKey
+	ScreenJqPath
 )
 
 // ScreenName returns a human-readable name for the screen
@@ -117,6 +119,8 @@ func (s Screen) String() string {
 		ScreenMonitor:              "MONITOR",
 		ScreenLatency:              "Latency Doctor",
 		ScreenLatencyConfirmReset:  "Latency Reset",
+		ScreenJumpToKey:            "Jump to Key",
+		ScreenJqPath:               "jq Path",
 	}
 	if name, ok := names[s]; ok {
 		return name

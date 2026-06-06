@@ -220,6 +220,30 @@ func (m Model) handleRegexSearchResultMsg(msg types.RegexSearchResultMsg) (tea.M
 	return m, nil
 }
 
+func (m Model) handleJumpToKeyResultMsg(msg types.JumpToKeyResultMsg) (tea.Model, tea.Cmd) {
+	m.Loading = false
+	if msg.Err != nil {
+		m.StatusMsg = "Lookup error: " + msg.Err.Error()
+		m.Screen = types.ScreenKeys
+		return m, nil
+	}
+	if !msg.Found {
+		m.StatusMsg = "Key not found: " + msg.Key.Key
+		m.Screen = types.ScreenKeys
+		return m, nil
+	}
+	key := msg.Key
+	m.CurrentKey = &key
+	m.SelectedItemIdx = 0
+	m.DetailScroll = 0
+	m.ValueDecodeOverride = ""
+	m.JqPath = ""
+	m.JqPathErr = nil
+	m.Screen = types.ScreenKeyDetail
+	m.Loading = true
+	return m, tea.Batch(m.Cmds.LoadKeyValue(key.Key), m.Cmds.GetMemoryUsage(key.Key))
+}
+
 func (m Model) handleFuzzySearchResultMsg(msg types.FuzzySearchResultMsg) (tea.Model, tea.Cmd) {
 	m.Loading = false
 	if msg.Err != nil {

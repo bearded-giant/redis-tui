@@ -73,12 +73,14 @@ type RedisService interface {
 	ScanKeysWithRegex(regexPattern string, maxKeys int) ([]types.RedisKey, error)
 	FuzzySearchKeys(searchTerm string, maxKeys int) ([]types.RedisKey, error)
 	GetValue(key string) (types.RedisValue, error)
+	LookupKey(key string) (types.RedisKey, bool, error)
 	DeleteKey(key string) error
 	DeleteKeys(keys ...string) (int64, error)
 	BulkDelete(pattern string) (int, error)
 	Rename(oldKey, newKey string) error
 	Copy(src, dst string, replace bool) error
 	SearchByValue(pattern string, valueSearch string, maxKeys int) ([]types.RedisKey, error)
+	CountMatches(pattern string, maxKeys int, onBatch func(running uint64) bool) (uint64, bool, error)
 	CompareKeys(key1, key2 string) (types.RedisValue, types.RedisValue, error)
 	GetKeyPrefixes(separator string, maxDepth int) ([]string, error)
 

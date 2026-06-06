@@ -1072,3 +1072,39 @@ func TestBatchSetTTLPreview_NoMatch(t *testing.T) {
 		t.Errorf("sample len = %d, want 0", len(sample))
 	}
 }
+
+func TestLookupKey(t *testing.T) {
+	t.Run("found returns type and ttl", func(t *testing.T) {
+		client, mr := setupTestClient(t)
+		mr.Set("hello", "world")
+
+		key, found, err := client.LookupKey("hello")
+		if err != nil {
+			t.Fatalf("LookupKey error: %v", err)
+		}
+		if !found {
+			t.Fatalf("found = false, want true")
+		}
+		if key.Key != "hello" {
+			t.Errorf("Key = %q, want hello", key.Key)
+		}
+		if key.Type != "string" {
+			t.Errorf("Type = %q, want string", key.Type)
+		}
+	})
+
+	t.Run("missing key returns found=false", func(t *testing.T) {
+		client, _ := setupTestClient(t)
+
+		key, found, err := client.LookupKey("nope")
+		if err != nil {
+			t.Fatalf("LookupKey error: %v", err)
+		}
+		if found {
+			t.Errorf("found = true, want false")
+		}
+		if key.Key != "nope" {
+			t.Errorf("Key = %q, want echoed name", key.Key)
+		}
+	})
+}

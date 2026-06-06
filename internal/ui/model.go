@@ -95,6 +95,13 @@ type Model struct {
 	// Search
 	SearchResults []types.RedisKey
 
+	// Match count (live count of keys matching current filter pattern)
+	MatchCount       uint64
+	MatchCountSeq    int
+	MatchScanning    bool
+	MatchScanStopped bool
+	MatchScanErr     error
+
 	// Watch mode
 	WatchActive     bool
 	WatchKey        string
@@ -136,6 +143,13 @@ type Model struct {
 
 	// JSON path query
 	JSONPathResult string
+
+	// jq path filter applied to current detail value (client-side, gojq)
+	JqPath    string
+	JqPathErr error
+
+	// Jump-to-key (exact key name → detail view)
+	JumpKeyInput string
 
 	// Keybindings
 	KeyBindings types.KeyBindings
@@ -232,6 +246,8 @@ type ModelInputs struct {
 	CompareKey2Input textinput.Model
 	JSONPathInput    textinput.Model
 	ConfigEditInput  textinput.Model
+	JumpToKeyInput   textinput.Model
+	JqPathInput      textinput.Model
 }
 
 type ActionType string
@@ -284,6 +300,8 @@ func NewModel() Model {
 			CompareKey2Input: createTextInput("Second key", 40),
 			JSONPathInput:    createTextInput("JSONPath expression (e.g., $.name)", 40),
 			ConfigEditInput:  createTextInput("New value", 50),
+			JumpToKeyInput:   createTextInput("Exact key name (e.g. chatorch:cp:prod:cp:job:3264792)", 60),
+			JqPathInput:      createTextInput("jq path (e.g. .job_id, .metadata.thread_id, .[0])", 60),
 		},
 		inputsInitialized: true,
 	}

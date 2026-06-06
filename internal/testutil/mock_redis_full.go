@@ -33,6 +33,8 @@ type FullMockRedisClient struct {
 	BulkDeleteResult      int
 	BatchTTLResult        int
 	SearchByValueResult   []types.RedisKey
+	CountMatchesResult    uint64
+	CountMatchesStopped   bool
 	RegexSearchResult     []types.RedisKey
 	FuzzySearchResult     []types.RedisKey
 	CompareValue1         types.RedisValue
@@ -103,6 +105,7 @@ type FullMockRedisClient struct {
 	DeleteKeysError         error
 	BulkDeleteError         error
 	SearchByValueError      error
+	CountMatchesError       error
 	RegexSearchError        error
 	FuzzySearchError        error
 	CompareKeysError        error
@@ -203,6 +206,14 @@ func (m *FullMockRedisClient) Copy(_, _ string, _ bool) error {
 func (m *FullMockRedisClient) SearchByValue(_, _ string, _ int) ([]types.RedisKey, error) {
 	m.Calls = append(m.Calls, "SearchByValue")
 	return m.SearchByValueResult, m.SearchByValueError
+}
+
+func (m *FullMockRedisClient) CountMatches(_ string, _ int, onBatch func(uint64) bool) (uint64, bool, error) {
+	m.Calls = append(m.Calls, "CountMatches")
+	if onBatch != nil && m.CountMatchesResult > 0 {
+		onBatch(m.CountMatchesResult)
+	}
+	return m.CountMatchesResult, m.CountMatchesStopped, m.CountMatchesError
 }
 
 func (m *FullMockRedisClient) CompareKeys(_, _ string) (types.RedisValue, types.RedisValue, error) {

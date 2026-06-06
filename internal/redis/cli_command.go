@@ -21,8 +21,41 @@ import (
 //   - TLS cert/key/CA paths are rendered as-is. Paths are local to the user
 //     who copied the command.
 func BuildCLICommand(conn types.Connection, key types.RedisKey) string {
+	parts := connectionFlags(conn)
+	parts = append([]string{"redis-cli"}, parts...)
+	op := cliOpFor(key.Type, key.Key)
+	parts = append(parts, op...)
+
+	line := strings.Join(parts, " ")
+	if conn.UseSSH && conn.SSHConfig != nil {
+		return sshComment(conn) + "\n" + line
+	}
+	return line
+}
+
+// BuildScanCLICommand returns a `redis-cli --scan` shell line that reproduces
+// the current pattern filter from the key list. Pattern may be empty for a full
+// scan; quoted via shellQuote so glob chars survive shell expansion.
+func BuildScanCLICommand(conn types.Connection, pattern string) string {
+	parts := connectionFlags(conn)
+	parts = append([]string{"redis-cli"}, parts...)
+	parts = append(parts, "--scan")
+	if pattern != "" {
+		parts = append(parts, "--pattern", shellQuote(pattern))
+	}
+	parts = append(parts, "--count", "5000")
+
+	line := strings.Join(parts, " ")
+	if conn.UseSSH && conn.SSHConfig != nil {
+		return sshComment(conn) + "\n" + line
+	}
+	return line
+}
+
+// connectionFlags returns the host/port/db/auth/tls/cluster flags for conn,
+// shared between GET-style and SCAN-style cli builders.
+func connectionFlags(conn types.Connection) []string {
 	var parts []string
-	parts = append(parts, "redis-cli")
 	parts = append(parts, "-h", shellQuote(conn.Host))
 	if conn.Port != 0 && conn.Port != 6379 {
 		parts = append(parts, "-p", strconv.Itoa(conn.Port))
@@ -59,15 +92,7 @@ func BuildCLICommand(conn types.Connection, key types.RedisKey) string {
 			}
 		}
 	}
-
-	op := cliOpFor(key.Type, key.Key)
-	parts = append(parts, op...)
-
-	line := strings.Join(parts, " ")
-	if conn.UseSSH && conn.SSHConfig != nil {
-		return sshComment(conn) + "\n" + line
-	}
-	return line
+	return parts
 }
 
 func cliOpFor(t types.KeyType, key string) []string {
