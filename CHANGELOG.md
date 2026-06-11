@@ -3,6 +3,14 @@
 Notable changes per release. Newest first. Auto-populated by `./release.sh` from
 conventional-commit messages between tags; review/edit in `$EDITOR` before commit.
 
+## [v1.0.34] - 2026-06-11
+
+### Feat
+- scrollable key detail w/ mouse + vim page keys
+
+### Docs
+- add RELEASING.md
+
 ## [v1.0.33] - 2026-06-07
 
 ### Feat
