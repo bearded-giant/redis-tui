@@ -7,9 +7,29 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/bearded-giant/redis-tui/internal/decoder"
 	"github.com/bearded-giant/redis-tui/internal/types"
 )
+
+// detailBoxWidth mirrors the box width computed in viewKeyDetail so the
+// scroll math (which runs outside of view) uses the same content area.
+func (m Model) detailBoxWidth() int {
+	boxWidth := m.Width * 3 / 5
+	boxWidth = max(boxWidth, 50)
+	boxWidth = min(boxWidth, m.Width-6)
+	return boxWidth
+}
+
+// detailContentWidth is the wrap width inside the value box: box width minus
+// border (2) and horizontal padding (2+2). Floored to keep wrap usable.
+func (m Model) detailContentWidth() int {
+	w := m.detailBoxWidth() - 6
+	if w < 10 {
+		return 10
+	}
+	return w
+}
 
 // renderDecodedString runs the blob decoder on a Redis string value.
 // When ValueDecodeOverride is empty, the format is auto-detected; when set,
@@ -56,9 +76,7 @@ func (m Model) viewKeyDetail() string {
 	}
 
 	// Use ~60% of screen width for the detail view, capped reasonably
-	boxWidth := m.Width * 3 / 5
-	boxWidth = max(boxWidth, 50)
-	boxWidth = min(boxWidth, m.Width-6)
+	boxWidth := m.detailBoxWidth()
 
 	b.WriteString(lipgloss.PlaceHorizontal(boxWidth, lipgloss.Center, titleStyle.Render("Key Detail")))
 	b.WriteString("\n\n")
@@ -210,14 +228,15 @@ func (m Model) viewKeyDetail() string {
 		}
 	}
 
-	// Apply scrolling for long values
+	// Apply scrolling for long values. Hard-wrap to the box's content width
+	// first so visually-wrapped lines count toward the line total — otherwise
+	// a single very long line (e.g. a base64 blob) registers as 1 line and
+	// scrolling never engages even though it overflows the viewport.
 	valueStr := strings.TrimSpace(vc.String())
+	valueStr = ansi.Hardwrap(valueStr, m.detailContentWidth(), false)
 	valueLines := strings.Split(valueStr, "\n")
 	// Reserve lines for header (6) + border/padding (4) + help (2)
-	maxVisible := m.Height - 12
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := m.detailPageSize()
 
 	if len(valueLines) > maxVisible {
 		if m.DetailScroll > len(valueLines)-maxVisible {
@@ -262,7 +281,8 @@ func (m Model) viewKeyDetail() string {
 }
 
 func (m Model) detailContentLines() int {
-	return strings.Count(m.detailValueString(), "\n") + 1
+	wrapped := ansi.Hardwrap(m.detailValueString(), m.detailContentWidth(), false)
+	return strings.Count(wrapped, "\n") + 1
 }
 
 func (m Model) detailValueString() string {
@@ -309,16 +329,31 @@ func (m Model) detailValueString() string {
 }
 
 func (m Model) detailMaxScroll() int {
-	maxVisible := m.Height - 12
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := m.detailPageSize()
 	totalLines := m.detailContentLines()
 	maxScroll := totalLines - maxVisible
 	if maxScroll < 0 {
 		return 0
 	}
 	return maxScroll
+}
+
+// detailPageSize returns the visible-line count inside the value box.
+// Must stay in sync with maxVisible math in viewKeyDetail.
+func (m Model) detailPageSize() int {
+	maxVisible := m.Height - 12
+	if maxVisible < 5 {
+		return 5
+	}
+	return maxVisible
+}
+
+func (m Model) detailHalfPage() int {
+	half := m.detailPageSize() / 2
+	if half < 1 {
+		return 1
+	}
+	return half
 }
 
 func (m Model) viewAddKey() string {

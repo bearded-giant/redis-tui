@@ -25,6 +25,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
 
+	case tea.MouseMsg:
+		return m.handleMouseMsg(msg)
+
 	case types.SearchDebounceMsg:
 		if msg.Seq == m.SearchSeq {
 			pattern := m.Inputs.PatternInput.Value()
@@ -295,6 +298,31 @@ func tickCmd() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return types.TickMsg{}
 	})
+}
+
+// handleMouseMsg routes mouse wheel events to scroll the value box on the
+// key-detail screen. Only wheel events are consumed; clicks/motion ignored.
+func (m Model) handleMouseMsg(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if msg.Action != tea.MouseActionPress {
+		return m, nil
+	}
+	if m.Screen != types.ScreenKeyDetail {
+		return m, nil
+	}
+	const wheelStep = 3
+	switch msg.Button {
+	case tea.MouseButtonWheelUp:
+		m.DetailScroll -= wheelStep
+		if m.DetailScroll < 0 {
+			m.DetailScroll = 0
+		}
+	case tea.MouseButtonWheelDown:
+		m.DetailScroll += wheelStep
+		if m.DetailScroll > m.detailMaxScroll() {
+			m.DetailScroll = m.detailMaxScroll()
+		}
+	}
+	return m, nil
 }
 
 func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

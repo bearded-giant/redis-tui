@@ -34,7 +34,7 @@ var (
 func prodLogFatal(v ...any) { log.Fatal(v...) }
 
 func prodRunApp(m ui.Model) error {
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	*m.SendFunc = p.Send
 	_, err := p.Run()
 	return err

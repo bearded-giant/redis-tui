@@ -521,13 +521,23 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.DetailScroll > m.detailMaxScroll() {
 			m.DetailScroll = m.detailMaxScroll()
 		}
-	case "pgup", "ctrl+u":
-		m.DetailScroll -= 10
+	case "ctrl+u":
+		m.DetailScroll -= m.detailHalfPage()
 		if m.DetailScroll < 0 {
 			m.DetailScroll = 0
 		}
-	case "pgdown", "ctrl+d":
-		m.DetailScroll += 10
+	case "ctrl+d":
+		m.DetailScroll += m.detailHalfPage()
+		if m.DetailScroll > m.detailMaxScroll() {
+			m.DetailScroll = m.detailMaxScroll()
+		}
+	case "pgup", "ctrl+b":
+		m.DetailScroll -= m.detailPageSize()
+		if m.DetailScroll < 0 {
+			m.DetailScroll = 0
+		}
+	case "pgdown", "ctrl+f", " ":
+		m.DetailScroll += m.detailPageSize()
 		if m.DetailScroll > m.detailMaxScroll() {
 			m.DetailScroll = m.detailMaxScroll()
 		}
