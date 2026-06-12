@@ -3,6 +3,11 @@
 Notable changes per release. Newest first. Auto-populated by `./release.sh` from
 conventional-commit messages between tags; review/edit in `$EDITOR` before commit.
 
+## [v1.0.35] - 2026-06-12
+
+### Feat
+- copy key name (N) + OSC52 clipboard + version footer
+
 ## [v1.0.34] - 2026-06-11
 
 ### Feat
