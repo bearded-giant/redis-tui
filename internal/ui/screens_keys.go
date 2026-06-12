@@ -195,6 +195,10 @@ func (m Model) handleKeysScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.StatusMsg = "Copied SCAN cli command"
 			return m, m.Cmds.CopyToClipboard(cli)
 		}
+	case "N":
+		if len(m.Keys) > 0 && m.SelectedKeyIdx < len(m.Keys) {
+			return m, m.Cmds.CopyToClipboard(m.Keys[m.SelectedKeyIdx].Key)
+		}
 	case ":":
 		m.Inputs.JumpToKeyInput.SetValue("")
 		m.Inputs.JumpToKeyInput.Focus()
@@ -484,6 +488,10 @@ func (m Model) handleKeyDetailScreen(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y":
 		if m.CurrentKey != nil {
 			return m, m.Cmds.CopyToClipboard(m.CurrentValue.StringValue)
+		}
+	case "N":
+		if m.CurrentKey != nil {
+			return m, m.Cmds.CopyToClipboard(m.CurrentKey.Key)
 		}
 	case "Y":
 		if m.CurrentKey != nil && m.CurrentConn != nil {

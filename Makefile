@@ -1,12 +1,14 @@
 # Redis TUI Manager Makefile
 SHELL := /bin/bash
 APP_NAME := redis-tui
+PREFIX  ?= $(HOME)/.local
+INSTALL_DIR := $(PREFIX)/bin
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-.PHONY: all build install clean test test-cover lint fmt run dev release snapshot decode-blob help \
+.PHONY: all build install uninstall dev-install clean test test-cover lint fmt run dev release snapshot decode-blob help \
 	docker-up docker-down docker-seed \
 	docker-up-standalone docker-up-standalone-stack docker-up-cluster docker-up-cluster-stack \
 	docker-down-standalone docker-down-standalone-stack docker-down-cluster docker-down-cluster-stack \
@@ -20,8 +22,17 @@ build: ## Build the application to bin/redis-tui
 decode-blob: ## Build cmd/decode-blob CLI for one-off blob inspection
 	go build -o bin/decode-blob ./cmd/decode-blob
 
-install: ## Install to GOPATH/bin
-	go install $(LDFLAGS) ./
+install: build ## Build + install to $(INSTALL_DIR) (defaults to ~/.local/bin)
+	@mkdir -p $(INSTALL_DIR)
+	install -m 0755 bin/$(APP_NAME) $(INSTALL_DIR)/$(APP_NAME)
+	@echo "installed -> $(INSTALL_DIR)/$(APP_NAME)  (version=$(VERSION))"
+
+dev-install: install ## Alias for install — fast iteration loop: edit, make dev-install, redis-tui
+	@true
+
+uninstall: ## Remove $(INSTALL_DIR)/$(APP_NAME)
+	rm -f $(INSTALL_DIR)/$(APP_NAME)
+	@echo "removed -> $(INSTALL_DIR)/$(APP_NAME)"
 
 clean: ## Remove bin/ and dist/
 	rm -rf bin/

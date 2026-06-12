@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -69,17 +71,55 @@ func (c *Commands) WatchKeyTick() tea.Cmd {
 	})
 }
 
+// CopyToClipboard writes content to the system clipboard using two strategies
+// in parallel to maximize reliability across terminal/multiplexer combos:
+//   1. OSC 52 escape — works in modern terminals (wezterm, iTerm2, kitty,
+//      alacritty, ghostty) and in tmux when `set-clipboard on` is configured.
+//      No subprocess, no hang risk.
+//   2. Native subprocess (pbcopy / xclip / xsel / clip) with a 2s timeout so
+//      a hung pbcopy (known issue inside some altscreen TUIs) can't wedge
+//      the UI status forever.
+//
+// Either path landing the content counts as success.
 func (c *Commands) CopyToClipboard(content string) tea.Cmd {
 	return func() tea.Msg {
+		writeOSC52(content)
+
 		name, args := clipboardCmd()
 		if name == "" {
-			return types.ClipboardCopiedMsg{Content: content, Err: fmt.Errorf("no clipboard utility found (install pbcopy, xclip, or xsel)")}
+			// OSC 52 was best-effort; surface as success since most modern
+			// terminals will have caught it.
+			return types.ClipboardCopiedMsg{Content: content, Err: nil}
 		}
-		cmd := exec.Command(name, args...) // #nosec G204 -- name/args from clipboardCmd() are hardcoded values
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, name, args...) // #nosec G204 -- name/args from clipboardCmd() are hardcoded values
 		cmd.Stdin = strings.NewReader(content)
 		err := cmd.Run()
+		if ctx.Err() == context.DeadlineExceeded {
+			// pbcopy hung; OSC 52 already attempted, treat as soft success.
+			return types.ClipboardCopiedMsg{Content: content, Err: nil}
+		}
 		return types.ClipboardCopiedMsg{Content: content, Err: err}
 	}
+}
+
+// writeOSC52 emits an OSC 52 clipboard-set escape directly to the terminal.
+// Writing to /dev/tty avoids racing with bubbletea's stdout renderer; falls
+// back to stdout for environments without a tty (CI, pipes).
+// Inside tmux/screen the sequence is wrapped via DCS passthrough.
+func writeOSC52(content string) {
+	b64 := base64.StdEncoding.EncodeToString([]byte(content))
+	seq := "\x1b]52;c;" + b64 + "\x07"
+	if term := os.Getenv("TERM"); strings.HasPrefix(term, "screen") || strings.HasPrefix(term, "tmux") {
+		seq = "\x1bPtmux;\x1b" + seq + "\x1b\\"
+	}
+	if tty, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0); err == nil {
+		_, _ = tty.WriteString(seq)
+		_ = tty.Close()
+		return
+	}
+	_, _ = os.Stdout.WriteString(seq)
 }
 
 // Version check helpers

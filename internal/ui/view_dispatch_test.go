@@ -51,11 +51,21 @@ func TestGetStatusBar(t *testing.T) {
 			t.Error("expected update version")
 		}
 	})
-	t.Run("empty", func(t *testing.T) {
+	t.Run("idle shows version badge", func(t *testing.T) {
 		m, _, _ := newTestModel(t)
+		m.Version = "v9.9.9"
 		out := m.getStatusBar()
-		if out != "" {
-			t.Errorf("expected empty, got %q", out)
+		if !strings.Contains(out, "v9.9.9") {
+			t.Errorf("expected version in idle status, got %q", out)
+		}
+	})
+	t.Run("status message includes version separator", func(t *testing.T) {
+		m, _, _ := newTestModel(t)
+		m.Version = "v9.9.9"
+		m.StatusMsg = "Connected"
+		out := m.getStatusBar()
+		if !strings.Contains(out, "Connected") || !strings.Contains(out, "v9.9.9") {
+			t.Errorf("expected both status and version, got %q", out)
 		}
 	})
 }

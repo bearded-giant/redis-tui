@@ -264,7 +264,7 @@ func (m Model) viewKeyDetail() string {
 	b.WriteString(valueBox.Render(valueStr))
 	b.WriteString("\n\n")
 
-	helpText := "t:TTL  d:del  r:refresh  R:rename  c:copy"
+	helpText := "t:TTL  d:del  r:refresh  R:rename  c:dup  N:copy-name"
 	switch m.CurrentKey.Type {
 	case types.KeyTypeString, types.KeyTypeJSON:
 		helpText += "  e:edit  Q:jq"

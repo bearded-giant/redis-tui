@@ -252,13 +252,22 @@ func TestCopyToClipboard(t *testing.T) {
 		}
 	})
 
-	t.Run("no clipboard utility", func(t *testing.T) {
+	t.Run("no native clipboard utility falls back to OSC 52", func(t *testing.T) {
+		// Force an OS that doesn't match darwin/windows/linux fallbacks.
+		// Even when no native utility is found, the OSC 52 escape is emitted
+		// to stdout so terminals that support it still receive the content;
+		// success is reported.
 		withDetectedOS(t, "plan9")
+		// Strip PATH so the linux fallback can't accidentally locate xclip/xsel.
+		t.Setenv("PATH", "")
 		cmds := NewCommands(nil, nil)
 		msg := cmds.CopyToClipboard("x")()
 		result := msg.(types.ClipboardCopiedMsg)
-		if result.Err == nil {
-			t.Error("expected error when no clipboard utility is found")
+		if result.Err != nil {
+			t.Errorf("unexpected error: %v", result.Err)
+		}
+		if result.Content != "x" {
+			t.Errorf("Content = %q, want %q", result.Content, "x")
 		}
 	})
 }

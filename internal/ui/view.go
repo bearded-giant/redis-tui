@@ -149,17 +149,25 @@ func (m Model) View() string {
 }
 
 func (m Model) getStatusBar() string {
+	var msg string
 	if m.Loading {
-		return dimStyle.Render("Loading...")
-	}
-	if m.StatusMsg != "" {
+		msg = dimStyle.Render("Loading...")
+	} else if m.StatusMsg != "" {
 		if strings.HasPrefix(m.StatusMsg, "Error") {
-			return errorStyle.Render(m.StatusMsg)
+			msg = errorStyle.Render(m.StatusMsg)
+		} else {
+			msg = successStyle.Render(m.StatusMsg)
 		}
-		return successStyle.Render(m.StatusMsg)
+	} else if m.UpdateAvailable != "" {
+		msg = errorStyle.Render("Update available: " + m.UpdateAvailable + " — run: " + m.UpdateCmd)
 	}
-	if m.UpdateAvailable != "" {
-		return errorStyle.Render("Update available: " + m.UpdateAvailable + " — run: " + m.UpdateCmd)
+	ver := m.Version
+	if ver == "" {
+		ver = "dev"
 	}
-	return ""
+	verBadge := dimStyle.Render(ver)
+	if msg == "" {
+		return verBadge
+	}
+	return msg + dimStyle.Render("  •  ") + verBadge
 }

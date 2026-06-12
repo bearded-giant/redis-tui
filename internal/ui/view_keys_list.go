@@ -67,7 +67,7 @@ func (m Model) viewKeys() string {
 	content := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
 
 	// Add help text at the bottom
-	helpText := helpStyle.Render("j/k:nav  enter:view  a:add  d:del  /:filter  O:logs  i:info  q:back")
+	helpText := helpStyle.Render("j/k:nav  enter:view  a:add  d:del  /:filter  N:copy-name  O:logs  i:info  q:back")
 
 	return content + "\n" + helpText
 }
@@ -194,7 +194,7 @@ func (m Model) viewKeysListOnly() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(helpStyle.Render("j/k:nav  enter:view  a:add  d:del  /:filter  O:logs  i:info  q:back"))
+	b.WriteString(helpStyle.Render("j/k:nav  enter:view  a:add  d:del  /:filter  N:copy-name  O:logs  i:info  q:back"))
 
 	return b.String()
 }
